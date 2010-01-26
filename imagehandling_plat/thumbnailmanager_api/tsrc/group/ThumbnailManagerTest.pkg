@@ -1,0 +1,49 @@
+;
+; Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+; All rights reserved.
+; This component and the accompanying materials are made available
+; under the terms of "Eclipse Public License v1.0"
+; which accompanies this distribution, and is available
+; at the URL "http://www.eclipse.org/legal/epl-v10.html".
+;
+; Initial Contributors:
+; Nokia Corporation - initial contribution.
+;
+; Contributors:
+;
+; Description:  Thumbnail Manager API tests
+;
+
+; Languages
+&EN
+
+; Header
+#{"ThumbnailManagerTest"},(0x101FB3E3),1,0,0,TYPE=SA
+
+; Localised Vendor name
+%{"Nokia"}
+
+; Unique Vendor name
+:"Nokia"
+
+; Install files
+"\epoc32\release\armv5\udeb\ThumbnailManagerTest.dll" - "c:\sys\bin\ThumbnailManagerTest.dll"
+"..\conf\ThumbnailManagerTest.cfg" - "c:\TestFramework\ThumbnailManagerTest.cfg"
+"..\init\ThumbnailManagerTest.ini" - "c:\TestFramework\ThumbnailManagerTest.ini"
+"..\data\mmc\ThumbnailManagerTest\8bit_PNG.png" - "e:\testing\data\ThumbnailManagerTest\8bit_PNG.png"
+"..\data\mmc\ThumbnailManagerTest\empty_file.bmp" - "e:\testing\data\ThumbnailManagerTest\empty_file.bmp"
+"..\data\mmc\ThumbnailManagerTest\not_3gp.3gp" - "e:\testing\data\ThumbnailManagerTest\not_3gp.3gp"
+"..\data\mmc\ThumbnailManagerTest\not_jpg.jpg" - "e:\testing\data\ThumbnailManagerTest\not_jpg.jpg"
+"..\data\mmc\ThumbnailManagerTest\RGB_400x300.bmp" - "e:\testing\data\ThumbnailManagerTest\RGB_400x300.bmp"
+"..\data\mmc\ThumbnailManagerTest\RGB_VGA.jpg" - "e:\testing\data\ThumbnailManagerTest\RGB_VGA.jpg"
+"..\data\mmc\ThumbnailManagerTest\SVG_640x480.svg" - "e:\testing\data\ThumbnailManagerTest\SVG_640x480.svg"
+"..\data\mmc\ThumbnailManagerTest\TALL_400x800.bmp" - "e:\testing\data\ThumbnailManagerTest\TALL_400x800.bmp"
+"..\data\mmc\ThumbnailManagerTest\Tiny_1x1.jpg" - "e:\testing\data\ThumbnailManagerTest\Tiny_1x1.jpg"
+"..\data\mmc\ThumbnailManagerTest\Unsupported.txt" - "e:\testing\data\ThumbnailManagerTest\Unsupported.txt"
+"..\data\mmc\ThumbnailManagerTest\video.3gp" - "e:\testing\data\ThumbnailManagerTest\video.3gp"
+"..\data\mmc\ThumbnailManagerTest\Videoclip.mp4" - "e:\testing\data\ThumbnailManagerTest\Videoclip.mp4"
+"..\data\mmc\ThumbnailManagerTest\WIDE_800x400.gif" - "e:\testing\data\ThumbnailManagerTest\WIDE_800x400.gif"
+"..\data\mmc\ThumbnailManagerTest\TestMBM.mbm" - "e:\testing\data\ThumbnailManagerTest\TestMBM.mbm"
+"..\data\mmc\ThumbnailManagerTest\mp3.mp3" - "e:\testing\data\ThumbnailManagerTest\mp3.mp3"
+"..\data\mmc\ThumbnailManagerTest\camera.jpg" - "e:\testing\data\ThumbnailManagerTest\camera.jpg"
+

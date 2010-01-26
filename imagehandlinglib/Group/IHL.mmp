@@ -1,0 +1,65 @@
+/*
+* Copyright (c) 2004-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Image Handling Library project file.*
+*/
+
+
+#include <platform_paths.hrh>
+
+TARGET  		IHL.dll
+TARGETTYPE		dll
+UID  			0x1000008D 0x101f4d90 // Image Viewer uid
+CAPABILITY		CAP_GENERAL_DLL
+VENDORID		VID_DEFAULT
+
+OPTION ARMCC --cpu 6
+
+SOURCEPATH		../Src
+
+SOURCE			IHLBitmapUtil.cpp
+SOURCE			CIHLScaler.cpp
+SOURCE			CIHLBitmap.cpp
+
+SOURCE			IHLImageFactory.cpp
+SOURCE			CIHLFileImage.cpp
+SOURCE			CIHLFileImageExtJpg.cpp
+
+SOURCE			IHLProcessorFactory.cpp
+SOURCE			CIHLBitmapProcessor.cpp
+
+SOURCE			IHLViewerFactory.cpp
+SOURCE          CIHLImageViewer.cpp
+SOURCE          CIHLImageViewerExtJpg.cpp
+
+USERINCLUDE		.
+USERINCLUDE     ../Src
+USERINCLUDE     ../Inc      // subsystem level inc dir
+USERINCLUDE	../../inc   // ADo level inc dir
+
+// Default system include paths for middleware layer modules.
+MW_LAYER_SYSTEMINCLUDE
+SYSTEMINCLUDE   /epoc32/include/icl // Needs to be removed after ICL has made SF structural changes.
+
+
+LIBRARY			euser.lib
+LIBRARY			fbscli.lib
+LIBRARY			bitgdi.lib
+LIBRARY			ImageConversion.lib
+LIBRARY			efsrv.lib
+LIBRARY			CAF.lib
+LIBRARY			IclExtJpegApi.lib
+LIBRARY                 hal.lib
+
+//Remove comment to enable debug print
+//MACRO IHL_ENABLE_DEBUG_PRINT

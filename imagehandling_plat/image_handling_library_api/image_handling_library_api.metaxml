@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<api id="7465e3c7aa4e74d9c8f9d0e706f54456" dataversion="2.0">
+  <name>Image Handling Library API</name>
+  <description>An interface for viewing images</description>
+  <type>c++</type>
+  <collection>imagehandlinglib</collection>
+  <libs>
+    <lib name="IHL.lib" />
+  </libs>
+  <release category="platform"/>
+  <attributes>
+     <!-- This indicates wether the api provedes separate html documentation -->
+     <!-- or is the additional documentation generated from headers. -->
+     <!-- If you are unsuere then the value is "no" -->
+     <htmldocprovided>no</htmldocprovided>
+     <adaptation>no</adaptation>
+  </attributes>
+</api>

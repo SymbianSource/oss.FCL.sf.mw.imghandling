@@ -1,0 +1,89 @@
+/*
+* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Project definition file for project ?myapp
+*
+*/
+
+
+// To get the MW_LAYER_SYSTEMINCLUDE-definition
+#include <platform_paths.hrh>
+
+#include <data_caging_paths.hrh>
+#include "../../inc/thumbnailmanageruids.hrh"
+
+VERSION					10.0
+TARGET                  thumbnailserver.exe
+TARGETTYPE              EXE
+UID                     0x0 THUMBNAIL_MANAGER_SERVER_UID
+
+#ifdef WINSCW
+EPOCHEAPSIZE            4096 0x800000 // heap 8MB
+#else
+EPOCHEAPSIZE            4096 0x3000000 // max heap 48MB
+#endif
+
+
+CAPABILITY              ALL -TCB -DRM
+VENDORID                VID_DEFAULT
+
+SOURCEPATH              ../src
+SOURCE                  thumbnailserver.cpp
+SOURCE                  thumbnailserversession.cpp
+SOURCE                  thumbnailtaskprocessor.cpp
+SOURCE                  thumbnailtask.cpp
+SOURCE                  thumbnailgeneratetask.cpp
+SOURCE                  thumbnailscaletask.cpp
+SOURCE                  thumbnailstore.cpp
+SOURCE                  thumbnailprovider.cpp
+SOURCE                  thumbnaildiskunmountobserver.cpp
+SOURCE                  thumbnailcenrep.cpp 
+SOURCE                  thumbnailmemorycardobserver.cpp 
+SOURCE			        tmshutdownobserver.cpp 
+SOURCE 			        thumbnaildecodetask.cpp
+#ifdef RD_MDS_2_5
+SOURCE					thumbnailmdsquerytask.cpp
+#endif // RD_MDS_2_5
+SOURCE					tnmgetimei.cc
+SOURCE					thumbnailformatobserver.cpp
+
+// Default system include paths for middleware layer modules.
+MW_LAYER_SYSTEMINCLUDE
+
+USERINCLUDE             ../inc
+USERINCLUDE             ../../inc
+
+LIBRARY                 fbscli.lib
+LIBRARY                 euser.lib
+LIBRARY                 ecom.lib
+LIBRARY                 efsrv.lib
+LIBRARY                 apmime.lib
+LIBRARY                 sqldb.lib
+LIBRARY                 apgrfx.lib
+LIBRARY                 estor.lib
+LIBRARY                 ihl.lib
+LIBRARY                 centralrepository.lib
+LIBRARY                 platformenv.lib
+LIBRARY					imageconversion.lib 
+LIBRARY         		caf.lib
+LIBRARY         		cafutils.lib
+LIBRARY         		mdeclient.lib
+LIBRARY					etel3rdparty.lib
+LIBRARY					bafl.lib
+LIBRARY					bitgdi.lib
+
+DEBUGLIBRARY            flogger.lib
+
+PAGED
+BYTEPAIRCOMPRESSTARGET
+EPOCPROCESSPRIORITY foreground

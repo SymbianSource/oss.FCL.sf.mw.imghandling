@@ -1,0 +1,39 @@
+;
+; Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
+; All rights reserved.
+; This component and the accompanying materials are made available
+; under the terms of "Eclipse Public License v1.0"
+; which accompanies this distribution, and is available
+; at the URL "http://www.eclipse.org/legal/epl-v10.html".
+;
+; Initial Contributors:
+; Nokia Corporation - initial contribution.
+;
+; Contributors:
+;
+; Description:
+;
+; Languages
+&EN
+
+; Header
+#{"Thumbnail Manager"},(0x102830AB), 9, 20, 2, TYPE=SA, RU
+
+; Localised Vendor name
+%{"Nokia"}
+
+; Unique Vendor name
+:"Nokia"
+
+;Files
+@"..\thumbnailmanagercenrep\thumbnailmanagercenrep.sisx",(0x10202BE9)
+"\epoc32\release\armv5\urel\thumbnailserver.exe"-"c:\sys\bin\thumbnailserver.exe"
+"\epoc32\release\armv5\urel\thumbagdaemon.exe"-"c:\sys\bin\thumbagdaemon.exe"
+"\epoc32\release\armv5\urel\thumbnailmanager.dll"-"c:\sys\bin\thumbnailmanager.dll"
+"\epoc32\release\armv5\urel\thumbnailimageprovider.dll"-"c:\sys\bin\thumbnailimageprovider.dll"
+"\epoc32\release\armv5\urel\thumbnailvideoprovider.dll"-"c:\sys\bin\thumbnailvideoprovider.dll"
+"\epoc32\release\armv5\urel\thumbnailaudioprovider.dll"-"c:\sys\bin\thumbnailaudioprovider.dll"
+"\epoc32\data\z\resource\plugins\thumbnailimageprovider.rsc"-"c:\resource\plugins\thumbnailimageprovider.rsc"
+"\epoc32\data\z\resource\plugins\thumbnailvideoprovider.rsc"-"c:\resource\plugins\thumbnailvideoprovider.rsc"
+"\epoc32\data\z\resource\plugins\thumbnailaudioprovider.rsc"-"c:\resource\plugins\thumbnailaudioprovider.rsc"
+"\epoc32\release\armv5\urel\tmiadrestart.exe"-"c:\sys\bin\tmiadrestart.exe",FILERUN,RB

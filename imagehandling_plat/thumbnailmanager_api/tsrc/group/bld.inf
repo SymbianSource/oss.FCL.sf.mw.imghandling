@@ -1,0 +1,48 @@
+/*
+* Copyright (c) 2006 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Thumbnail Manager API tests
+*
+*/
+
+PRJ_PLATFORMS
+DEFAULT
+
+PRJ_EXPORTS
+
+PRJ_MMPFILES
+
+PRJ_TESTMMPFILES
+ThumbnailManagerTest.mmp
+
+PRJ_TESTEXPORTS
+../conf/ThumbnailManagerTest.cfg /epoc32/winscw/c/TestFramework/ThumbnailManagerTest.cfg
+../init/ThumbnailManagerTest.ini /epoc32/winscw/c/TestFramework/ThumbnailManagerTest.ini
+../data/mmc/ThumbnailManagerTest/8bit_PNG.png /epoc32/winscw/c/data/ThumbnailManagerTest/8bit_PNG.png
+../data/mmc/ThumbnailManagerTest/empty_file.bmp /epoc32/winscw/c/data/ThumbnailManagerTest/empty_file.bmp
+../data/mmc/ThumbnailManagerTest/not_3gp.3gp /epoc32/winscw/c/data/ThumbnailManagerTest/not_3gp.3gp
+../data/mmc/ThumbnailManagerTest/not_jpg.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/not_jpg.jpg
+../data/mmc/ThumbnailManagerTest/RGB_400x300.bmp /epoc32/winscw/c/data/ThumbnailManagerTest/RGB_400x300.bmp
+../data/mmc/ThumbnailManagerTest/RGB_VGA.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/RGB_VGA.jpg
+../data/mmc/ThumbnailManagerTest/SVG_640x480.svg /epoc32/winscw/c/data/ThumbnailManagerTest/SVG_640x480.svg
+../data/mmc/ThumbnailManagerTest/TALL_400x800.bmp /epoc32/winscw/c/data/ThumbnailManagerTest/TALL_400x800.bmp
+../data/mmc/ThumbnailManagerTest/Tiny_1x1.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/Tiny_1x1.jpg
+../data/mmc/ThumbnailManagerTest/Unsupported.txt /epoc32/winscw/c/data/ThumbnailManagerTest/Unsupported.txt
+../data/mmc/ThumbnailManagerTest/video.3gp /epoc32/winscw/c/data/ThumbnailManagerTest/video.3gp
+../data/mmc/ThumbnailManagerTest/Videoclip.mp4 /epoc32/winscw/c/data/ThumbnailManagerTest/Videoclip.mp4
+../data/mmc/ThumbnailManagerTest/WIDE_800x400.gif /epoc32/winscw/c/data/ThumbnailManagerTest/WIDE_800x400.gif
+../data/mmc/ThumbnailManagerTest/TestMBM.mbm /epoc32/winscw/c/data/ThumbnailManagerTest/TestMBM.mbm
+../data/mmc/ThumbnailManagerTest/mp3.mp3 /epoc32/winscw/c/data/ThumbnailManagerTest/mp3.mp3
+../data/mmc/ThumbnailManagerTest/camera.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/camera.jpg
+
+//  End of File

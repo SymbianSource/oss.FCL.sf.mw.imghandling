@@ -1,0 +1,58 @@
+/*
+* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Thumbnail manager client project definition file
+*
+*/
+
+
+// To get the MW_LAYER_SYSTEMINCLUDE-definition
+#include <platform_paths.hrh>
+
+#include <data_caging_paths.hrh>
+#include "../../inc/thumbnailmanageruids.hrh"
+
+VERSION					10.0
+TARGET                  thumbnailmanager.dll
+TARGETTYPE              DLL
+UID                     0x0 THUMBNAIL_MANAGER_CLIENT_DLL_UID
+
+CAPABILITY              CAP_CLIENT_DLL
+VENDORID                VID_DEFAULT
+
+SOURCEPATH              ../src
+SOURCE                  thumbnailmanager.cpp
+SOURCE                  thumbnailmanagerimpl.cpp
+SOURCE                  thumbnailobjectsource.cpp
+SOURCE                  thumbnailrequestactive.cpp
+SOURCE                  thumbnailsession.cpp
+SOURCE                  thumbnaildataimpl.cpp thumbnailrequestqueue.cpp
+
+// Default system include paths for middleware layer modules.
+MW_LAYER_SYSTEMINCLUDE
+
+USERINCLUDE             ../inc
+USERINCLUDE             ../../inc
+
+LIBRARY                 fbscli.lib
+LIBRARY                 euser.lib
+LIBRARY                 ecom.lib
+LIBRARY                 efsrv.lib
+LIBRARY                 bafl.lib
+LIBRARY                 centralrepository.lib apmime.lib
+LIBRARY 				hal.lib
+
+DEBUGLIBRARY            flogger.lib
+
+PAGED
+BYTEPAIRCOMPRESSTARGET

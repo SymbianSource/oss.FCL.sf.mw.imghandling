@@ -1,0 +1,29 @@
+/*
+* Copyright (c) 2002-2006 Nokia Corporation and/or its subsidiary(-ies).
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Iby file for 3GPMP4Lib.
+*
+*/
+
+
+#ifndef __3GPMP4LIB_IBY__
+#define __3GPMP4LIB_IBY__
+
+// 3GP/MP4 File Format Library
+
+// Utilizing constants from data_caging_paths_for_iby.hrh, included in higher level
+file=ABI_DIR\BUILD_DIR\3GPMP4LIB.DLL			SHARED_LIB_DIR\3GPMP4LIB.DLL
+
+//data=ZSYSTEM\install\3GPMP4LibStub.sis       system\install\3GPMP4LibStub.sis
+
+#endif	//__3GPMP4LIB_IBY__

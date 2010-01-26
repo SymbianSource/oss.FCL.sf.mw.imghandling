@@ -1,0 +1,58 @@
+/*
+* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Video thumbnail provider plugin
+*
+*/
+
+
+// To get the MW_LAYER_SYSTEMINCLUDE-definition
+#include <platform_paths.hrh>
+
+#include "../../../inc/thumbnailmanageruids.hrh"
+
+TARGET thumbnailvideoprovider.dll
+CAPABILITY CAP_ECOM_PLUGIN
+TARGETTYPE PLUGIN
+
+UID 0x10009D8D THUMBNAIL_VIDEO_PROVIDER_DLL_UID
+VENDORID VID_DEFAULT
+
+SOURCEPATH  ../src
+SOURCE  thumbnailvideoprovider.cpp
+
+// Default system include paths for middleware layer modules.
+MW_LAYER_SYSTEMINCLUDE
+
+USERINCLUDE ../inc
+USERINCLUDE ../../../inc
+
+SYSTEMINCLUDE /epoc32/include/ecom
+
+START RESOURCE ../src/thumbnailvideoprovider.rss
+END
+
+LIBRARY                 euser.lib
+LIBRARY                 ecom.lib
+LIBRARY                 tneengine.lib
+LIBRARY                 efsrv.lib
+LIBRARY                 fbscli.lib
+
+DEBUGLIBRARY            flogger.lib
+
+PAGED
+BYTEPAIRCOMPRESSTARGET
+
+// End of File
+
+

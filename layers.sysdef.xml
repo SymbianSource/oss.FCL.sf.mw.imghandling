@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE SystemDefinition SYSTEM "sysdef_1_4_0.dtd" [
+  <!ENTITY layer_real_source_path "sf/mw/imghandling" >
+]>
+
+<SystemDefinition name="imghandling" schema="1.4.0">
+  <systemModel>
+    <layer name="mw_layer">
+      <module name="imghandling">
+        <unit unitID="imm.imghandling" mrp="" bldFile="&layer_real_source_path;/group" name="imghandling" />
+      </module>
+    </layer>
+
+  <layer name="api_test_layer">
+    <module name="imagehandling_api_tests">
+     	<unit unitID="imm.imagehandlinglib_api" mrp="" bldFile="sf/mw/imghandling/imagehandlinglib/tsrc/public/basic/group" name="imagehandlinglib_api" />
+     	<unit unitID="imm.thumbnailmanager_api" mrp="" bldFile="sf/mw/imghandling/imagehandling_plat/thumbnailmanager_api/tsrc/group" name="thumbnailmanager_api" />
+	</module>
+  </layer>
+    
+  <layer name="unit_test_layer">
+    <module name="imagehandling_unit_tests">
+    </module>
+  </layer>
+    
+  </systemModel>
+</SystemDefinition>

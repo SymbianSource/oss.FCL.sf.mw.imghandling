@@ -1,0 +1,37 @@
+/*
+* Copyright (c) 2006 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  File that exports the files belonging to 
+*               :                Thumbnailmanager API
+*
+*/
+
+#include <platform_paths.hrh>
+
+PRJ_PLATFORMS
+DEFAULT
+
+PRJ_EXPORTS
+ 
+#ifdef RD_THUMBNAILMANAGER
+
+../inc/thumbnaildata.h    MW_LAYER_PLATFORM_EXPORT_PATH(thumbnaildata.h)
+../inc/thumbnailmanager.h     MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailmanager.h)
+../inc/thumbnailmanagerobserver.h     MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailmanagerobserver.h)
+../inc/thumbnailobjectsource.h     MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailobjectsource.h)
+
+#endif // RD_THUMBNAILMANAGER
+
+// End of File
+
+

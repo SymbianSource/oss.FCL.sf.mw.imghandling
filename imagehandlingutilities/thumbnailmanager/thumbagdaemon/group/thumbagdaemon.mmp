@@ -1,0 +1,67 @@
+/*
+* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Project definition file
+*
+*/
+
+
+#include <platform_paths.hrh>
+#include <data_caging_paths.hrh>
+#include "../../inc/thumbnailmanageruids.hrh"
+
+VERSION					10.0
+TARGET                  thumbagdaemon.exe
+TARGETTYPE              EXE
+UID                     0x0 THUMBAGDAEMON_UID
+
+#ifdef WINSCW
+EPOCHEAPSIZE            4096 0x200000 // heap 2MB
+#else
+EPOCHEAPSIZE            4096 0x800000 // max heap 8MB
+#endif
+
+CAPABILITY              ALL -AllFiles -DRM -TCB  
+VENDORID                VID_DEFAULT
+
+EPOCPROCESSPRIORITY 	background
+
+SOURCEPATH              ../src
+SOURCE                  thumbagdaemon.cpp
+SOURCE					thumbagprocessor.cpp
+SOURCE					../../thumbnailserver/src/tmshutdownobserver.cpp 
+SOURCE					thumbagformatobserver.cpp
+
+// Default system include paths for middleware layer modules.
+MW_LAYER_SYSTEMINCLUDE
+
+USERINCLUDE             ../inc
+USERINCLUDE             ../../inc
+USERINCLUDE             ../../thumbnailserver/inc
+
+LIBRARY                 euser.lib
+LIBRARY         	mdeclient.lib
+LIBRARY           	thumbnailmanager.lib 
+LIBRARY                 centralrepository.lib
+LIBRARY 		harvesterclient.lib
+LIBRARY			bafl.lib 
+LIBRARY			mpxcollectionhelper.lib mpxcollectionutility.lib mpxcommon.lib
+
+DEBUGLIBRARY            flogger.lib
+
+PAGED
+BYTEPAIRCOMPRESSTARGET
+
+// End of File
+
+

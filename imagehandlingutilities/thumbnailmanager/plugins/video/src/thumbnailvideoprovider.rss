@@ -1,0 +1,48 @@
+/*
+* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Video thumbnail provider plugin resource file
+*
+*/
+
+
+#include "registryinfov2.rh"
+#include "thumbnailmanageruids.hrh"
+
+RESOURCE REGISTRY_INFO theInfo
+{
+// resource_format_version must always be set as follows
+resource_format_version = RESOURCE_FORMAT_VERSION_2;
+
+// Normal plug-in parameters
+dll_uid = THUMBNAIL_VIDEO_PROVIDER_DLL_UID;
+interfaces =
+    {
+    INTERFACE_INFO
+        {
+        interface_uid = THUMBNAIL_PROVIDER_IF_UID;
+        implementations =
+            {
+            IMPLEMENTATION_INFO
+                {
+                implementation_uid = THUMBNAIL_VIDEO_PROVIDER_IMP_UID;
+                version_no = 1;
+                display_name = "";
+                default_data = "";
+                opaque_data = "video/*";
+                rom_only = 0;
+                }
+            };
+        }
+    };
+}

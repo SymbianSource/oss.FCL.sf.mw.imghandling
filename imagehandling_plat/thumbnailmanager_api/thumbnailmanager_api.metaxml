@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<api id="993e774dd87521bc864e0a849ee5c3fe" dataversion="2.0">
+<name>thumbnailmanager_api</name>
+<description>Thumbnail engine can be used to request thumbnails for different kinds of media objects.</description>
+<type>c++</type>
+<collection>imagehandlingutilities</collection>
+<libs><lib name="thumbnailmanager.lib"/>
+</libs>
+<release category="platform" sinceversion="5.0"/>
+<attributes>
+<htmldocprovided>no</htmldocprovided>
+<adaptation>no</adaptation>
+</attributes>
+</api>

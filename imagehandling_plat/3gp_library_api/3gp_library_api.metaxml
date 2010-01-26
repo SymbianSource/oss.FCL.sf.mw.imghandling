@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<api id="ea625861e9a32710c78d77d8933339c1" dataversion="2.0">
+  <name>3GP Library API</name>
+  <description>Interface to 3GP file composing and parsing library.</description>
+  <type>c++</type>
+  <collection>3gplibrary</collection>
+  <libs>
+    <lib name="3GPMP4lib.lib" />
+  </libs>
+  <release category="platform"/>
+  <attributes>
+     <!-- This indicates wether the api provedes separate html documentation -->
+     <!-- or is the additional documentation generated from headers. -->
+     <!-- If you are unsuere then the value is "no" -->
+     <htmldocprovided>no</htmldocprovided>
+     <adaptation>no</adaptation>
+  </attributes>
+</api>

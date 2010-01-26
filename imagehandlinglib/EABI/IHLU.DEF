@@ -1,0 +1,23 @@
+EXPORTS
+	_ZN13IHLBitmapUtil11CopyBitmapLERK10CFbsBitmap @ 1 NONAME
+	_ZN13IHLBitmapUtil11CopyBitmapLERK10CFbsBitmapRK5TRect @ 2 NONAME
+	_ZN13IHLBitmapUtil11ScaleBitmapERK10CFbsBitmapRK5TRectRS0_S5_m @ 3 NONAME
+	_ZN13IHLBitmapUtil11ScaleBitmapERK10CFbsBitmapRS0_m @ 4 NONAME
+	_ZN13IHLBitmapUtil12CopyBitmapLCERK10CFbsBitmap @ 5 NONAME
+	_ZN13IHLBitmapUtil12CopyBitmapLCERK10CFbsBitmapRK5TRect @ 6 NONAME
+	_ZN13IHLBitmapUtil16DuplicateBitmapLERK10CFbsBitmap @ 7 NONAME
+	_ZN13IHLBitmapUtil17DuplicateBitmapLCERK10CFbsBitmap @ 8 NONAME
+	_ZN15IHLImageFactory14OpenFileImageLER3RFsRK7TDesC16 @ 9 NONAME
+	_ZN15IHLImageFactory14OpenFileImageLER3RFsRK7TDesC16i @ 10 NONAME
+	_ZN15IHLImageFactory14OpenFileImageLER5RFile @ 11 NONAME
+	_ZN15IHLImageFactory14OpenFileImageLER5RFilei @ 12 NONAME
+	_ZN16IHLViewerFactory18CreateImageViewerLERK5TSizeR9MIHLImageR10MIHLBitmapR18MIHLViewerObserverm @ 13 NONAME
+	_ZN19IHLProcessorFactory22CreateBitmapProcessorLEm @ 14 NONAME
+	_ZN9IHLBitmap7CreateLEv @ 15 NONAME
+	_ZN9IHLScaler7CreateLEm @ 16 NONAME
+	_ZN15IHLImageFactory14OpenFileImageLER3RFsRK7TDesC16im @ 17 NONAME
+	_ZN15IHLImageFactory14OpenFileImageLER5RFileim @ 18 NONAME
+	_ZN15IHLImageFactory22OpenBufferedFileImageLER3RFsRK6TDesC8 @ 19 NONAME
+	_ZN15IHLImageFactory22OpenBufferedFileImageLER3RFsRK6TDesC8i @ 20 NONAME
+	_ZN15IHLImageFactory22OpenBufferedFileImageLER3RFsRK6TDesC8im @ 21 NONAME
+

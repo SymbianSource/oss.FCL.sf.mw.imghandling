@@ -1,0 +1,54 @@
+/*
+* Copyright (c) 2006 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  Build information file for project ?myapp
+*
+*/
+
+#include <platform_paths.hrh>
+
+#ifdef RD_THUMBNAILMANAGER
+
+#include "../thumbnailclient/group/bld.inf"
+#include "../thumbnailserver/group/bld.inf"
+#include "../plugins/image/group/bld.inf"
+#include "../plugins/video/group/bld.inf"
+#include "../plugins/audio/group/bld.inf"
+#include "../tmiadrestart/group/bld.inf"
+#ifdef RD_MDS_2_5 
+#include "../thumbagdaemon/group/bld.inf"
+#endif
+
+PRJ_PLATFORMS
+WINSCW ARMV5
+
+PRJ_EXPORTS
+../sis/thumbnailmanager/thumbnailmanager_stub.sis		/epoc32/data/z/system/install/thumbnailmanager_stub.sis
+../conf/thumbnailmanager.confml			MW_LAYER_CONFML(thumbnailmanager.confml)
+../conf/thumbnailmanager_102830B0.crml	MW_LAYER_CRML(thumbnailmanager_102830b0.crml)
+../rom/thumbnailmanager.iby				CORE_MW_LAYER_IBY_EXPORT_PATH(thumbnailmanager.iby)
+#ifdef RD_MDS_2_5 
+../rom/thumbagdaemon.iby				CORE_MW_LAYER_IBY_EXPORT_PATH(thumbagdaemon.iby)
+#endif
+
+PRJ_TESTMMPFILES
+
+PRJ_TESTEXPORTS
+../conf/102830B0.txt								/epoc32/release/winscw/udeb/z/private/10202be9/102830b0.txt
+../conf/102830B0.txt								/epoc32/release/winscw/urel/z/private/10202be9/102830b0.txt
+
+#endif // RD_THUMBNAILMANAGER
+
+// End of File
+
+

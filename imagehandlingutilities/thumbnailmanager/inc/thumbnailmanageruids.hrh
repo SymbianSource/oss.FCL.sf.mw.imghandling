@@ -1,0 +1,36 @@
+/*
+* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*
+* Initial Contributors:
+* Nokia Corporation - initial contribution.
+*
+* Contributors:
+*
+* Description:  UID values for Thumbnail Manager components
+*
+*/
+
+
+#ifndef THUMBNAILMANAGERUIDS_HRH
+#define THUMBNAILMANAGERUIDS_HRH
+
+#define THUMBNAIL_PROVIDER_IF_UID          0x102830A9
+#define THUMBNAIL_MANAGER_CLIENT_DLL_UID   0x102830AA
+#define THUMBNAIL_MANAGER_SERVER_UID       0x102830AB
+#define THUMBNAIL_IMAGE_PROVIDER_DLL_UID   0x102830AC
+#define THUMBNAIL_IMAGE_PROVIDER_IMP_UID   0x102830AD
+#define THUMBNAIL_VIDEO_PROVIDER_DLL_UID   0x102830AE
+#define THUMBNAIL_VIDEO_PROVIDER_IMP_UID   0x102830AF
+#define THUMBNAIL_CENREP_UID               0x102830B0
+#define THUMBNAIL_AUDIO_PROVIDER_DLL_UID   0x20022D5D
+#define THUMBNAIL_AUDIO_PROVIDER_IMP_UID   0x20022D5E
+
+#define THUMBAGDAEMON_UID                  0x2001FD51
+#define THUMBAGDAEMON_SIS                  0x102830A9
+
+#endif // THUMBNAILMANAGERUIDS_HRH
