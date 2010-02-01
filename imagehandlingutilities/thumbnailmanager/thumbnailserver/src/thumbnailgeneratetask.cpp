@@ -379,9 +379,11 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             // if trying to access Z drive, don't try to store
             // don't want to store custom sizes
             if( err1 == KErrAccessDenied || err2 == KErrAccessDenied ||
-                    (*iMissingSizes)[ i ].iType == ECustomThumbnailSize )
+                    (*iMissingSizes)[ i ].iType == ECustomThumbnailSize || 
+                    (*iMissingSizes)[ i ].iType == EUnknownThumbnailSize )
                 {
                 scaleTask->SetDoStore( EFalse );
+                TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() - do not store", this );
                 }
             else
                 {
@@ -434,9 +436,11 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
         // if trying to access Z drive, don't try to store
         // don't want to store custom sizes
         if( err1 == KErrAccessDenied || err2 == KErrAccessDenied ||
-            iThumbnailSize == ECustomThumbnailSize )
+            iThumbnailSize == ECustomThumbnailSize || 
+            iThumbnailSize == EUnknownThumbnailSize )
             {
             complTask->SetDoStore( EFalse );
+            TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() - do not store", this );
             }
         else
             {

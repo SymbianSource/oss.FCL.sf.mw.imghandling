@@ -115,10 +115,14 @@ void CThumbnailRequestQueue::Process()
            {
            TN_DEBUG1( "CThumbnailRequestQueue::Process() - starting next request");
                     
+           iActiveRequests++;
+           
            TRAPD(err, selectedRequest->StartL());
            if (err != KErrNone)
                {
-               iActiveRequests++;
+               TN_DEBUG1( "CThumbnailRequestQueue::Process() - starting request failed");
+               
+               selectedRequest->StartError(err);
                }
            }
          else
@@ -139,18 +143,15 @@ void CThumbnailRequestQueue::Process()
 //
 void CThumbnailRequestQueue::AddRequestL( CThumbnailRequestActive* aRequest )
     {
-    TN_DEBUG3( "CThumbnailRequestQueue::AddRequestL() - requests: %d, active requests: %d",
-               iRequests.Count(), iActiveRequests );
-    
     RemoveCompleted(NULL);
     iRequests.AppendL( aRequest );
+    
+    TN_DEBUG3( "CThumbnailRequestQueue::AddRequestL() end - requests: %d, active requests: %d",
+               iRequests.Count(), iActiveRequests );
     }
 
 void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestAO)
-    {
-    TN_DEBUG3( "CThumbnailRequestQueue::RemoveCompleted() - begin - requests: %d, active requests: %d",
-               iRequests.Count(), iActiveRequests );
-            
+    {       
     //process completed queue and remove finished tasks
     for ( TInt i = iRequests.Count() -1; i >= 0 && iRequests.Count(); i-- )
          {
@@ -270,8 +271,6 @@ void CThumbnailRequestQueue::RequestComplete(CThumbnailRequestActive* aRequestAO
     RemoveCompleted( aRequestAO );
     
     Process();
-    
-    TN_DEBUG2( "CThumbnailRequestQueue::RequestComplete() end - active requests: %d", iActiveRequests );
     }
 
 

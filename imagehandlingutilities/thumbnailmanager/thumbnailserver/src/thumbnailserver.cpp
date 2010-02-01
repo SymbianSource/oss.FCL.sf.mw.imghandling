@@ -436,6 +436,7 @@ void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
     {
     if( !aBitmap )
         {
+        TN_DEBUG1( "CThumbnailServer::AddBitmapToPoolL() - KErrArgument");
         User::Leave( KErrArgument );
         }
     TN_DEBUG4( 
@@ -911,6 +912,7 @@ CThumbnailStore* CThumbnailServer::StoreForPathL( const TDesC& aPath )
     {
     if(aPath.Length() < 3 || aPath.Length() > KMaxPath)
         {
+        TN_DEBUG1( "CThumbnailServer::StoreForPathL() - KErrArgument");
         User::Leave(KErrArgument);
         }
     TInt drive = 0;

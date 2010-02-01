@@ -142,6 +142,9 @@ CThumbnailStore* CThumbnailStore::NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CTh
 CThumbnailStore::~CThumbnailStore()
     {
     TN_DEBUG1( "CThumbnailStore::~CThumbnailStore()" );
+    
+    delete iDiskFullNotifier;
+    iDiskFullNotifier = NULL; 
 
     if(!iServer->IsFormatting())
         {
@@ -165,7 +168,7 @@ CThumbnailStore::~CThumbnailStore()
 // ---------------------------------------------------------------------------
 //
 CThumbnailStore::CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei,  CThumbnailServer* aServer ): 
-    iFs( aFs ), iDrive( aDrive ), iBatchItemCount(0), iImei(aImei), iServer(aServer)
+    iFs( aFs ), iDrive( aDrive ), iBatchItemCount(0), iImei(aImei), iServer(aServer), iDiskFull(EFalse)
     {
     // no implementation required
     }
@@ -190,6 +193,10 @@ void CThumbnailStore::ConstructL()
     User::LeaveIfError( RFs::DriveToChar( iDrive, driveChar ));
     pathPtr.Append( driveChar );
     pathPtr.Append( KThumbnailDatabaseName );
+    
+    iDiskFullNotifier = CThumbnailStoreDiskSpaceNotifierAO::NewL( *this, 
+                                            KDiskFullThreshold,
+                                            pathPtr );
 
     TVolumeInfo volumeinfo;
     iFs.Volume(volumeinfo, iDrive);
@@ -228,8 +235,7 @@ void CThumbnailStore::ConstructL()
         if(error == KErrNone)
             {
             error = CheckRowIDsL();
-            }
-        
+            }  
         }
     
     // if wrong version, corrupted database or other error opening db
@@ -459,8 +465,9 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
         {
         TThumbnailPersistentSize & persistentSize = iPersistentSizes[i];
         
-        // don't store duplicates or custom sizes
+        // don't store duplicates or custom/unknown sizes
         if ( !exists && (aThumbnailSize != ECustomThumbnailSize && 
+                         aThumbnailSize != EUnknownThumbnailSize &&
                          thumbSize.iWidth > 0 && thumbSize.iHeight > 0 ))
             {
             TInt flags = 0;
@@ -2039,6 +2046,7 @@ TInt CThumbnailStore::CheckVersionL()
       }
     else
       {
+      TN_DEBUG1( "CThumbnailStore::CheckVersionL() - wrong DB version" );
       return KErrNotSupported;  
       }
     }
@@ -2252,6 +2260,7 @@ TInt CThumbnailStore::CheckRowIDsL()
             
     if( inforows != datarows)
         {
+        TN_DEBUG1( "CThumbnailStore::CheckRowIDsL() - tables out of sync" );
         return KErrNotSupported;
         }  
     else
@@ -2365,6 +2374,215 @@ void CThumbnailStore::RemoveDbFlagL(TThumbnailDbFlags aFlag)
     TN_DEBUG2( "CThumbnailStore::RemoveBlacklistedFlag() - main table, err=%d", err );
     
     CleanupStack::PopAndDestroy( &stmt );
+    }
+
+void CThumbnailStore::HandleDiskSpaceNotificationL( TBool aDiskFull )
+    {
+    TN_DEBUG2( "CThumbnailStore::HandleDiskSpaceNotificationL() aDiskFull = %d", aDiskFull );
+    iDiskFull = aDiskFull;
+    }
+
+
+void CThumbnailStore::HandleDiskSpaceError(TInt aError )
+    {
+    if (aError != KErrNone)
+        {
+        TN_DEBUG2( "CThumbnailStore::HandleDiskSpaceError() aError = %d", aError );
+        }
+    }
+
+TBool CThumbnailStore::IsDiskFull()
+    {
+    return iDiskFull;
+    }
+
+CThumbnailStoreDiskSpaceNotifierAO* CThumbnailStoreDiskSpaceNotifierAO::NewL(
+        MThumbnailStoreDiskSpaceNotifierObserver& aObserver, TInt64 aThreshold, const TDesC& aFilename)
+    {
+    CThumbnailStoreDiskSpaceNotifierAO* self = 
+        CThumbnailStoreDiskSpaceNotifierAO::NewLC( aObserver, aThreshold, aFilename);
+    CleanupStack::Pop( self );
+    return self;
+    }
+
+CThumbnailStoreDiskSpaceNotifierAO* CThumbnailStoreDiskSpaceNotifierAO::NewLC(
+        MThumbnailStoreDiskSpaceNotifierObserver& aObserver, TInt64 aThreshold, const TDesC& aFilename)
+    {
+    TDriveNumber driveNumber = GetDriveNumberL( aFilename );
+    
+    CThumbnailStoreDiskSpaceNotifierAO* self = 
+        new ( ELeave ) CThumbnailStoreDiskSpaceNotifierAO( aObserver, aThreshold, driveNumber );
+    CleanupStack::PushL( self );
+    self->ConstructL();
+    return self;
+    }
+
+TDriveNumber CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL( const TDesC& aFilename )
+    {
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL()");
+    TLex driveParser( aFilename );
+    
+    TChar driveChar = driveParser.Get();
+
+    if( 0 == driveChar || TChar( ':' ) != driveParser.Peek() )
+        {
+        TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL() KErrArgument");
+        User::Leave( KErrArgument );
+        }
+        
+    TInt driveNumber;
+    
+    RFs::CharToDrive( driveChar, driveNumber );
+    
+    return (TDriveNumber)driveNumber;
+    }
+
+
+CThumbnailStoreDiskSpaceNotifierAO::~CThumbnailStoreDiskSpaceNotifierAO()
+    {
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::~CThumbnailStoreDiskSpaceNotifierAO()");
+    Cancel();
+
+    iFileServerSession.Close();
+    }
+
+void CThumbnailStoreDiskSpaceNotifierAO::RunL()
+    {   
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL()");
+    TVolumeInfo volumeInfo;
+
+    if ( iState == CThumbnailStoreDiskSpaceNotifierAO::ENormal )
+        {
+        TInt status = iStatus.Int();
+        
+        switch( status )
+            {
+            case KErrNone:
+                iFileServerSession.Volume( volumeInfo, iDrive );
+                
+                // Check if free space is less than threshold level
+                if( volumeInfo.iFree < iThreshold )
+                    {
+                    iDiskFull = ETrue;
+                    iObserver.HandleDiskSpaceNotificationL( iDiskFull );
+                    iState = EIterate;
+                    iIterationCount = 0;
+                    SetActive();
+                    TRequestStatus* status = &iStatus;
+                    User::RequestComplete( status, KErrNone );
+                    return;
+                    }
+                else
+                    {
+                    iDiskFull = EFalse;
+                    iObserver.HandleDiskSpaceNotificationL( iDiskFull );
+                    }
+                StartNotifier();
+                break;
+
+            case KErrArgument:
+                TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL() KErrArgument");
+                User::Leave( status );
+                break;
+            default:
+                break;
+            }
+        }
+    else if ( iState == CThumbnailStoreDiskSpaceNotifierAO::EIterate )
+        {
+        const TInt KMaxIterations = 10;
+        
+        iFileServerSession.Volume( volumeInfo, iDrive );
+        if ( volumeInfo.iFree < iThreshold )
+            {
+            iObserver.HandleDiskSpaceNotificationL( iDiskFull );
+            ++iIterationCount;
+            if ( iIterationCount < KMaxIterations )
+                {
+                SetActive();
+                TRequestStatus* status = &iStatus;
+                User::RequestComplete( status, KErrNone );
+                return;
+                }
+            else
+                {
+                iFileServerSession.Volume( volumeInfo, iDrive );
+                if ( volumeInfo.iFree >= iThreshold )
+                    {
+                    iDiskFull = EFalse;
+                    }
+                }
+            }
+        else
+            {
+            iDiskFull = EFalse;
+            }
+        iState = ENormal;
+        iIterationCount = 0;
+        StartNotifier();            
+        }
+    else
+        {
+        User::Leave( KErrGeneral );
+        }
+    }
+
+TInt CThumbnailStoreDiskSpaceNotifierAO::RunError(TInt aError)
+    {
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunError()");
+    iObserver.HandleDiskSpaceError( aError );
+    
+    return KErrNone;
+    }
+
+void CThumbnailStoreDiskSpaceNotifierAO::DoCancel()
+    {
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::DoCancel()");
+    if( IsActive() )
+        {   
+        iFileServerSession.NotifyDiskSpaceCancel();
+        }
+    }
+
+CThumbnailStoreDiskSpaceNotifierAO::CThumbnailStoreDiskSpaceNotifierAO(
+    MThumbnailStoreDiskSpaceNotifierObserver& aObserver, TInt64 aThreshold, const TDriveNumber aDrive)
+    : CActive( CActive::EPriorityStandard ), 
+    iObserver( aObserver ), iThreshold( aThreshold ), iDrive( aDrive ), iState( CThumbnailStoreDiskSpaceNotifierAO::ENormal ), iDiskFull( EFalse )
+    {
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::CThumbnailStoreDiskSpaceNotifierAO()");
+    CActiveScheduler::Add( this );
+    }
+
+void CThumbnailStoreDiskSpaceNotifierAO::ConstructL()
+    {   
+    TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::ConstructL()");
+    TInt KMessageSlotCount = 2; // slots for NotifyDiskSpace and NotifyDiskSpaceCancel
+
+    User::LeaveIfError( iFileServerSession.Connect( KMessageSlotCount ) );
+    
+    TVolumeInfo volumeInfo;
+    iFileServerSession.Volume( volumeInfo, iDrive );    
+    if ( volumeInfo.iFree < iThreshold )
+        {
+        iDiskFull = ETrue;
+        }
+
+    iObserver.HandleDiskSpaceNotificationL( iDiskFull );
+    
+    StartNotifier();
+    }
+
+void CThumbnailStoreDiskSpaceNotifierAO::StartNotifier()
+    {   
+    TN_DEBUG2( "CThumbnailStoreDiskSpaceNotifierAO::StartNotifier() iDrive == %d", iDrive);
+    iFileServerSession.NotifyDiskSpace( iThreshold, iDrive, iStatus );
+    
+    SetActive();
+    }
+
+TBool CThumbnailStoreDiskSpaceNotifierAO::DiskFull() const
+    {
+    return iDiskFull;
     }
 
 // End of file

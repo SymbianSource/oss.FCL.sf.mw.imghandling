@@ -56,6 +56,7 @@ const TUint KMaxClientRequests = 2;
 const TUint KMaxDaemonRequests = 3;
 
 const TUint KClientRequestTimeout = 60000000; //60 sec
+const TUint KClientRequestStartErrorTimeout = 100000; //100 ms
 
 const TUint KThumbnailServerMajorVersionNumber = 0;
 const TUint KThumbnailServerMinorVersionNumber = 1;
@@ -81,6 +82,8 @@ const TDisplayMode KStoreDisplayMode = EColor16M;
 
 //required amount of memory to keep bitmaps on RAM in bits
 const TInt KMemoryNeed = 5000000;
+
+const TInt64 KDiskFullThreshold = 1024*1024*1; // 1 MB
 
 _LIT( KThumbnailServerName, "ThumbnailServer" );
 _LIT( KThumbnailServerProcess, "*ThumbnailServer*" );

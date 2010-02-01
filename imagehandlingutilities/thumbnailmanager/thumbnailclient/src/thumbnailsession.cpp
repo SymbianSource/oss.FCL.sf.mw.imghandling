@@ -19,6 +19,7 @@
 // INCLUDE FILES
 #include "thumbnailsession.h"
 #include "thumbnailmanagerconstants.h"
+#include "thumbnaillog.h"
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -203,6 +204,7 @@ void RThumbnailSession::RequestSetThumbnailL(
     {
     if( !aBuffer )
         {
+        TN_DEBUG1( "RThumbnailSession::RequestSetThumbnailL() - !aBuffer KErrArgument");
         User::Leave( KErrArgument );
         }
     
@@ -218,6 +220,7 @@ void RThumbnailSession::RequestSetThumbnailL(
     {
     if( !aBitmapHandle )
         {
+        TN_DEBUG1( "RThumbnailSession::RequestSetThumbnailL() - !aBitmapHandle KErrArgument");
         User::Leave( KErrArgument );
         }
     

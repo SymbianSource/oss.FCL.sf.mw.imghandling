@@ -106,6 +106,7 @@ void CThumbnailRequestActive::ConstructL()
     iCallbackThumbnail = new( ELeave )CThumbnailDataImpl();
 
     iTimer = CPeriodic::NewL(CActive::EPriorityIdle);
+    iStartError = KErrNone;
     
 #ifdef _DEBUG
     iStartExecTime.UniversalTime();
@@ -203,7 +204,7 @@ void CThumbnailRequestActive::StartL()
 //
 void CThumbnailRequestActive::RunL()
     {
-    TN_DEBUG1( "CThumbnaiRequestActive::RunL()" );
+    TN_DEBUG2( "CThumbnaiRequestActive::RunL() - request ID: %d", iParams.iRequestId );
     
     if ( iParams.iControlFlags == EThumbnailPreviewThumbnail )
         {
@@ -405,7 +406,15 @@ void CThumbnailRequestActive::HandleError()
         if( iError == KErrServerTerminated)
             {
             iSession.Close();
-            iSession.Connect();
+            TInt connErr = iSession.Connect();
+            if (connErr != KErrNone)
+                {
+                TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - session reconnect err %d", connErr );
+                }
+            else
+                {
+                TN_DEBUG1( "CThumbnailRequestActive::HandleError() - session reconnected");
+                }
             }
         iCallbackThumbnail->Set( NULL, iClientData );
         
@@ -415,7 +424,7 @@ void CThumbnailRequestActive::HandleError()
             iError = KErrNotFound;
             }
         
-        TN_DEBUG2( "CThumbnaiRequestActive::RunL() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+        TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
         iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
         
         iError = KErrNone;
@@ -710,6 +719,22 @@ void CThumbnailRequestActive::ChangePriority( const TInt aNewPriority )
     }
 
 // ---------------------------------------------------------------------------
+// CThumbnailRequestActive::StartError()
+// Error handling function.
+// ---------------------------------------------------------------------------
+//
+void CThumbnailRequestActive::StartError( const TInt aErr )
+    {
+    TN_DEBUG1( "CThumbnailRequestActive::StartError");
+    
+    iStartError = aErr;
+    iRequestActive = ETrue;
+    
+    iTimer->Start( KClientRequestStartErrorTimeout, KClientRequestStartErrorTimeout, 
+                   TCallBack(TimerCallBack, this));
+    }
+
+// ---------------------------------------------------------------------------
 // CThumbnailRequestActive::TimerCallBack()
 // ---------------------------------------------------------------------------
 //
@@ -720,7 +745,17 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     CThumbnailRequestActive* self = static_cast<CThumbnailRequestActive*>( aAny );
     
     self->Cancel();
-    self->iError = KErrTimedOut;
+    self->iTimer->Cancel();
+    
+    if (self->iStartError != KErrNone)
+        {
+        self->iError = self->iStartError;
+        }
+    else
+        {
+        self->iError = KErrTimedOut;
+        }
+    
     self->HandleError();
     
     return KErrNone;

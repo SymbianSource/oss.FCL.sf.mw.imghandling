@@ -255,6 +255,11 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
         {
         TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - need to recreate thumbs" );
         
+        if(Server()->StoreForPathL(params.iFileName)->IsDiskFull())
+            {
+            User::Leave( KErrDiskFull );
+            }
+        
         // need to create new thumbs
         aMessage.Complete( KThumbnailErrThumbnailNotFound );
         }
@@ -531,6 +536,11 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	            {
                 User::Leave(err);
                 }
+	        
+	        if(Server()->StoreForPathL(params.iFileName)->IsDiskFull())
+	            {
+	            User::Leave( KErrDiskFull );
+	            }
 
 #ifdef RD_MDS_2_5	        
             // try to query ID from MDS
@@ -733,6 +743,11 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
 
     TN_DEBUG2( 
         "CThumbnailServerSession::CreateGenerateTaskFromFileHandleL() -- create thumbnail generation task for %S", &params.iFileName );
+    
+    if(Server()->StoreForPathL(params.iFileName)->IsDiskFull())
+        {
+        User::Leave( KErrDiskFull );
+        }
       
     TBool missingIDs = EFalse;
     
@@ -798,6 +813,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
     // create new task
     if( !aFile)
         {
+        TN_DEBUG1("CThumbnailServerSession::CreateGenerateTaskFromFileHandleL() - KErrArgument");
         User::Leave( KErrArgument );
         }
     CleanupClosePushL( *aFile );
@@ -840,6 +856,11 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
     TN_DEBUG2( 
         "CThumbnailServerSession::CreateGenerateTaskFromBufferL() -- create thumbnail generation task for %S", &params.iTargetUri );
   
+    if(Server()->StoreForPathL(params.iTargetUri)->IsDiskFull())
+        {
+        User::Leave( KErrDiskFull );
+        }
+    
     if(aBuffer && params.iMimeType.Des().Match( KVideoMime ) == 0 )
         {
         User::Leave( KErrNotSupported );
@@ -903,6 +924,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
     // create new task
     if( !aBuffer)
         {
+        TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - KErrArgument" );
         User::Leave( KErrArgument );
         }
     

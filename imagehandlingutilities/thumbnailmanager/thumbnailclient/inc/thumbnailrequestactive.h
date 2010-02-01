@@ -260,6 +260,13 @@ public:
      */
     TBool IsRequestActive()const;
     
+    /**
+     * Error handling function.
+     *
+     * @since S60 v5.0
+     */
+    void StartError( const TInt aErr );
+    
 private:
 
     /**
@@ -432,6 +439,7 @@ private:
     
     // request timeout timer
     CPeriodic* iTimer;
+    TInt iStartError;
     
 #ifdef _DEBUG
     TTime iStartExecTime;
