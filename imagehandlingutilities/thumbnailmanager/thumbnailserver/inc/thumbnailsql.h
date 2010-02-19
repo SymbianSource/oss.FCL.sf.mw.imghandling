@@ -235,8 +235,8 @@ _LIT8( KTempThumbnailUpdateIdByPath, "UPDATE TempThumbnailInfo SET TNId = :TNId 
 _LIT8( KThumbnailUpdateIdByPath, "UPDATE ThumbnailInfo SET TNId = :TNId WHERE Path = :Path" );
 
 //qyery Modification timestamp by ID
-_LIT8( KThumbnailSelectModifiedByID, "SELECT Modified FROM ThumbnailInfo WHERE TNId = :TNId AND ThumbFromPath = 1 LIMIT 1"  );
-_LIT8( KThumbnailSelectTempModifiedByID, "SELECT Modified FROM TempThumbnailInfo WHERE TNId = :TNId AND ThumbFromPath = 1 LIMIT 1");
+_LIT8( KThumbnailSelectModifiedByID, "SELECT Modified FROM ThumbnailInfo WHERE TNId = :TNId AND ThumbFromPath = 1"  );
+_LIT8( KThumbnailSelectTempModifiedByID, "SELECT Modified FROM TempThumbnailInfo WHERE TNId = :TNId AND ThumbFromPath = 1");
 
 //query Modification timestamp by path
 _LIT8( KThumbnailSelectModifiedByPath, "SELECT Modified FROM ThumbnailInfo WHERE Path = :Path"  );
@@ -251,6 +251,6 @@ _LIT8 ( KGetInfoRowID, "SELECT MAX (ThumbnailInfo.rowID) FROM ThumbnailInfo" );
 _LIT8 ( KGetDataRowID, "SELECT MAX (ThumbnailInfoData.rowID) FROM ThumbnailInfoData" );
 
 //remove KThumbnailDbFlagBlacklisted flag
-_LIT8( KThumbnailRemoveBlacklistedFlag, "UPDATE ThumbnailInfo SET Flags = Flags & ~:Flag WHERE Flags & :Flag" );
+_LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Modified = 0 WHERE Flags & :Flag" );
 
 #endif // THUMBNAILSQL_H

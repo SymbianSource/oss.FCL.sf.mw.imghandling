@@ -135,6 +135,13 @@ private:
      * @since S60 v5.0
      */
     void ConstructL();
+    
+	 /**
+     * Initilization helper
+     *
+     * @since S60 v5.2
+     */
+    void InitializeL();
 
 private:
 	

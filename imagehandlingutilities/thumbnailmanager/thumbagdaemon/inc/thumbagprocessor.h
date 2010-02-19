@@ -29,9 +29,11 @@
 #include <harvesterclient.h>
 #include <e32property.h>
 #include <mpxcollectionobserver.h>
+#include <hwrmlight.h>
+#include "tmactivitymanager.h"
+#include "tmformatobserver.h"
 
 //FORWARD DECLARATIONS
-class CThumbAGFormatObserver;
 class MMPXCollectionUtility;
 
 /**
@@ -43,7 +45,10 @@ class CThumbAGProcessor: public CActive,
                          public MThumbnailManagerObserver,
                          public MMdEQueryObserver,
                          public MHarvesterEventObserver,
-                         public MMPXCollectionObserver
+                         public MMPXCollectionObserver,
+                         public MHWRMLightObserver,
+                         public MTMActivityManagerObserver,
+                         public MTMFormatObserver
     {
 public:
 
@@ -80,7 +85,11 @@ public:
              HarvesterEventState aHarvesterEventState,
              TInt aItemsLeft );
     
-private: // From MMPXCollectionObserver
+    //From MTMFormatObserver
+    void FormatNotification(TBool aFormat);
+    
+private: 
+    // From MMPXCollectionObserver
     /// See @ref MMPXCollectionObserver::HandleCollectionMessageL
     void HandleCollectionMessage( CMPXMessage* aMessage,  TInt aError );
 
@@ -92,7 +101,14 @@ private: // From MMPXCollectionObserver
     
     /// See @ref MMPXCollectionObserver::HandleCollectionMediaL
     void HandleCollectionMediaL( const CMPXMedia& aMedia, TInt aError );
-
+    
+private: //From MHWRMLightObserver
+    void LightStatusChanged(TInt aTarget, CHWRMLight::TLightStatus aStatus);
+    
+private: //From MTMActivityManagerObserver
+    void ActivityDetected();
+    void InactivityDetected();
+    
 public:     
     
     /**
@@ -131,11 +147,11 @@ public:
     
     void SetForceRun( const TBool aForceRun );
     
-    void SetFormat(TBool aStatus);
+    TBool IsInactive();
     
-    void QueryForPlaceholdersL();
-
 protected:
+    
+    void QueryAllItemsL();
     
     /**
      * QueryL
@@ -144,6 +160,8 @@ protected:
      * @param aIDArray Item IDs to query
      */
     void QueryL( RArray<TItemId>& aIDArray );
+    
+    void QueryPlaceholdersL();
     
 protected:
 
@@ -219,7 +237,7 @@ private:
      * @since S60 v5.0
      */
     void CancelTimeout();
-
+       
 private:
     
     // not own
@@ -229,23 +247,18 @@ private:
     // own
     CThumbnailManager* iTMSession;
     CMdEObjectQuery* iQuery;
-    CMdEObjectQuery* iQueryForPlaceholders;
+    CMdEObjectQuery* iQueryAllItems;
+    CMdEObjectQuery* iQueryPlaceholders;
     
     RArray<TItemId> iAddQueue;
     RArray<TItemId> iModifyQueue;
     RArray<TItemId> iRemoveQueue;
-    RArray<TItemId> iPresentQueue;
     RArray<TItemId> iQueryQueue;
+    RArray<TItemId> iPlaceholderQueue;
     
-    RArray<TItemId> iTempModifyQueue;
-    RArray<TItemId> iTempAddQueue;
-    
-    RArray<TItemId> iPlaceholderIDs;
     
     TBool iQueryActive;
     TBool iQueryReady;
-    
-    TBool iQueryForPlaceholdersActive;
     
     TBool iModify;
     TInt iProcessingCount;
@@ -254,8 +267,11 @@ private:
     TBool iHarvesting;
     TBool iHarvestingTemp;
     
+	//Flag is MDS placeholder harvesting active
+    TBool iPHHarvesting;
+    TBool iPHHarvestingTemp;
+    
     CPeriodic* iPeriodicTimer;
-    TBool iTimerActive;
 
 	//MDS Harvester client
     RHarvesterClient iHarvesterClient;
@@ -280,7 +296,7 @@ private:
     //PS key to get info server's idle status
     RProperty iProperty;
     
-    CThumbAGFormatObserver* iFormatObserver;
+    CTMFormatObserver* iFormatObserver;
    
     TBool iFormatting;
     TBool iSessionDied;
@@ -291,6 +307,20 @@ private:
     
 	//Flag is MPX harvesting or MTP synchronisation in progress
     TBool iMPXHarvesting;
+    //inactivity polling timer
+    CPeriodic* iInactivityTimer;
+    //overall status of device
+    TBool iIdle;
+    
+    //Backlight control 
+    CHWRMLight* iLight;
+	#ifdef _DEBUG 
+    TInt iLightMask;
+	#endif
+    //backlight status
+    TBool iLights;
+    
+    CTMActivityManager* iActivityManager;
 };
 
 #endif // THUMBAGPROCESSOR_H

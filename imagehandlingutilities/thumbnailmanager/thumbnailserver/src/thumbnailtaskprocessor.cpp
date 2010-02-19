@@ -330,25 +330,6 @@ void CThumbnailTaskProcessor::RunL()
     TN_DEBUG2( "CThumbnailTaskProcessor::TASKPROCESSOR-COUNTER---------- in, Tasks = %d", iTasks.Count() );
 #endif
     
-    /* 
-    // remove completed tasks and run priorised task
-    for ( TInt i = 0; i < iTasks.Count(); i++ )
-        {
-        CThumbnailTask* task = iTasks[i];
-        if ( task->State() == CThumbnailTask::EComplete )
-            {
-            // delete completed task
-            delete task;
-            iTasks.Remove( i );
-            
-            // correct the index so that no tasks are skipped
-            i--;
-            if(i <= -1)
-                {
-                i = -1;
-                }
-            }*/
-    
     // remove completed tasks and run priorised task
     for ( TInt i = iTasks.Count(); --i >= 0; )
         {

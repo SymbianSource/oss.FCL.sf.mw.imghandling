@@ -96,6 +96,13 @@ private:
      * @since S60 v5.0
      */
     void CreateDecoderL();
+    
+     /**
+     * Leave if image is corrupt
+     *
+     * @since S60 v5.0
+     */
+    void LeaveIfCorruptL(const TInt aError );
 
 private:
     // data

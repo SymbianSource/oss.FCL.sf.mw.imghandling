@@ -25,7 +25,6 @@
 #include "thumbnailcenrep.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
-#include "thumbnailserver.h"
 
 class RFs;
 class CFbsBitmap;
@@ -551,10 +550,10 @@ private:
     void CheckModifiedByIdL( TUint32 aId, TBool aTempTable, TBool& aModified  );
     
     /**
-    * Removes blacklisted flag from all entrys
+    * Touches blacklisted items
     *
     */
-    void RemoveDbFlagL(TThumbnailDbFlags aFlag);
+    void PrepareBlacklistedItemsForRetry();
     
 public : // From MThumbnailStoreDiskSpaceNotifierObserver
     void HandleDiskSpaceNotificationL(TBool aDiskFull);

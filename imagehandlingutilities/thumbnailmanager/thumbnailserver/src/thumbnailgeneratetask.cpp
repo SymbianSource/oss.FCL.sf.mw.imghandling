@@ -20,7 +20,6 @@
 #include <fbs.h>
 
 #include <thumbnailmanager.h>
-
 #include "thumbnailgeneratetask.h"
 #include "thumbnailscaletask.h"
 #include "thumbnailprovider.h"
@@ -158,17 +157,23 @@ void CThumbnailGenerateTask::StartL()
         {
         iProvider->SetTargetSize( croppedTargetSize );
         }
-		
+	
+    TInt providerErr;
+    
     if ( !iBuffer )
         {
-        iProvider->GetThumbnailL( iServer.Fs(), iFile, iMimeType, iFlags,
-            iDisplayMode, iQualityPreference );
+        TRAP(providerErr, iProvider->GetThumbnailL( iServer.Fs(), iFile, iMimeType, iFlags,
+            iDisplayMode, iQualityPreference ) );
         }
     else
         {
-        iProvider->GetThumbnailL( iServer.Fs(), iBuffer, iMimeType, iFlags,
-            iDisplayMode, iQualityPreference );
+        TRAP( providerErr, iProvider->GetThumbnailL( iServer.Fs(), iBuffer, iMimeType, iFlags,
+            iDisplayMode, iQualityPreference ));
         }
+    
+    DoBlacklisting( providerErr, TSize(0,0) );
+    
+    User::LeaveIfError( providerErr );
     }
 
 
@@ -277,23 +282,9 @@ void CThumbnailGenerateTask::ThumbnailProviderReady( const TInt aError,
         {
         delete aBitmap;
         aBitmap = NULL;
-        // Create a temporary bitmap of size 1 for storing blacklisted thumbnail
-        // Because no actual bitmap data is generated, there is no reason to 
-        // add bitmap to server bitmap pool. Completion of client request with
-        // error code just results in applications showing their default bitmap. 
-        if( iFilename != KNullDesC || iTargetUri != KNullDesC )
-            {
-            if ( aError == KErrNotSupported ||
-                    aError == KErrCorrupt ||
-                    aError == KErrCompletion)
-                {
-                TRAPD( err, CreateBlackListedL( aOriginalSize ) );
-                if (err != KErrNone)
-                    {
-                    TN_DEBUG2( "CThumbnailGenerateTask::ThumbnailProviderReady() - blacklisting failed with code %d", err );
-                    }
-                }
-            }
+
+        DoBlacklisting( aError, aOriginalSize );
+            
         Complete( aError );
         }
     else
@@ -324,7 +315,7 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
     __ASSERT_DEBUG(( aBitmap ), ThumbnailPanic( EThumbnailNullPointer ));
 
     CleanupStack::PushL( aBitmap );
-    iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap );
+    iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap, iRequestId );
 
     // Keep pointer so we can delete bitmap from pool
     iBitmap = aBitmap;
@@ -476,6 +467,7 @@ void CThumbnailGenerateTask::ScaledBitmapToPool( TBool aBool )
 //
 void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
     {
+    TN_DEBUG1( "CThumbnailGenerateTask::CreateBlackListedL()");
     CFbsBitmap* tempBitmap = 0;
     tempBitmap = new (ELeave) CFbsBitmap();
     CleanupStack::PushL( tempBitmap );
@@ -486,6 +478,7 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
     // consider blacklisting all sizes (hence the changes are needed in thumbnail fetching logic too).
     // However, decoding of source to thumnail could succeed in other sizes, which makes blacklisting
     // of requested size only meaningful. 
+    
     if(iFilename != KNullDesC)
         {
         iServer.StoreForPathL( iFilename )->StoreThumbnailL( 
@@ -499,3 +492,54 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
 
     CleanupStack::PopAndDestroy( tempBitmap );
     }
+
+// ---------------------------------------------------------------------------
+// Checks is blacklisting needed
+// ---------------------------------------------------------------------------
+//
+void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOriginalSize )
+    {
+    TN_DEBUG1( "CThumbnailGenerateTask::DoBlacklisting()");
+    // Create a temporary bitmap of size 1 for storing blacklisted thumbnail
+    // Because no actual bitmap data is generated, there is no reason to 
+    // add bitmap to server bitmap pool. Completion of client request with
+    // error code just results in applications showing their default bitmap. 
+    if( aError != KErrNone && (iFilename != KNullDesC || iTargetUri != KNullDesC ))
+        {
+        if ( aError == KErrNotSupported ||
+            aError == KErrCorrupt ||
+            aError == KErrCompletion ||
+            aError == KErrUnderflow)
+            {
+        
+        if(iMissingSizes)
+            {
+            TN_DEBUG2( "CThumbnailGenerateTask::DoBlacklisting() - blacklist missing sizes count = %d", iMissingSizes->Count() );
+
+            for ( TInt i( 0 ); i < iMissingSizes->Count(); i++ )
+                {
+                iThumbnailSize = (*iMissingSizes)[ i ].iType;
+                TRAPD( err, CreateBlackListedL( aOriginalSize ) );
+                if (err != KErrNone)
+                   {
+                   TN_DEBUG3( "CThumbnailGenerateTask::DoBlacklisting() - blacklisting missing size %d failed with code %d", iThumbnailSize, err );
+                   }
+                }
+            return;
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailGenerateTask::DoBlacklisting() - blacklist single size" );
+            TRAPD( err, CreateBlackListedL( aOriginalSize ) );
+            if (err != KErrNone)
+                {
+                TN_DEBUG2( "CThumbnailGenerateTask::DoBlacklisting() - blacklisting failed with code %d", err );
+                }
+            return;
+            }
+        }
+    TN_DEBUG1( "CThumbnailGenerateTask::DoBlacklisting() - not blacklisted " );        
+    }
+}
+
+

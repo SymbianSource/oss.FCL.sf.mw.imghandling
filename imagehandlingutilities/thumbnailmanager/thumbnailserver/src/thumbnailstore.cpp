@@ -194,6 +194,7 @@ void CThumbnailStore::ConstructL()
     pathPtr.Append( driveChar );
     pathPtr.Append( KThumbnailDatabaseName );
     
+	//start disk space monitor
     iDiskFullNotifier = CThumbnailStoreDiskSpaceNotifierAO::NewL( *this, 
                                             KDiskFullThreshold,
                                             pathPtr );
@@ -274,8 +275,8 @@ void CThumbnailStore::ConstructL()
             //take ownership
             UpdateImeiL();
             
-            //Remove blacklist markings
-            TRAP_IGNORE( RemoveDbFlagL( KThumbnailDbFlagBlacklisted ) );
+            //Touch blacklisted items
+            TRAP_IGNORE( PrepareBlacklistedItemsForRetry( ) );
             }
         
         //check is MMC known
@@ -283,8 +284,8 @@ void CThumbnailStore::ConstructL()
             {
             ResetThumbnailIDs();
             
-            //Remove blacklist markings
-            TRAP_IGNORE( RemoveDbFlagL( KThumbnailDbFlagBlacklisted ) );
+            //Touch blacklisted items
+            TRAP_IGNORE( PrepareBlacklistedItemsForRetry() );
             }
         }
               
@@ -453,22 +454,28 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     aThumbnail, const TSize& aOriginalSize, TBool /*aCropped*/, const TThumbnailSize aThumbnailSize, 
     const TThumbnailId aThumbnailId, const TBool aThumbFromPath, TBool aBlackListed )
     {
-    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( CFbsBitmap* ) in" );
+    TSize thumbSize = aThumbnail->SizeInPixels();
+    TN_DEBUG5( "CThumbnailStore::StoreThumbnailL( CFbsBitmap ) aThumbnailId = %d, aThumbnailSize = %d, aThumbnailSize(%d,%d) IN", aThumbnailId, aThumbnailSize, thumbSize.iWidth, thumbSize.iHeight );
 
     __ASSERT_DEBUG(( aThumbnail ), ThumbnailPanic( EThumbnailNullPointer ));
+    
+    // don't store custom/unknown sizes or zero sizes
+    if(aThumbnailSize == ECustomThumbnailSize || aThumbnailSize == EUnknownThumbnailSize 
+            || thumbSize.iWidth <= 0 || thumbSize.iHeight <= 0 )
+        {
+        TN_DEBUG1( "CThumbnailStore::StoreThumbnailL() not stored");
+        return;
+        }
 
     // check for duplicates
     TBool exists = FindDuplicateL(aPath, aThumbnailId, aThumbnailSize);
     
-    TSize thumbSize = aThumbnail->SizeInPixels();
     for ( TInt i = iPersistentSizes.Count(); --i >= 0; )
         {
         TThumbnailPersistentSize & persistentSize = iPersistentSizes[i];
         
-        // don't store duplicates or custom/unknown sizes
-        if ( !exists && (aThumbnailSize != ECustomThumbnailSize && 
-                         aThumbnailSize != EUnknownThumbnailSize &&
-                         thumbSize.iWidth > 0 && thumbSize.iHeight > 0 ))
+        // don't store duplicates or zero sizes
+        if ( !exists )
             {
             TInt flags = 0;
             if ( persistentSize.iCrop )
@@ -1682,43 +1689,57 @@ TBool CThumbnailStore::CheckModifiedL( const TThumbnailId aItemId, const TInt64 
     User::LeaveIfError( stmt.BindInt( paramIndex, aItemId ));
      
     TInt rowStatus = stmt.Next();
-
-     //if not found from temp table, look from real table
-     if(rowStatus != KSqlAtRow)
-         {
-         stmt.Close();
-         CleanupStack::PopAndDestroy( &stmt );
-         CleanupClosePushL( stmt );
-         
-         User::LeaveIfError( stmt.Prepare( iDatabase, KThumbnailSelectModifiedByID ));
-         
-         paramIndex = stmt.ParameterIndex( KThumbnailSqlParamId );
-         User::LeaveIfError( paramIndex );
-         User::LeaveIfError( stmt.BindInt( paramIndex, aItemId ));
-          
-         rowStatus = stmt.Next();
-         }
-     
-     TBool modified = EFalse;
-     
-     if(rowStatus == KSqlAtRow)
-         {
-         TInt64 oldModified = stmt.ColumnInt64( column );
-         
-         if (oldModified < aModified)
-             {
-             TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is newer than original" );
-             modified = ETrue;
-             }
-         else if (oldModified > aModified)
-             {
-             TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is older than original" );
-             }
-         else if (oldModified == aModified)
-             {
-             TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is the same as original" );
-             }
-         }
+    
+    TBool modified = EFalse;
+    TBool checkMain = EFalse;
+    
+    TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- temp" );
+    
+    while(rowStatus == KSqlAtRow || !checkMain)
+        {
+            if(rowStatus == KSqlAtRow)
+                {
+               TInt64 oldModified = stmt.ColumnInt64( column );
+               
+               if (oldModified < aModified)
+                   {
+                   TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is newer than original" );
+                   modified = ETrue;
+                   break;
+                   }
+               else if (oldModified > aModified)
+                   {
+                   TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is older than original" );
+                   break;
+                   }
+               else if (oldModified == aModified)
+                   {
+                   TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is the same as original" );
+                   }
+                }
+            
+        rowStatus = stmt.Next();
+        
+        //switch to main table if modified not found from temp
+        if(rowStatus != KSqlAtRow && !checkMain && !modified)
+            {
+            TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- main" );
+            //come here only once
+            checkMain = ETrue;
+            
+            stmt.Close();
+            CleanupStack::PopAndDestroy( &stmt );
+            CleanupClosePushL( stmt );
+            
+            User::LeaveIfError( stmt.Prepare( iDatabase, KThumbnailSelectModifiedByID ));
+            
+            paramIndex = stmt.ParameterIndex( KThumbnailSqlParamId );
+            User::LeaveIfError( paramIndex );
+            User::LeaveIfError( stmt.BindInt( paramIndex, aItemId ));
+             
+            rowStatus = stmt.Next();
+            }
+        }
      
     stmt.Close();
     CleanupStack::PopAndDestroy( &stmt ); 
@@ -2353,25 +2374,24 @@ void CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, TBool aTempTable
     }
 
 // -----------------------------------------------------------------------------
-// RemoveDbFlagL()
+// PrepareBlacklistedItemsForRetry()
 // -----------------------------------------------------------------------------
 //
-void CThumbnailStore::RemoveDbFlagL(TThumbnailDbFlags aFlag)
+void CThumbnailStore::PrepareBlacklistedItemsForRetry()
     {
-    TN_DEBUG1( "CThumbnailStore::RemoveBlacklistedFlag()" );
+    TN_DEBUG1( "CThumbnailStore::PrepareBlacklistedItemsForRetry()" );
     
     RSqlStatement stmt;
     CleanupClosePushL( stmt );
 
-    User::LeaveIfError( stmt.Prepare( iDatabase, KThumbnailRemoveBlacklistedFlag ));
+    User::LeaveIfError( stmt.Prepare( iDatabase, KThumbnailTouchBlacklistedRows ));
     
     TInt paramIndex = stmt.ParameterIndex( KThumbnailSqlParamFlag );
     User::LeaveIfError( paramIndex );
-    User::LeaveIfError( stmt.BindInt( paramIndex, aFlag ));
-
+    User::LeaveIfError( stmt.BindInt( paramIndex, KThumbnailDbFlagBlacklisted ));
     TInt err = stmt.Exec();
    
-    TN_DEBUG2( "CThumbnailStore::RemoveBlacklistedFlag() - main table, err=%d", err );
+    TN_DEBUG2( "CThumbnailStore::PrepareBlacklistedItemsForRetry() - main table, err=%d", err );
     
     CleanupStack::PopAndDestroy( &stmt );
     }

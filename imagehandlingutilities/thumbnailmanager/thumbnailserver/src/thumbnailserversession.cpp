@@ -245,15 +245,56 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
     
     TBool finished = Server()->UpdateThumbnailsL( params.iThumbnailId, params.iFileName, params.iOrientation, params.iModified );
     
+    RArray < TThumbnailPersistentSize >* missingSizes = NULL;
+    
     if (finished)
         {
-        TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - finished" );
+        // source type
+        TDataType mimeType;
+        TInt sourceType = 0;
+        TInt err = Server()->MimeTypeFromFileExt( params.iFileName, mimeType );
+        TBool missingIDs(EFalse);
         
-        aMessage.Complete( KErrNone );
+        // get missing sizes
+        if ( err == KErrNone && ( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly ) != 0 )
+            {
+            sourceType = Server()->SourceTypeFromMimeType( mimeType );
+            
+            missingSizes = new (ELeave) RArray < TThumbnailPersistentSize >;
+            CleanupClosePushL( *missingSizes );
+        
+            Server()->GetMissingSizesAndIDsL( params.iFileName, sourceType, *missingSizes, missingIDs);
+                
+            if ( missingSizes->Count() == 0)
+                {
+                // all thumbs already exist
+                CleanupStack::PopAndDestroy( missingSizes );
+                delete missingSizes;
+                missingSizes = NULL;
+                }            
+            }
+        
+        if(!missingSizes)
+            {
+            TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - finished" );
+            aMessage.Complete( KErrNone );
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - some sizes missing..." ); 
+            }
         }
-    else
+
+    if(missingSizes || !finished)
         {
-        TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - need to recreate thumbs" );
+        TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - need to create (some) thumbs" );
+        
+        if(missingSizes)
+            {
+            CleanupStack::PopAndDestroy( missingSizes );
+            delete missingSizes;
+            missingSizes = NULL;
+            }
         
         if(Server()->StoreForPathL(params.iFileName)->IsDiskFull())
             {
@@ -262,6 +303,10 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
         
         // need to create new thumbs
         aMessage.Complete( KThumbnailErrThumbnailNotFound );
+        }
+    else
+        {
+        TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - finished" );
         }
     
     iMessage = RMessage2();
@@ -401,7 +446,15 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
         {
         TRAPD( err, FetchThumbnailL());
         
-        if ( !err && iBitmap )
+        if( err == KErrCompletion )
+            {
+            // If thumbnail of requested size is blacklisted, fetching is left with KErrCompletion
+            TN_DEBUG1( 
+                "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - thumbnail blacklisted" );
+            aMessage.Complete( err );
+            iMessage = RMessage2();
+            }
+        else if ( !err && iBitmap )
             {
             TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - found existing thumbnail - bitmap " );
 
@@ -627,7 +680,7 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
     CFbsBitmap* bitmap = new( ELeave )CFbsBitmap();
     CleanupStack::PushL( bitmap );
     User::LeaveIfError( bitmap->Duplicate( bitmapHandle ) );
-    Server()->AddBitmapToPoolL( reqId.iSession, bitmap );
+    Server()->AddBitmapToPoolL( reqId.iSession, bitmap, reqId );
     CleanupStack::Pop( bitmap );
     iBitmapHandle = bitmap->Handle();
     
@@ -1006,36 +1059,52 @@ void CThumbnailServerSession::ProcessBitmapL()
     TThumbnailRequestParams& params = iRequestParams();
     
     // in import case store bitmap
-    if (params.iTargetUri != KNullDesC)
+    if ( params.iTargetUri != KNullDesC && params.iFileName != KNullDesC &&
+         params.iFileName.CompareF(params.iTargetUri) != 0 )
         {
         Server()->StoreThumbnailL( params.iTargetUri, iBitmap, iOriginalSize,
-                                   params.iFlags& CThumbnailManager::ECropToAspectRatio, params.iThumbnailSize, params.iThumbnailId );
+                                   params.iFlags& CThumbnailManager::ECropToAspectRatio,
+                                   params.iThumbnailSize, params.iThumbnailId,
+                                   EFalse, EFalse);
         }
     
-    // No need to scale, return iBitmap directly
-    Server()->AddBitmapToPoolL( this, iBitmap );
-    CFbsBitmap* bitmap = iBitmap;
-    iBitmap = NULL; // owned by server now
-    
-    params.iBitmapHandle = bitmap->Handle();
-    const TSize bitmapSize = bitmap->SizeInPixels();
+    if ( ClientThreadAlive(iMessage) )
+        {        
+        // No need to scale, return iBitmap directly
+        
+        TThumbnailServerRequestId &reqId = (TThumbnailServerRequestId&)params.iRequestId;
+        // No need to scale, return iBitmap directly
+        Server()->AddBitmapToPoolL( this, iBitmap, reqId );
+                
+        CFbsBitmap* bitmap = iBitmap;
+        
+        TN_DEBUG2("CThumbnailServerSession::ProcessBitmapL(), iBitmap handle= 0x%08x", bitmap->Handle());
+        
+        iBitmap = NULL; // owned by server now
+        
+        params.iBitmapHandle = bitmap->Handle();
+        const TSize bitmapSize = bitmap->SizeInPixels();
+        
+        if ( params.iQualityPreference == CThumbnailManager
+            ::EOptimizeForQualityWithPreview && bitmapSize.iWidth <
+            params.iSize.iWidth && bitmapSize.iHeight < params.iSize.iHeight &&
+            bitmapSize.iWidth < iOriginalSize.iWidth && bitmapSize.iHeight <
+            iOriginalSize.iHeight )
+            {
+            // This is a non-scaled preview bitmap
+            params.iControlFlags = EThumbnailPreviewThumbnail;
+            }
 
-    if ( params.iQualityPreference == CThumbnailManager
-        ::EOptimizeForQualityWithPreview && bitmapSize.iWidth <
-        params.iSize.iWidth && bitmapSize.iHeight < params.iSize.iHeight &&
-        bitmapSize.iWidth < iOriginalSize.iWidth && bitmapSize.iHeight <
-        iOriginalSize.iHeight )
-        {
-        // This is a non-scaled preview bitmap
-        params.iControlFlags = EThumbnailPreviewThumbnail;
-        }
-
-    if ( iMessage.Handle() )
-        {
         iMessage.WriteL( 0, iRequestParams );
+        
         iMessage.Complete( KErrNone );
         iMessage = RMessage2();
         }            
+    else
+        {
+        delete iBitmap;
+        iBitmap = NULL;
+        }
     }
 
 // -----------------------------------------------------------------------------
@@ -1344,6 +1413,50 @@ TInt CThumbnailServerSession::ConvertSqlErrToE32Err( TInt aReason )
             }
         }
     return e32Err;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailServerSession::ClientThreadAlive()
+// Checks if client thread is still alive and RMessage2 handle valid.
+// ---------------------------------------------------------------------------
+//
+TBool CThumbnailServerSession::ClientThreadAlive(RMessage2& aMessage)
+    {
+    if ( aMessage.Handle())
+        {
+        RThread clientThread;
+    
+        // get client thread
+        TInt err = aMessage.Client( clientThread );
+        if (err != KErrNone)
+            {
+            TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - client thread not found");
+        
+            aMessage = RMessage2();
+            
+            return EFalse;
+            }
+    
+        // check if client thread alive
+        TExitType exitType = clientThread.ExitType();
+        if( exitType != EExitPending )
+            {
+            TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - client thread died");
+        
+            aMessage = RMessage2();
+            
+            return EFalse;
+            }
+        else
+            {
+            // all OK
+            return ETrue;
+            }
+        }
+    else
+        {
+        return EFalse;
+        }
     }
 
 // End of file
