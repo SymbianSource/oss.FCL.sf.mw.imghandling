@@ -25,6 +25,8 @@
 //log to file instead of RDebug
 //#define LOG_TO_FILE
 
+//#define _DEBUG
+
 #ifdef _DEBUG
 #ifdef LOG_TO_FILE
 //
@@ -76,6 +78,13 @@ KThumbnailLogFile, \
 EFileLoggingModeAppend, \
 _L( s ), a, b, c, d, e );
 
+#define TN_DEBUG7( s, a, b, c, d, e, f ) \
+RFileLogger::WriteFormat( \
+KThumbnailLogDir, \
+KThumbnailLogFile, \
+EFileLoggingModeAppend, \
+_L( s ), a, b, c, d, e, f );
+
 #else // LOG_TO_FILE
 //
 // Log to RDebug
@@ -86,6 +95,7 @@ _L( s ), a, b, c, d, e );
 #define TN_DEBUG4( s, a, b, c )        RDebug::Print( _L( s ), a, b, c )
 #define TN_DEBUG5( s, a, b, c, d )     RDebug::Print( _L( s ), a, b, c, d )
 #define TN_DEBUG6( s, a, b, c, d, e )  RDebug::Print( _L( s ), a, b, c, d, e )
+#define TN_DEBUG7( s, a, b, c, d, e, f )  RDebug::Print( _L( s ), a, b, c, d, e, f )
 
 #endif // LOG_TO_FILE
 
@@ -99,7 +109,7 @@ _L( s ), a, b, c, d, e );
 #define TN_DEBUG4( s, a, b, c )
 #define TN_DEBUG5( s, a, b, c, d )
 #define TN_DEBUG6( s, a, b, c, d, e )
-
+#define TN_DEBUG7( s, a, b, c, d, e, f )
 #endif // _DEBUG
 
 #endif // THUMBNAILLOG_H

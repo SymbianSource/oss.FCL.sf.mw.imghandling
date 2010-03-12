@@ -55,7 +55,7 @@ public:
             CThumbnailManager::TThumbnailFlags aFlags, const TSize& aSize,
             TDisplayMode aDisplayMode, TInt aPriority,
             RArray < TThumbnailPersistentSize >* aMissingSizes, const TDesC& aTargetUri,
-            TThumbnailSize aThumbnailSize, const TThumbnailId aThumbnailId,
+            TThumbnailSize aThumbnailSize, const TInt64 aModified,
             const CThumbnailManager::TThumbnailQualityPreference aQualityPreference );
 
     /**
@@ -135,6 +135,13 @@ private:
      */
     void CreateBlackListedL( const TSize& aOriginalSize );
     
+    
+    /**
+     * Check is blacklisting needed
+     *
+     * @param aErrorCode verdict is based on this error code
+     * @param aOriginalSize Original size of bitmap.
+     */
     void DoBlacklisting( const TInt aError, const TSize& aOriginalSize );
 
 private:
@@ -194,6 +201,10 @@ private:
      */
     TThumbnailSize iThumbnailSize;    
     
+	 /**
+     * timestamp
+     */
+    TInt64 iModified;
 
     /**
      * Size of the original image.
@@ -213,8 +224,6 @@ private:
      * Not own.
      */
     CThumbnailProvider* iProvider;
-    
-    TThumbnailId iThumbnailId;
     
     TBool iScaledBitmapToPool;
     

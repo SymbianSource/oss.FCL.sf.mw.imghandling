@@ -24,7 +24,7 @@
 #include <mpxcollectionutility.h>
 #include <mpxmessagegeneraldefs.h>
 #include <mpxcollectionmessage.h>
-#include <CoreApplicationUIsDomainPSKeys.h> 
+#include <coreapplicationuisdomainpskeys.h> 
 
 #include "thumbagprocessor.h"
 #include "thumbnaillog.h"
@@ -65,12 +65,6 @@ void CThumbAGProcessor::ConstructL()
     {
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - begin" );
     
-#ifdef _DEBUG
-    iAddCounter = 0;
-    iModCounter = 0;
-    iDelCounter = 0;
-#endif
-    
     iTMSession = CThumbnailManager::NewL( *this );
     iQueryAllItems = NULL;
     iQueryPlaceholders = NULL;
@@ -86,9 +80,7 @@ void CThumbAGProcessor::ConstructL()
     
     iPeriodicTimer = CPeriodic::NewL(CActive::EPriorityIdle);
     
-    //do some initializing async in RunL()
-    iInit = ETrue;
-    iForceRun = EFalse;    
+    SetForceRun( EFalse );    
     iActive = EFalse;
     
     iFormatObserver = CTMFormatObserver::NewL( *this );
@@ -98,19 +90,20 @@ void CThumbAGProcessor::ConstructL()
     
     iCollectionUtility = NULL;
     
-    iLight = CHWRMLight::NewL(this);
-
-#ifdef _DEBUG 
-    if(iLight)
-        {
-        iLightMask = iLight->SupportedTargets();
-        TN_DEBUG2( "CThumbAGProcessor::ConstructL() - iLightMask == %d", iLightMask );
-        }
-#endif
-        
     iActivityManager = CTMActivityManager::NewL( this, KBackgroundGenerationIdle);
+
+    UpdatePSValues(ETrue);
+
+    if(iForegroundGenerationObserver)
+      {
+      delete iForegroundGenerationObserver;
+      iForegroundGenerationObserver = NULL;
+      }
     
-    ActivateAO();
+    RProperty::Define(KTAGDPSNotification, KMPXHarvesting, RProperty::EInt);
+    
+	//start foreground generation observer
+    iForegroundGenerationObserver = CTMRPropertyObserver::NewL( *this, KTAGDPSNotification, KForceBackgroundGeneration, ETrue );  
     
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - end" );
     }
@@ -122,6 +115,12 @@ void CThumbAGProcessor::ConstructL()
 CThumbAGProcessor::~CThumbAGProcessor()
     {
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - begin" );
+    
+    if(iForegroundGenerationObserver)
+      {
+      delete iForegroundGenerationObserver;
+      iForegroundGenerationObserver = NULL;
+      }
     
     if(iActivityManager)
         {
@@ -144,8 +143,9 @@ CThumbAGProcessor::~CThumbAGProcessor()
     
     if (!iInit)
         {
+    /*
         iHarvesterClient.RemoveHarvesterEventObserver(*this);
-        iHarvesterClient.Close();
+        iHarvesterClient.Close();*/
         }
     
     if ( iCollectionUtility )
@@ -176,12 +176,14 @@ CThumbAGProcessor::~CThumbAGProcessor()
        delete iQueryAllItems;
        iQueryAllItems = NULL;
        }
-    
+
     iAddQueue.Close();
     iModifyQueue.Close();
-    iRemoveQueue.Close();
+    iRemoveQueue.ResetAndDestroy();
     iQueryQueue.Close();
     iPlaceholderQueue.Close();
+	  
+    i2ndRoundGenerateQueue.Close();
     
     if (iTMSession)
         {
@@ -190,9 +192,6 @@ CThumbAGProcessor::~CThumbAGProcessor()
         }
     
     delete iFormatObserver;
-    
-    delete iLight;
-    iLight = NULL;
     
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - end" );
     }
@@ -264,7 +263,7 @@ void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aErr
                     continue;
                     }
                
-                if (iAddQueue.Find( object->Id() ) == KErrNotFound)
+                if (iAddQueue.Find( object->Id() ) == KErrNotFound && iModifyQueue.Find( object->Id()) == KErrNotFound  )
                     {
                     TRAP_IGNORE( iAddQueue.AppendL( object->Id() ));
                     }
@@ -280,6 +279,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
     else if(&aQuery == iQuery )
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - Query completed");
+        
         if(iQueryActive)
             {
             iQueryReady = ETrue;
@@ -290,9 +290,30 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
         if (aError == KErrNone && iQuery)
             {
             iProcessingCount = iQuery->Count();
+			
+            if( !iProcessingCount)
+                {
+                delete iQuery;
+                iQuery = NULL;
+                iProcessingCount = 0;
+                iModify = EFalse;
+                }
             }
         else
             {
+            TInt itemIndex(KErrNotFound);
+            
+            //cleanup current queue
+            while(iQueryQueue.Count())
+                {
+                itemIndex = iLastQueue->Find(iQueryQueue[0]);
+                if(itemIndex >= 0)
+                    {
+                    iLastQueue->Remove( itemIndex );
+                    }
+                iQueryQueue.Remove(0);
+                }
+        
             delete iQuery;
             iQuery = NULL;
             iProcessingCount = 0;
@@ -315,6 +336,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
 void CThumbAGProcessor::ThumbnailPreviewReady( MThumbnailData& /*aThumbnail*/, 
                                                TThumbnailRequestId /*aId*/)
     {
+    TN_DEBUG1( "CThumbAGProcessor::ThumbnailPreviewReady()");
     // No implementation required
     }
 
@@ -326,8 +348,14 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
                                         TThumbnailRequestId /*aId*/ )
     {
     TN_DEBUG2( "CThumbAGProcessor::ThumbnailReady() aError == %d", aError );
- 
-    iActive = EFalse; 
+    
+    iActiveCount--;
+    
+    if(iActiveCount <= 0)
+        {
+        iActiveCount = 0;
+        iActive = EFalse;
+        }
     
     // TNM server died, delete session
     if( aError == KErrServerTerminated )
@@ -349,6 +377,7 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
         }
     
     ActivateAO();
+	
     TN_DEBUG1( "CThumbAGProcessor::ThumbnailReady() - end" );
     }
 
@@ -362,14 +391,18 @@ void CThumbAGProcessor::SetMdESession( CMdESession* aMdESession )
     
     iMdESession = aMdESession;
     
+    __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iMdESession "), KErrBadHandle));
+    
     TRAPD( err, iDefNamespace = &iMdESession->GetDefaultNamespaceDefL() );
     if (err != KErrNone)
         {
-        TN_DEBUG1( "CThumbAGProcessor::SetMdESession - Error: GetDefaultNamespaceDefL leave" );
+        TN_DEBUG2( "CThumbAGProcessor::SetMdESession() GetDefaultNamespaceDefL() err = %d", err );
         }
     
-    TRAP_IGNORE(QueryPlaceholdersL());
-    TRAP_IGNORE(QueryAllItemsL());
+    __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iDefNamespace "), KErrBadHandle));
+       
+    //do async init
+    iInit = ETrue;
     
 	ActivateAO();
     }
@@ -379,7 +412,9 @@ void CThumbAGProcessor::SetMdESession( CMdESession* aMdESession )
 // ---------------------------------------------------------------------------
 //
 void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType, 
-                                    const RArray<TItemId>& aIDArray, TBool /*aPresent*/ )
+                                    const RArray<TItemId>& aIDArray, 
+                                    const RPointerArray<HBufC>& aObjectUriArray,
+                                    TBool /*aPresent*/ )
     {
     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - begin" );
 
@@ -390,10 +425,10 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         
         for (int i=0; i<aIDArray.Count(); i++)
             {
-            // only add to Add queue if not already in Add queue        
-            if (iAddQueue.Find( aIDArray[i] ) == KErrNotFound)
+            // do not to append to Add queue if exist already in Add or 2nd Add queue (just processed)     
+            if (iAddQueue.Find( aIDArray[i] ) == KErrNotFound && i2ndRoundGenerateQueue.Find( aIDArray[i] ) == KErrNotFound)
                 {
-                iAddQueue.AppendL(aIDArray[i]); 
+                iAddQueue.AppendL(aIDArray[i]);
                 }
             }
         }
@@ -403,21 +438,22 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         
         if(iPHHarvesting)
             {
+        
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - PH  harvesting active, treat like add" );
             for (int i=0; i<aIDArray.Count(); i++)
                 {
-                // only add to Add queue if not already in Add queue        
-                if (iAddQueue.Find( aIDArray[i] ) == KErrNotFound)
-                    {
-                    iAddQueue.AppendL(aIDArray[i]); 
-                    }
-                
                 TInt itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
                                 
                 if (itemIndex >= 0)
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - remove from placeholder queue");
                     iPlaceholderQueue.Remove( itemIndex );
+                    }
+                
+                if(iAddQueue.Find( aIDArray[i]) == KErrNotFound && i2ndRoundGenerateQueue.Find( aIDArray[i]))
+                    {
+                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to add queue");
+                    iAddQueue.Append( aIDArray[i]);
                     }
                 }
             }
@@ -435,7 +471,6 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - placeholder modify, remove from placeholder queue");
                     iPlaceholderQueue.Remove( itemIndex );
-                    iAddQueue.Append( aIDArray[i] );
                     }
                 else
                     {
@@ -447,12 +482,20 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                         TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - remove from add queue");
                         iAddQueue.Remove( itemIndex );
                         }
+					else
+						{
+						
+						itemIndex = i2ndRoundGenerateQueue.Find( aIDArray[i] );
+                                    
+	                    if (itemIndex >= 0)
+	                        {
+	                        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - remove from 2nd round add queue");
+	                        i2ndRoundGenerateQueue.Remove( itemIndex );
+	                        }
+					}
                     
-                    if( iPlaceholderQueue.Find( aIDArray[i] ) == KErrNotFound )
-                        {
-                        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to modify queue");
-                        iModifyQueue.AppendL(aIDArray[i]);
-                        }
+                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to modify queue");
+                    iModifyQueue.AppendL(aIDArray[i]);
                     
                     SetForceRun( ETrue );
                     } 
@@ -461,7 +504,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         }
         else if (aType == ENotifyRemove)
             {
-            TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyRemove, remove IDs from all queues, append to Delete" );
+            TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyRemove, remove IDs from all queues");
             
             for (int i=0; i<aIDArray.Count(); i++)
                 {
@@ -478,20 +521,21 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                     {
                     iModifyQueue.Remove(itemIndex);
                     }
-                
-                //add to remove queue
-                if (iRemoveQueue.Find( aIDArray[i] ) == KErrNotFound)
-                    {
-                    iRemoveQueue.AppendL(aIDArray[i]);
-                    }
+                }
+            
+            TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyRemove append URIs to remove queue");
+            for (int i=0; i<aObjectUriArray.Count(); i++)
+                {
+                HBufC* temp = aObjectUriArray[i]->AllocL();
+                iRemoveQueue.Append( temp );
+                TN_DEBUG2( "CThumbAGProcessor::AddToQueueL() - %S", temp); 
                 }
             }
 #ifdef _DEBUG
         else
             {
 	        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() -  should not come here" );
-            __ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbAGProcessor::AddToQueueL()"), -2));
-			return;
+	        User::Leave( KErrArgument );
             }
 #endif
     
@@ -508,12 +552,20 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
     {
     TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() - begin" );
     
+    __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::CreateThumbnailsL() !iTMSession "), KErrBadHandle));
+    __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::CreateThumbnailsL() !iDefNamespace "), KErrBadHandle));
+    
+    if(!iTMSession || !iDefNamespace)
+        {
+        return;
+        }
+    
     TInt orientationVal = 0;
     TInt64 modifiedVal = 0;
     
     CMdEProperty* orientation = NULL;
-    CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );       
-    TInt orientErr = aObject->Property( objDef.GetPropertyDefL( MdeConstants::Image::KOrientationProperty ), orientation, 0 );
+    CMdEObjectDef& imageObjectDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );       
+    TInt orientErr = aObject->Property( imageObjectDef.GetPropertyDefL( MdeConstants::Image::KOrientationProperty ), orientation, 0 );
     
     if (orientErr == KErrNone)
         {
@@ -521,23 +573,57 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
         }
         
     CMdEProperty* modified = NULL;
-    CMdEObjectDef& objDef2 = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );       
-    TInt modifyErr = aObject->Property( objDef2.GetPropertyDefL( MdeConstants::Object::KLastModifiedDateProperty ), modified, 0 );
-    
+    CMdEObjectDef& baseObjDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );       
+    TInt modifyErr = aObject->Property( baseObjDef.GetPropertyDefL( MdeConstants::Object::KLastModifiedDateProperty ), modified, 0 );
+
     if (modifyErr >= 0)
         {
         modifiedVal = modified->TimeValueL().Int64();
         }
     
-    // modify existing thumbs
+    // update thumbs
     if (iTMSession)
         {
+		// 2nd round and modify updates both sizes if needed
+        if( i2ndRound )
+            {
+            //generate both if needed
+            TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() EOptimizeForQuality ");
+            iTMSession->SetQualityPreferenceL( CThumbnailManager::EOptimizeForQuality );
+            }
+		// 1st roung generation
+        else
+            {
+            //1st round
+            TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() EOptimizeForQualityWithPreview");
+            iTMSession->SetQualityPreferenceL( CThumbnailManager::EOptimizeForQualityWithPreview );
+            
+            CMdEObjectDef& videoObjectDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
+            
+            // add item to 2nd round queue 
+            if(iLastQueue == &iAddQueue || iLastQueue == &iModifyQueue)
+                {
+                TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 1st round add/modify, append to 2nd round queue", aObject->Id() );
+                if(i2ndRoundGenerateQueue.Find(aObject->Id()) == KErrNotFound)
+                    {
+                    i2ndRoundGenerateQueue.Append( aObject->Id() );
+                    }
+                }
+            
+           if( !(imageObjectDef.Id() == aObject->Def().Id() || videoObjectDef.Id() == aObject->Def().Id()) )
+                {
+                TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() 1st round and not image or video, skip");
+                ActivateAO();
+                return;
+                }
+            }
+
         // run as lower priority than getting but higher that creating thumbnails
-        TRAPD(err, iTMSession->UpdateThumbnailsL(aObject->Id(), aObject->Uri(), orientationVal, modifiedVal, CActive::EPriorityIdle ));
-        
+        TRAPD(err, iTMSession->UpdateThumbnailsL(KNoId, aObject->Uri(), orientationVal, modifiedVal, CActive::EPriorityIdle ));
+      
         if ( err != KErrNone )
             {
-            TN_DEBUG2( "CThumbAGProcessor::UpdateThumbnailsL, iTMSession error == %d", err );
+            TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL, iTMSession error == %d", err );
             
             iSessionDied = ETrue;
             iActive = EFalse;
@@ -545,6 +631,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             } 
         else
             {
+            iActiveCount++;
             iActive = ETrue;
             }
         }
@@ -553,22 +640,6 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
         ActivateAO();
         }
         
-#ifdef _DEBUG
-    if(iModify)
-        {
-        iModCounter++;
-        }
-    else
-        {
-        iAddCounter++;
-        }
-#endif     
-        
-#ifdef _DEBUG
-    TN_DEBUG3( "CThumbAGProcessor::OUT-COUNTERS----------, Add = %d Modify = %d", 
-               iAddCounter, iModCounter );
-#endif
-   
     TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() - end" );
     }
 
@@ -579,6 +650,19 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
 void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - begin" );
+    
+    __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryL() !iMdeSession "), KErrBadHandle));
+    __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryL() !iDefNamespace "), KErrBadHandle));
+    
+    if(!iMdESession  || !iDefNamespace)
+        {
+        return;
+        }
+    
+	//reset query queue
+    iQueryQueue.Reset();
+	//set reference to current pprocessing queue
+    iLastQueue = &aIDArray;
     
     iQueryReady = EFalse;
 
@@ -596,9 +680,8 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     
     for(TInt i=0;i < KMaxQueryItems && i < maxCount; i++)
         {
-        TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", aIDArray[0] );
-        iQueryQueue.Append( aIDArray[0] );
-        aIDArray.Remove( 0 );
+        TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", aIDArray[i] );
+        iQueryQueue.Append( aIDArray[i] );
         }
     
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill end aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
@@ -639,8 +722,6 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     
     iQuery->FindL();
     
-    iQueryQueue.Reset();
-    
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - end" );
     }
 
@@ -654,13 +735,17 @@ void CThumbAGProcessor::QueryPlaceholdersL()
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL" );
     
-    CMdEObjectQuery::TState state(CMdEObjectQuery::EStateFirst);
+    __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iMdeSession "), KErrBadHandle));
+    __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iDefNamespace "), KErrBadHandle));
+    
+    if(!iMdESession  || !iDefNamespace)
+         {
+         return;
+         }
     
     if( iQueryPlaceholders )
         {
-        state = iQueryPlaceholders->State();
-    
-        if(state == CMdEObjectQuery::EStateSearching )
+        if( !iQueryPlaceholders->IsComplete() )
             {
             TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL active- skip" );
             return;
@@ -714,30 +799,65 @@ void CThumbAGProcessor::RunL()
     
     if (iSessionDied)
         {
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - iSessionDied" );
         delete iTMSession;
         iTMSession = NULL;
         }
     
     if (iInit)
         {
-        TN_DEBUG1( "CThumbAGProcessor::RunL() - Do Initialisation" );
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - Do Initialisation 1" );
+        
         iInit = EFalse;
-        TN_DEBUG1( "iHarvesterClient");
-        if( iHarvesterClient.Connect() == KErrNone )
+        iInit2 = ETrue;
+
+        iAddQueue.Reset();
+        iModifyQueue.Reset();
+        iRemoveQueue.ResetAndDestroy();
+        iQueryQueue.Reset();
+        iPlaceholderQueue.Reset();
+        
+        TRAP_IGNORE(QueryPlaceholdersL());
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation 1 done" );
+        ActivateAO();
+        return;
+        }
+    
+    if(iInit2)
+        {
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - Do Initialisation 2" );
+		
+        iInit2 = EFalse;
+        TInt err(KErrNone);
+        /*
+        TN_DEBUG1( "CThumbAGProcessor::RunL() do iHarvesterClient connect");
+        TInt err = iHarvesterClient.Connect();
+        TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient connect err = %d", err);
+        
+        __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
+        
+        if(  err == KErrNone )
             {
-            TN_DEBUG1( "iHarvesterClient connected");
-            iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall, KMaxTInt );
-            iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypePlaceholder, KMaxTInt );
-            iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeMMC, KMaxTInt );
-            TN_DEBUG1( "iHarvesterClient AddHarvesterEventObserver added");
+            TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer");
+            err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypePlaceholder, KMaxTInt );
+            TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
+            __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
+            }*/
+ 
+        TN_DEBUG1( "CThumbAGProcessor::RunL() MMPXCollectionUtility");
+        TRAP( err, iCollectionUtility = MMPXCollectionUtility::NewL( this, KMcModeIsolated ));
+        TN_DEBUG2( "CThumbAGProcessor::RunL() create MMPXCollectionUtility err = %d", err);
+        __ASSERT_DEBUG((iCollectionUtility), User::Panic(_L("CThumbAGProcessor::RunL(), !iCollectionUtility "), err));
+        
+        __ASSERT_DEBUG((iActivityManager), User::Panic(_L("CThumbAGProcessor::RunL(), !iActivityManager "), KErrBadHandle));
+        if(iActivityManager)
+            {
+            iActivityManager->Start();
             }
         
-        TN_DEBUG1( "create MMPXCollectionUtility");
-        iCollectionUtility = MMPXCollectionUtility::NewL( this, KMcModeIsolated );
-        TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation done" );
-        
-        iActivityManager->Start();
-        
+        TRAP_IGNORE(QueryAllItemsL());
+		
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation 2 done" );
         return;
         }
     
@@ -763,47 +883,45 @@ void CThumbAGProcessor::RunL()
     // do not run if request is already issued to TNM server even if forced
     if( iActive)
         {
-        if(iActiveCount <= KMaxDaemonRequests)
+        if(iActiveCount >= KMaxDaemonRequests)
             {
-            iActiveCount++;
             TN_DEBUG1( "CThumbAGProcessor::RunL() - waiting for previous to complete, abort..." );
             return;
             }
-        else
-            {
-            TN_DEBUG1( "CThumbAGProcessor::RunL() - iActive jammed - resetted" );
-            iActive = EFalse;
-            iActiveCount = 0;
-            }     
         }
     else
         {
         iActiveCount = 0;   
         }
     
+    
     //force run can proceed from this point
-	if( iForceRun )
+#ifdef _DEBUG
+	if( iForegroundRun )
+		{
+      	TN_DEBUG1( "void CThumbAGProcessor::RunL() KForceBackgroundGeneration enabled");
+	  	}
+	
+    if( iForceRun )
+        {
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - *** FORCED RUN ***");
+        }
+#endif
+	
+  	if( /*iForceRun || */iForegroundRun )
+      	{
+        TN_DEBUG1( "void CThumbAGProcessor::RunL() skip idle detection!");
+      	CancelTimeout();
+     	 }
+  	else
 	    {
-	    CancelTimeout();
-	    TN_DEBUG1( "void CThumbAGProcessor::RunL() forced run, continue!");
-	    }
-	else
-	    {
-	    if( !iLights)
-	        {
-            iIdle = ETrue;
-            }
-        else
+        if(iActivityManager)
             {
-            iIdle = IsInactive();
+            iIdle = iActivityManager->IsInactive();
             }
-        
+	    
         if( !iIdle || iHarvesting || iMPXHarvesting || iPeriodicTimer->IsActive() )
             {
-            #ifdef _DEBUG
-            TN_DEBUG5( "iIdle = %d, iHarvesting = %d, iMPXHarvesting = %d, iPeriodicTimer->IsActive() = %d", 
-                    iIdle, iHarvesting, iMPXHarvesting, iPeriodicTimer->IsActive());
-            #endif
             TN_DEBUG1( "void CThumbAGProcessor::RunL() device not idle");
             return;
             }
@@ -832,32 +950,56 @@ void CThumbAGProcessor::RunL()
         {
         TInt err(KErrNone);
         //if force or non forced
-        if((iForceRun && iModify) || (!iForceRun && !iModify))
+        if((iForceRun && iModify ) || (!iForceRun && !iModify ))
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() - iQueryReady START" );
             
             const CMdEObject* object = &iQuery->Result( iProcessingCount-1 );
             iProcessingCount--;
-        
+            
+            TInt itemIndex = iLastQueue->Find( object->Id());
+            if(itemIndex >= 0)
+                {
+                iLastQueue->Remove(itemIndex);
+                }
+				
             // process one item at once
             if ( object )
                 {
-                TRAP( err, CreateThumbnailsL(object) );
-            
-                if ( err != KErrNone )
-                    { 
-                    TN_DEBUG2( "CThumbAGProcessor::RunL(), CreateThumbnailsL error == %d", err );
+                //remove item from queryQueue when request is issued 
+                itemIndex = iQueryQueue.Find( object->Id());
+                if(itemIndex >= 0)
+                    {
+                    iQueryQueue.Remove(itemIndex);
                     }
+            
+                TRAP( err, CreateThumbnailsL(object) );
+                TN_DEBUG2( "CThumbAGProcessor::RunL(), CreateThumbnailsL error == %d", err );
+                __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), CreateThumbnailsL() "), err));
                 }
             }
         //force is coming, but executing non-forced query complete-> cancel old
         else
             {
-            TN_DEBUG1( "CThumbAGProcessor::RunL() - deleting query" );
+            TN_DEBUG1( "CThumbAGProcessor::RunL() - deleting query 1" );
             delete iQuery;
             iQuery = NULL;
             iQueryReady = EFalse;
             iProcessingCount = 0;
+            
+            //move remainig IDs in query queue back to original queue
+            while(iQueryQueue.Count())
+                {
+                if(iLastQueue)
+                    {
+                    if(iLastQueue->Find( iQueryQueue[0]) == KErrNotFound)
+                        {
+                        iLastQueue->Append(iQueryQueue[0]);
+                        }
+                    }
+                iQueryQueue.Remove(0);
+                }
+            iLastQueue = NULL;
             ActivateAO();
             return;    
             }
@@ -873,11 +1015,11 @@ void CThumbAGProcessor::RunL()
             //check if forced run needs to continue
             if (iModifyQueue.Count())
                 {
-                iForceRun = ETrue;
+                SetForceRun( ETrue );
                 }
             else
                 {
-                iForceRun = EFalse;
+                SetForceRun( EFalse );
                 }   
             }
         //keep going if processing Remove items or if Add item fails
@@ -891,12 +1033,31 @@ void CThumbAGProcessor::RunL()
         {
         if(iForceRun && !iModify)
             {
-            iQuery->Cancel();
-            delete iQuery;
-            iQuery = NULL;
-            TN_DEBUG1( "CThumbAGProcessor::RunL() - canceling query..." );
+            if(iQuery)
+                {
+                TN_DEBUG1( "CThumbAGProcessor::RunL() - deleting query 2" );
+                iQuery->Cancel();
+                delete iQuery;
+                iQuery = NULL;
+                }
+
             iQueryReady = EFalse;
             iQueryActive = EFalse;
+            
+            //move remainig IDs in query queue back to original queue
+            while(iQueryQueue.Count())
+                {
+                if(iLastQueue)
+                    {
+                    if(iLastQueue->Find( iQueryQueue[0]) == KErrNotFound)
+                        {
+                        iLastQueue->Append(iQueryQueue[0]);
+                        }
+                    }
+                iQueryQueue.Remove(0);
+                }
+            iLastQueue = NULL;
+            
             ActivateAO();
             }
         else  
@@ -905,41 +1066,64 @@ void CThumbAGProcessor::RunL()
             }    
         }
 
-    // select queue to process, priority by type. Process modify events before new images
+    // no items in query queue, start new
+    // select queue to process, priority by type
     else if ( iModifyQueue.Count() > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update thumbnails");
+        
+        i2ndRound = EFalse;
         
         // query for object info
         iQueryActive = ETrue;
         iModify = ETrue;
         QueryL( iModifyQueue );
        }
-    else if ( iRemoveQueue.Count() > 0 )
-        {
-        TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
-        
-        // delete thumbs by ID
-        if (iTMSession)
-            {
-            iTMSession->DeleteThumbnails( iRemoveQueue[0] );
-            }
-        iRemoveQueue.Remove( 0 );
-            
-#ifdef _DEBUG
-        iDelCounter++;
-        TN_DEBUG2( "CThumbAGProcessor::OUT-COUNTERS----------, Delete = %d", iDelCounter );
-#endif
-        ActivateAO();
-        }
     else if ( iAddQueue.Count() > 0 )
         {
-        TN_DEBUG1( "void CThumbAGProcessor::RunL() create thumbnails");
+        TN_DEBUG1( "void CThumbAGProcessor::RunL() update 1st round thumbnails");
+        
+        i2ndRound = EFalse;
         
         // query for object info
         iQueryActive = ETrue;
         
         QueryL( iAddQueue );     
+        }
+    else if ( iRemoveQueue.Count() > 0 )
+        {
+        TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
+
+        i2ndRound = EFalse;
+        
+        // delete thumbs by URI
+        __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
+        if(iTMSession)
+            {
+            HBufC* uri = iRemoveQueue[0];
+            TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  uri);
+            CThumbnailObjectSource* source = NULL;
+            TRAPD(err,  source = CThumbnailObjectSource::NewL( *uri, KNullDesC));
+               
+        	if(err == KErrNone)
+            	{
+                iTMSession->DeleteThumbnails( *source );
+                }
+            iRemoveQueue.Remove( 0 );
+            delete source;
+            delete uri;
+            }
+            
+        ActivateAO();
+        }
+    else if( i2ndRoundGenerateQueue.Count() > 0)
+        {
+        TN_DEBUG1( "void CThumbAGProcessor::RunL() update 2nd round thumbnails");
+            
+        // query for object info
+        iQueryActive = ETrue;
+        i2ndRound = ETrue;
+        QueryL( i2ndRoundGenerateQueue );     
         }
         
     TN_DEBUG1( "CThumbAGProcessor::RunL() - end" );
@@ -969,10 +1153,6 @@ void CThumbAGProcessor::HarvestingUpdated(
     else if( aHEObserverType == EHEObserverTypeOverall)
         {
         TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeOverall");
-        }
-    else
-        {
-        TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeMMC");
         }
     #endif
     
@@ -1050,22 +1230,7 @@ void CThumbAGProcessor::HarvestingUpdated(
                 }
             }
         }
-    else if( aHEObserverType == EHEObserverTypeMMC)
-        {
-        switch(aHarvesterEventState)
-            {
-            case EHEStateStarted:
-            case EHEStateHarvesting:
-            case EHEStateResumed:
-                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MMC harvesting started ");
-                break;
-            case EHEStateFinished:
-                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MMC harvesting finished ");
-                TRAP_IGNORE(QueryAllItemsL());
-            break;
-            };
-        }
-
+   
     TN_DEBUG3( "CThumbAGProcessor::HarvestingUpdated -- end() iHarvesting == %d, iPHHarvesting == %d ", iHarvesting, iPHHarvesting);
     }
 
@@ -1101,16 +1266,26 @@ void CThumbAGProcessor::CancelTimeout()
 // CThumbAGProcessor::RunError()
 // ---------------------------------------------------------------------------
 //
+#ifdef _DEBUG
 TInt CThumbAGProcessor::RunError(TInt aError)
+#else
+TInt CThumbAGProcessor::RunError(TInt /*aError*/)
+#endif
     {
-    TN_DEBUG1( "CThumbAGProcessor::RunError()");
-    if (aError != KErrNone)
+    TN_DEBUG2( "CThumbAGrocessor::RunError() %d", aError);
+    
+    UpdatePSValues();
+        
+    iActiveCount--;
+    
+    if(iActiveCount <= 0)
         {
-        TN_DEBUG2( "CThumbAGProcessor::RunError = %d", aError );
+        iActiveCount = 0;
+        iActive = EFalse;
         }
     
-    iActive = EFalse;
-    
+	ActivateAO();
+	
     // nothing to do
     return KErrNone;
     }
@@ -1122,7 +1297,12 @@ TInt CThumbAGProcessor::RunError(TInt aError)
 void CThumbAGProcessor::ActivateAO()
     {
 #ifdef _DEBUG
-    TN_DEBUG6( "CThumbAGProcessor::Items in queue Add = %d, Mod = %d, Del = %d, Query = %d, iPlaceholder = %d", iAddQueue.Count(),  iModifyQueue.Count(), iRemoveQueue.Count(), iQueryQueue.Count(), iPlaceholderQueue.Count());
+    TN_DEBUG6( "CThumbAGProcessor::ActivateAO() items in queue Add = %d, Mod = %d, Del = %d, Query = %d, iPlaceholder = %d", iAddQueue.Count(),  iModifyQueue.Count(), iRemoveQueue.Count(), iQueryQueue.Count(), iPlaceholderQueue.Count());
+    TN_DEBUG2( "CThumbAGProcessor::ActivateAO() items in queue 2nd Add = %d", i2ndRoundGenerateQueue.Count());
+    TN_DEBUG3( "CThumbAGProcessor::ActivateAO() iActive = %d, iActiveCount = %d", iActive, iActiveCount);
+    TN_DEBUG3( "CThumbAGProcessor::ActivateAO() iHarvesting == %d, iMPXHarvesting == %d", iHarvesting, iMPXHarvesting);
+    TN_DEBUG4( "CThumbAGProcessor::ActivateAO() iIdle = %d, timer = %d, iForceRun = %d", iIdle, iPeriodicTimer->IsActive(), iForceRun);
+    TN_DEBUG4( "CThumbAGProcessor::ActivateAO() iModify = %d, iQueryReady = %d, iProcessingCount = %d", iModify, iQueryReady, iProcessingCount);
 #endif
     
     if(iFormatting)
@@ -1133,16 +1313,12 @@ void CThumbAGProcessor::ActivateAO()
         
     if( !IsActive() )
         {
-#ifdef _DEBUG
-        if( iForceRun )
-            {
-            TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - *** FORCED RUN ***");
-            }
-#endif
         SetActive();
         TRequestStatus* statusPtr = &iStatus;
         User::RequestComplete( statusPtr, KErrNone );
         }
+
+    UpdatePSValues();
     }
 
 // ---------------------------------------------------------------------------
@@ -1223,7 +1399,11 @@ void CThumbAGProcessor::CheckAutoCreateValuesL()
 // CThumbAGProcessor::RemoveFromQueues()
 // ---------------------------------------------------------------------------
 //
+#ifdef _DEBUG
 void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const TBool aRemoveFromDelete )
+#else
+void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const TBool /*aRemoveFromDelete*/ )
+#endif
     {
     TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() aRemoveFromDelete == %d - begin", aRemoveFromDelete );
     
@@ -1232,7 +1412,7 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
     for (int i=0; i< aIDArray.Count(); i++)
         {
         TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() - %d", aIDArray[i]);
-        
+
         itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
                          
         if(itemIndex >= 0)
@@ -1247,7 +1427,14 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
             {
             iAddQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iAddQueue" );
-            continue;
+            }
+
+        itemIndex = i2ndRoundGenerateQueue.Find( aIDArray[i] );
+                
+        if(itemIndex >= 0)
+            {
+            i2ndRoundGenerateQueue.Remove(itemIndex);
+            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - i2ndRoundGenerateQueue" );
             }
         
         itemIndex = iModifyQueue.Find( aIDArray[i] );
@@ -1259,13 +1446,13 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
 			 
             if( iModifyQueue.Count() == 0)
 			    {
-			    iForceRun = EFalse;
+			    SetForceRun( EFalse );
 		        }
 			 
             continue;
             }
     
-        if( aRemoveFromDelete )
+        /*if( aRemoveFromDelete )
             {
             itemIndex = iRemoveQueue.Find( aIDArray[i] );
              
@@ -1275,7 +1462,7 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
                 TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iRemoveQueue" );
                 continue;
                 }
-            }
+            }*/
         }
     
     TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - end" );
@@ -1304,13 +1491,16 @@ void CThumbAGProcessor::QueryAllItemsL()
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL" );
     
-    CMdEObjectQuery::TState state(CMdEObjectQuery::EStateFirst);
+    __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryAllItemsL() !iMdeSession "), KErrBadHandle));
+    
+    if(!iMdESession)
+         {
+         return;
+         }
     
     if( iQueryAllItems )
         {
-        state = iQueryAllItems->State();
-    
-        if(state == CMdEObjectQuery::EStateSearching )
+        if( !iQueryAllItems->IsComplete() )
             {
             TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL active- skip" );
             return;
@@ -1392,6 +1582,17 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
                 default:
                     break;
                 }
+            
+            //signal Server's stores about MPX harvesting state
+            if( iMPXHarvesting )
+                {
+                RProperty::Set(KTAGDPSNotification, KMPXHarvesting, ETrue);
+                }
+            else
+                {
+                RProperty::Set(KTAGDPSNotification, KMPXHarvesting, EFalse);
+                }
+                
             TN_DEBUG3( "CThumbAGProcessor::HandleCollectionMessage -- end() iHarvesting == %d, iMPXHarvesting == %d", iHarvesting, iMPXHarvesting);
             }
         }
@@ -1430,71 +1631,29 @@ void CThumbAGProcessor::HandleCollectionMediaL( const CMPXMedia& /*aMedia*/,
     {
     // not needed here
     }
-	
+
 // -----------------------------------------------------------------------------
-// LightStatusChanged()
+// ActivityChanged()
 // -----------------------------------------------------------------------------
 //
-void CThumbAGProcessor::LightStatusChanged(TInt aTarget, CHWRMLight::TLightStatus aStatus)
+void CThumbAGProcessor::ActivityChanged(const TBool aActive)
     {
-    TN_DEBUG3( "void CThumbAGProcessor::LightStatusChanged() aTarget == %d, aStatus == %d", aTarget, aStatus);
-    
-     if( aStatus == CHWRMLight::ELightOff)
+    TN_DEBUG2( "void CThumbAGProcessor::ActivityChanged() aActive == %d", aActive);
+    if(aActive)
         {
-        TN_DEBUG1( "void CThumbAGProcessor::LightStatusChanged() -- OFF");
-        iLights = EFalse;
-		
-        if(iAddQueue.Count() + iModifyQueue.Count() + iRemoveQueue.Count() > 0 )
+        iIdle = EFalse;
+        }
+    else
+        {
+        iIdle = ETrue; 
+        
+        if(iAddQueue.Count() + iModifyQueue.Count() + iRemoveQueue.Count() + i2ndRoundGenerateQueue.Count() > 0 )
             {
             ActivateAO();
             }
         }
-    else
-        {
-        TN_DEBUG1( "void CThumbAGProcessor::LightStatusChanged() -- ON");
-        iLights = ETrue;
-        }
     }
 
-// -----------------------------------------------------------------------------
-// IsInactive()
-// -----------------------------------------------------------------------------
-//
-TBool CThumbAGProcessor::IsInactive()
-    {
-#ifdef _DEBUG
-TN_DEBUG2( "CThumbAGProcessor::IsInactive()= %d", User::InactivityTime().Int());
-#endif
-
-    if( User::InactivityTime() < TTimeIntervalSeconds(KBackgroundGenerationIdle) )
-      {
-      return EFalse;
-      }
-    return ETrue;
-    }
-
-// -----------------------------------------------------------------------------
-// ActivityDetected()
-// -----------------------------------------------------------------------------
-//
-void CThumbAGProcessor::ActivityDetected()
-    {
-    iIdle = EFalse;
-    }
-
-// -----------------------------------------------------------------------------
-// InactivityDetected()
-// -----------------------------------------------------------------------------
-//
-void CThumbAGProcessor::InactivityDetected()
-    {
-    iIdle = ETrue; 
-    
-    if(iAddQueue.Count() + iModifyQueue.Count() + iRemoveQueue.Count() > 0 )
-        {
-        ActivateAO();
-        }
-    }
 
 // ---------------------------------------------------------------------------
 // CThumbAGProcessor::FormatNotification
@@ -1512,5 +1671,68 @@ void CThumbAGProcessor::FormatNotification( TBool aFormat )
         }
     }
 
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::RPropertyNotification
+// Handles a RProperty changed operation
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::RPropertyNotification(const TInt aError, const TUid aKeyCategory, const TUint aPropertyKey, const TInt aValue)
+    {
+    TN_DEBUG5( "CThumbAGProcessor::RPropertyNotification() aError = %d, aPropertyKey = %d, aKeyCategory = %d, aValue = %d", aError, aPropertyKey, aKeyCategory, aValue );
+    
+    if(aPropertyKey == KForceBackgroundGeneration && aKeyCategory == KTAGDPSNotification )
+        {
+        if( aValue == 1 && aError == KErrNone )
+            {
+            iForegroundRun = ETrue;
+            ActivateAO();
+            }
+        else
+            {
+            iForegroundRun = EFalse;
+            }
+        }
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::UpdateItemsLeft
+// Update KItemsleft PS value if changed
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
+    {
+    TInt itemsLeft = iModifyQueue.Count() + iAddQueue.Count();
+    TBool daemonProcessing = EFalse;
+    
+    if(itemsLeft + i2ndRoundGenerateQueue.Count() + iRemoveQueue.Count() > 0 )
+        {
+        daemonProcessing = ETrue;
+        }
+    
+    if(aDefine)
+        {
+        TN_DEBUG1( "CThumbAGProcessor::UpdatePSValues() define");
+        RProperty::Define(KTAGDPSNotification, KDaemonProcessing, RProperty::EInt);
+        RProperty::Set(KTAGDPSNotification, KDaemonProcessing, 0);
+        daemonProcessing = EFalse;
+        RProperty::Define(KTAGDPSNotification, KItemsleft, RProperty::EInt);
+        RProperty::Set(KTAGDPSNotification, KItemsleft, 0);
+        iPreviousItemsLeft = 0;
+        }
+    
+    if( daemonProcessing != iPreviousDaemonProcessing)
+        {
+        TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KDaemonProcessing == %d", daemonProcessing);
+        iPreviousDaemonProcessing = daemonProcessing;
+        RProperty::Set(KTAGDPSNotification, KDaemonProcessing, daemonProcessing);
+        }
+    
+    if( itemsLeft != iPreviousItemsLeft)
+        {
+        TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KItemsleft == %d", itemsLeft);
+        iPreviousItemsLeft = itemsLeft;
+        RProperty::Set(KTAGDPSNotification, KItemsleft, itemsLeft );
+        }
+    }
 
 // End of file

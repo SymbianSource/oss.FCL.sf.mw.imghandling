@@ -24,7 +24,7 @@
 #include "IHLImplementationIds.h"
 #include <IHLInterfaceIds.h>
 #include <IclExtJpegApi.h>
-#include <ImageCodecData.h>
+#include <imagecodecdata.h>
 #include <MIHLViewerObserver.h>
 #include "MIHLFileImageExtJpg.h"
 #include <fbs.h>

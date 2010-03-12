@@ -167,7 +167,8 @@ public:
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap, const TSize&
         aOriginalSize, const TBool aCropped, const TThumbnailSize aThumbnailSize,
-        const TThumbnailId aThumbnailId, const TBool aThumbFromPath = ETrue,
+        const TInt64 aModified,
+        const TBool aThumbFromPath = ETrue,
         const TBool aCheckExist = ETrue);
 
     /**
@@ -188,18 +189,6 @@ public:
     void FetchThumbnailL( const TDesC& aPath, CFbsBitmap* & aThumbnail, 
              TDesC8* & aData, const TThumbnailSize aThumbnailSize, TSize &aOriginalSize );
     
-    /**
-     * Fetch thumbnail image.
-     *
-     * @since S60 v5.0
-     * @param aThumbnailId ID of the media object whose thumbnail is to be
-     *              retrieved.
-     * @param aThumbnail Pointer to get the fetched thumbnail bitmap.
-     *                   Caller assumes ownership.
-     */    
-    void FetchThumbnailL( TThumbnailId aThumbnailId, CFbsBitmap* &
-        aThumbnail, TDesC8* & aData, TThumbnailSize aThumbnailSize, TSize &aOriginalSize );
-
     /**
      * Delete thumbnails.
      *
@@ -325,9 +314,10 @@ public:
      * @since S60 v5.0
      * @param aPath Path associated to missing thumbnails
      * @param aMissingSizes Returns a list of thumbnail sizes not yet create related to the path
+	 * @param aCheckGridSizeOnly check only is Grid size missing
      */
-    void GetMissingSizesAndIDsL( const TDesC& aPath, TInt aSourceType, RArray <
-        TThumbnailPersistentSize > & aMissingSizes, TBool& aMissingIDs);
+    void GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RArray <
+        TThumbnailPersistentSize > & aMissingSizes, TBool aCheckGridSizeOnly);
 
     /**
      * Fileserver
@@ -375,13 +365,12 @@ public:
      * Update thumbnails in database
      *
      * @since S60 v5.0
-     * @param aItemId       TThumbnailId
      * @param aPath         (New) path for the Thumbnail
      * @param aOrientation  Thumbnail orientation
      * @param aModified     Last modified
      * @param TBool         EFalse, if new thumbs need to be created
      */  
-    TBool UpdateThumbnailsL( const TThumbnailId aItemId, const TDesC& aPath,
+    TBool UpdateThumbnailsL( const TDesC& aPath,
                              const TInt aOrientation, const TInt64 aModified );
     
     /** 
@@ -437,15 +426,6 @@ public:
      * @return CThumbnailStore object
      */
     CThumbnailStore* StoreForPathL( const TDesC& aPath );  
-    
-    /**
-     * Update ID in database
-     *
-     * @since S60 v5.0
-     * @param aItemId Id of item whose thumbnails are to be updated.
-     * @param aNewPath Path property of the object to be updated.
-     */  
-    void UpdateIDL( const TDesC& aPath, const TThumbnailId aNewId );
     
     /**
      * Close Removable Stores
@@ -531,7 +511,12 @@ private:
      */
     void OpenStoresL();
     
- 
+    /**
+     * Callback for reconnect timer
+     *
+     * @since S60 v5.0
+     */
+    static TInt ReconnectCallBack(TAny* aAny);
 
 private:
 
@@ -682,6 +667,9 @@ private:
     RArray < TThumbnailPersistentSize > iPersistentSizes;
     
     TBool iFormatting;
+    
+    // reconnect timer
+    CPeriodic* iReconnect;
     
 #ifdef _DEBUG
     TUint32 iPlaceholderCounter;

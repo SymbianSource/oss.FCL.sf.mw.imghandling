@@ -20,7 +20,7 @@
 #define THUMBNAILVIDEOPROVIDER_H
 
 #include <ecom.h>
-#include <tnevideoclipinfo.h>
+#include <TNEVideoClipInfo.h>
 
 #include "thumbnailprovider.h"
 

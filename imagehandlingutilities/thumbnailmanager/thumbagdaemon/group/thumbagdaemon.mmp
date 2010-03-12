@@ -36,14 +36,18 @@ VENDORID                VID_DEFAULT
 
 EPOCPROCESSPRIORITY 	background
 
+//MACRO MDS_URI_OBSERVER
+MACRO TWO_PHASED_TN_GENERATION
+
 SOURCEPATH              ../src
 SOURCE                  thumbagdaemon.cpp
-SOURCE					thumbagprocessor.cpp
+SOURCE			thumbagprocessor.cpp
 
-SOURCEPATH 				../../tmcommon/src
-SOURCE					tmactivitymanager.cpp 
-SOURCE					tmshutdownobserver.cpp 
-SOURCE					tmformatobserver.cpp
+SOURCEPATH 		../../tmcommon/src
+SOURCE			tmactivitymanager.cpp 
+SOURCE			tmshutdownobserver.cpp 
+SOURCE			tmformatobserver.cpp 
+SOURCE			tmsrproptertyobserver.cpp
 
 // Default system include paths for middleware layer modules.
 MW_LAYER_SYSTEMINCLUDE

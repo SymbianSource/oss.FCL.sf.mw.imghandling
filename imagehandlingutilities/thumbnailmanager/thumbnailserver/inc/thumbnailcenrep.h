@@ -142,8 +142,8 @@ class TThumbnailPersistentSize
     };
     
 public:
-    enum { EUnknownSourceType, EImage, EVideo, EAudio };
-    enum { EUnknownSizeType, EGrid, EList, EFullscreen }; 
+    enum TThumbnailSourceType { EUnknownSourceType, EImage, EVideo, EAudio };
+    enum TThumbnailSizeType { EUnknownSizeType, EGrid, EList, EFullscreen }; 
     
 public:
     
@@ -160,21 +160,19 @@ public:
                               aMode, TInt aFormat );
     
     TThumbnailPersistentSize( TThumbnailSize aType, const TSize& aSize, TBool aCrop, TDisplayMode
-                              aMode, TInt aFormat, TBool aAutoCreate );
+                              aMode, TInt aFormat, TBool aAutoCreate, TThumbnailSizeType aSizeType  );
     
 public:
     
     // data
     TThumbnailSize iType;
-    TInt iSourceType;
-    TInt iSizeType;
-    
+    TThumbnailSourceType iSourceType;
     TSize iSize;
     TBool iCrop;
     TDisplayMode iMode;
     TInt iFormat;
-    
     TBool iAutoCreate;
+    TThumbnailSizeType iSizeType;
 };
 
 /**

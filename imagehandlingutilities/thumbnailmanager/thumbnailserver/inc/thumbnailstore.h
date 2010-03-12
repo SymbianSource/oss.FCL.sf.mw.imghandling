@@ -25,6 +25,7 @@
 #include "thumbnailcenrep.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
+#include "tmactivitymanager.h"
 
 class RFs;
 class CFbsBitmap;
@@ -56,7 +57,7 @@ private:
 
 
 /**
-* MMdSDiskSpaceNotifierObserver
+* MThumbnailStoreDiskSpaceNotifierObserver
 * Observer interface for a disk space notifier.
 */
 class MThumbnailStoreDiskSpaceNotifierObserver
@@ -79,7 +80,7 @@ class MThumbnailStoreDiskSpaceNotifierObserver
     };
 
 /**
-* CMSDiskSpaceNotifierAO.
+* CThumbnailStoreDiskSpaceNotifierAO.
 * A disk space notifier class
 */
 class CThumbnailStoreDiskSpaceNotifierAO : public CActive
@@ -186,7 +187,9 @@ class CThumbnailStoreDiskSpaceNotifierAO : public CActive
  *
  *  @since S60 v5.0
  */
-class CThumbnailStore: public CBase, public MThumbnailStoreDiskSpaceNotifierObserver
+class CThumbnailStore: public CBase, 
+                       public MThumbnailStoreDiskSpaceNotifierObserver,
+                       public MTMActivityManagerObserver
     {
     // Bitmasked Flags
     typedef enum 
@@ -228,8 +231,9 @@ public:
      * @param aThumbFromPath Thumbnail created from associated path.
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aThumbnail, const
-        TSize& aOriginalSize, TBool aCropped, const TThumbnailSize aThumbnailSize,
-        const TThumbnailId aThumbnailId = 0, const TBool aThumbFromPath = ETrue,
+        TSize& aOriginalSize, TBool aCropped, const TThumbnailSize aThumbnailSize, 
+        const TInt64 aModified,
+        const TBool aThumbFromPath = ETrue,
         TBool aBlackListed = EFalse );
 
     /**
@@ -257,47 +261,17 @@ public:
             );
     
     /**
-     * Fetches thumbnail image.
-     *
-     * @since S60 v5.0
-     * @param aThumbnailId           Path of the media object whose thumbnail is
-     *                        to be retrieved.
-     * @param aThumbnail      Pointer to get the fetched thumbnail bitmap.
-     *                        Caller assumes ownership.
-     * @param aData           Pointer to get the fetched thumbnail JPEG.
-     *                        Caller assumes ownership.                      
-     * @param aThumbnailSize    Minimum size of the thumbnail
-     * .
-     * @param aThumbnailSize    Reference to real size of TN.
-     * 
-     * @return KErrNone, otherwise KErrNotFound if thumbnail not found from DB
-     */    
-    TInt FetchThumbnailL( TThumbnailId aThumbnailId, 
-            CFbsBitmap*& aThumbnail, 
-            TDesC8* & aData, 
-            TThumbnailSize aThumbnailSize, 
-            TSize &aThumbnailRealSize 
-            );
-    
-
-    /**
      * Delete thumbnails.
      *
      * @since S60 v5.0
      * @param aPath           Path of the media object whose thumbnail is
      *                        to be deleted.
+     * @param aForce          Force to delete instantly 
+     * @param aTransaction    Create a transaction 
      */
-    void DeleteThumbnailsL( const TDesC& aPath );
+    void DeleteThumbnailsL( const TDesC& aPath, TBool aForce = EFalse,
+                            TBool aTransaction = ETrue);
     
-    /**
-      * Delete thumbnails.
-      *
-      * @since S60 TB9.1
-      * @param aTNId           Id of the media object whose thumbnail is
-      *                        to be deleted.
-      */
-     void DeleteThumbnailsL( const TThumbnailId& aTNId );
-
     /**
      * Persistent sizes.
      *
@@ -313,128 +287,52 @@ public:
      * @since S60 v5.0
      * @param aPath Path where missing sizes are associated
      * @param aMissingSizes List of missing thumbnail sizes
+     * @param aCheckGridSizeOnly check only is grid size missing
      */
-    void GetMissingSizesAndIDsL( const TDesC& aPath, TInt aSourceType, RArray <
-            TThumbnailPersistentSize > & aMissingSizes, TBool& aMissingIDs );
-    
+    void GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RArray <
+            TThumbnailPersistentSize > & aMissingSizes, TBool aCheckGridSizeOnly  );
+        
     /**
-       * Get persistent sizes not yet in database
-       *
-       * @since S60 TB9.1
-       * @param aId Id of TN where missing sizes are associated
-       * @param aMissingSizes List of missing thumbnail sizes
-       */
-      void GetMissingSizesL( const TThumbnailId aId, RArray <
-          TThumbnailPersistentSize > & aMissingSizes );
- 
-    /**
-     * Find store for thumbnails.
-     *
-     * @since S60 TB9.1
-     * @param aThumbnailId Id of thumbnails to be updated.
-     */
-    void FindStoreL(TThumbnailId aThumbnailId);
-    
-    /**
-     * Updates path for thumbnails in current store.
+     * Check IMEI (owner) of db
      *
      * @since S60 v5.0
-     * @param aItemId Id for thumbnails to be updated.
-     * @param aNewPath New path for thumbnails.
-     * @return ETrue, if path was updated
-     */     
-    TBool UpdateStoreL( TThumbnailId aItemId, const TDesC& aNewPath );
-    
-    /**
-     * Updates path for thumbnails in current store.
-     *
-     * @since S60 v5.0
-     * @param aItemId Id for thumbnails to be updated.
-     * @param aNewPath New path for thumbnails.
-     */  
-    void UpdateStoreL( const TDesC& aPath, TThumbnailId aNewId );
-    
-    /**
-     * Check modification timestamp
-     *
-     * @since S60 v5.0
-     * @param aItemId Id for thumbnails to be updated.
-     * @param aModified new MDS timestamp
-     * @return ETrue, if given timestamp was newer than in DB
-     */     
-    TBool CheckModifiedL( const TThumbnailId aItemId, const TInt64 aModified );    
-    
-    /**
-     * Fetches thumbnails from store to be moved.
-     *
-     * @since S60 v5.0
-     * @param aItemId Id for thumbnails to be updated.
-     * @param aThumbnails Array for thumbnails to be moved.
-     */  
-    void FetchThumbnailsL(TThumbnailId aItemId, RArray < TThumbnailDatabaseData* >& aThumbnails);
-    
-    /**
-     * Stores thumbnails in to new store.
-     *
-     * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
-     */  
-    void StoreThumbnailsL(const TDesC& aNewPath, RArray < TThumbnailDatabaseData* >& aThumbnails);
-    
-    /**
-     * Stores thumbnails in to new store.
-     *
-     * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
      */  
     TInt CheckImeiL();
     
     /**
-     * Stores thumbnails in to new store.
+     * Check version of db
      *
      * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
      */  
     TInt CheckVersionL();
     
     /**
-     * Stores thumbnails in to new store.
+     * Check mediaid of store
      *
      * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
      */  
     TInt CheckMediaIDL();
     
     /**
-     * Stores thumbnails in to new store.
+     * Add version and IMEI to db
      *
      * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
      */  
     void AddVersionAndImeiL();
     
     /**
-     * Stores thumbnails in to new store.
+     * Reset TNID column
      *
      * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
      */  
-    void ResetThumbnailIDs();
+    TInt ResetThumbnailIDs();
     
     /**
-     * Stores thumbnails in to new store.
+     * Update IMEI to db
      *
      * @since S60 v5.0
-     * @param aNewPath New path for thumbnails.
-     * @param aThumbnails Array for thumbnails to be moved.
      */
-    void UpdateImeiL();
+    TInt UpdateImeiL();
     
     /**
      * Checks that database rowids match.
@@ -444,7 +342,22 @@ public:
     
     TInt CheckRowIDsL();
     
+    /**
+     * Check is disk full
+     *
+     * @since S60 v5.0
+     */
     TBool IsDiskFull();
+    
+    /**
+     * Checks timestamp of blacklisted entry to timestamp of file, from
+     * which thumbnail entry was created, in filesystem
+     *
+     * @param aPath Path from which thumbnail created
+     * @param aModified current timestampt
+     * @contains indication whether file modified
+     */
+    TBool CheckModifiedByPathL( const TDesC& aPath, const TInt64 aModified, TBool& modifiedChanged);
 
 private:
     /**
@@ -463,13 +376,41 @@ private:
      * @since S60 v5.0
      */
     void ConstructL();
+    
+    /**
+     * Starts constructing database
+     *
+     * @since S60 v5.0
+     */
+    void PrepareDbL();
+    
+    /**
+     * Open database
+     *
+     * @since S60 v5.0
+     */
+    TInt OpenDatabaseL();
+    
+    /**
+     * Open database
+     *
+     * @since S60 v5.0
+     */
+    TInt OpenDatabaseFileL();
 
     /**
-     * Create database tables.
+     * Construct database tables
      *
      * @since S60 v5.0
      */
     void CreateTablesL();
+    
+    /**
+     * Delete and create database
+     *
+     * @since S60 v5.0
+     */
+    void RecreateDatabaseL( const TBool aDelete);
 
     /**
      * Stores thumbnail image.
@@ -486,7 +427,7 @@ private:
      */
     void StoreThumbnailL( const TDesC& aPath, const TDes8& aData, const TSize&
         aSize, const TSize& aOriginalSize, const TThumbnailFormat& aFormat, TInt aFlags, 
-        const TThumbnailSize& aThumbnailSize, const TThumbnailId aThumbnailId = 0,
+        const TThumbnailSize& aThumbnailSize, const TInt64 aModified,
         const TBool aThumbFromPath = ETrue);
 
     /**
@@ -497,8 +438,7 @@ private:
      * @param aThumbnailId ID of the thumbnail
      * @param aThumbnailSize Associated size of the thumbnail to be deleted
      */
-    TBool FindDuplicateL( const TDesC& aPath, const TThumbnailId aThumbnailId,
-                          const TThumbnailSize& aThumbnailSize );    
+    TBool FindDuplicateL( const TDesC& aPath, const TThumbnailSize& aThumbnailSize );    
     
     /**
      * Flush RAM cache containing generated TNs to persistent storage.
@@ -522,6 +462,8 @@ private:
      */
     void StopAutoFlush();
     
+    void StartMaintenance();
+    
     /**
      * Callback for harvesting complete timer
      *
@@ -530,35 +472,47 @@ private:
     static TInt AutoFlushTimerCallBack(TAny* aAny);
     
     /**
-     * Checks timestamp of blacklisted entry to timestamp of file, from
-     * which thumbnail entry was created, in filesystem
+     * Callback for maintenance timer
      *
-     * @param aPath Path from which thumbnail created
-     * @param aTempTable Indication whether data in temp table
-     * @param aModified On return contains indication whether file modified
+     * @since S60 v5.0
      */
-    void CheckModifiedByPathL( const TDesC& aPath, TBool aTempTable, TBool& aModified  );
-    
-    /**
-     * Checks timestamp of blacklisted entry to timestamp of file, from
-     * which thumbnail entry was created, in filesystem
-     *
-     * @param aId Thumbnail id
-     * @param aTempTable Indication whether data in temp table
-     * @param aModified On return contains indication whether file modified
-     */
-    void CheckModifiedByIdL( TUint32 aId, TBool aTempTable, TBool& aModified  );
+    static TInt MaintenanceTimerCallBack(TAny* aAny);
     
     /**
     * Touches blacklisted items
     *
     */
-    void PrepareBlacklistedItemsForRetry();
+    void PrepareBlacklistedItemsForRetryL();
+    
+    /**
+    * Deletes thumbs added to Deleted table
+    *
+    */
+    TInt DeleteMarkedL();
+    
+    /**
+    * Checks if thumbnail source files are still in the file system.
+    * If not, delete corresponding thumbs.
+    *
+    * @return ETrue, if finished.
+    */
+    TBool FileExistenceCheckL();
+    
+    /**
+     * Strips drive letter from URI.
+     *
+     * @since S60 v5.0
+     * @param aPath Path.
+     */
+    void StripDriveLetterL( TDes& aPath );
     
 public : // From MThumbnailStoreDiskSpaceNotifierObserver
     void HandleDiskSpaceNotificationL(TBool aDiskFull);
 
     void HandleDiskSpaceError(TInt aError);
+    
+private: //From MTMActivityManagerObserver
+    void ActivityChanged(const TBool aActive);
     
 private:
     // data
@@ -602,17 +556,35 @@ private:
 #ifdef _DEBUG
     TUint32 iThumbCounter;
 #endif
+
     /**
      * Periodic timer handling automatic flushing of db cache
      */
     CPeriodic* iAutoFlushTimer;
-    
+
+    /**
+     * Periodic timer handling db maintenance
+     */
+    CPeriodic* iMaintenanceTimer; 
+	   
     /**
     * Notifier for situations where free disk space runs out.
     */
     CThumbnailStoreDiskSpaceNotifierAO* iDiskFullNotifier;
     
     TBool iDiskFull;
+    
+    CTMActivityManager* iActivityManager;
+    
+    // device idle
+    TBool iIdle;
+    
+    // delete thumbs
+    TBool iDeleteThumbs;
+    
+    // check if thumb source files still exist
+    TBool iCheckFilesExist;
+    TInt64 iLastCheckedRowID;
 };
 // End of File
 

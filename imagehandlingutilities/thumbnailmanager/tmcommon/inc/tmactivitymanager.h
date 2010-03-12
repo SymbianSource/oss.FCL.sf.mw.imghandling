@@ -16,6 +16,7 @@
 */
 
 #include <e32base.h>
+#include <hwrmlight.h>
 
 #ifndef TMACTIVITYMANAGER_H
 #define TMACTIVITYMANAGER_H
@@ -25,12 +26,12 @@ class MTMActivityManagerObserver
 
 {
 public :
-    virtual void ActivityDetected() = 0;
-    virtual void InactivityDetected() = 0;
+    virtual void ActivityChanged(const TBool aActive) = 0;
 };
 
 
-class CTMActivityManager : public CActive
+class CTMActivityManager : public CActive,
+                           public MHWRMLightObserver
 
 {
 public:
@@ -53,6 +54,7 @@ public:
     void Start();
     void Reset();
     void Stop();
+    TBool IsInactive();
 
 
 protected: // from CActive
@@ -63,8 +65,11 @@ protected: // from CActive
 protected:
     CTMActivityManager(MTMActivityManagerObserver* aObserver, TInt aTimeout);
     void ConstructL();
-
-
+    void NotifyObserver();
+    
+private: //From MHWRMLightObserver
+    void LightStatusChanged(TInt aTarget, CHWRMLight::TLightStatus aStatus);
+    
 protected:
     enum TWatch { ENone = 0, EWaitingForInactivity, EWaitingForActivity };
 
@@ -73,7 +78,15 @@ protected:
     TWatch iWatch;
     MTMActivityManagerObserver* iObserver; ///The observer of activity status
     TInt iTimeout; ///Current inactivity period
+    
+    //Backlight control 
+    CHWRMLight* iLight;
+    //backlight status
+    TBool iLights;
 
+    //previous status
+    TInt iPreviousStatus;
+    TBool iFirstRound;
 };
 
 #endif // TMACTIVITYMANAGER_H

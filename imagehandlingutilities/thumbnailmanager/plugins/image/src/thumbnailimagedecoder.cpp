@@ -20,10 +20,10 @@
 //INCLUDE FILES
 #include <e32base.h>
 #include <imageconversion.h>
-#include <exifread.h>
+#include <ExifRead.h>
 #include <e32math.h>
 
-#include <iclextjpegapi.h>
+#include <IclExtJpegApi.h>
 #include "thumbnailimagedecoder.h"
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"

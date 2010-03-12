@@ -41,12 +41,12 @@ CThumbnailGenerateTask::CThumbnailGenerateTask( CThumbnailTaskProcessor&
     const TDataType* aMimeType, CThumbnailManager::TThumbnailFlags aFlags,
     const TSize& aSize, TDisplayMode aDisplayMode, TInt aPriority,
     RArray < TThumbnailPersistentSize >* aMissingSizes, const TDesC& aTargetUri,
-    TThumbnailSize aThumbnailSize, const TThumbnailId aThumbnailId, 
+    TThumbnailSize aThumbnailSize, const TInt64 aModified, 
     const CThumbnailManager::TThumbnailQualityPreference aQualityPreference ): 
     CThumbnailTask( aProcessor, aPriority ), iServer( aServer ), 
     iFlags( aFlags ), iSize( aSize ), iDisplayMode( aDisplayMode ),
     iMissingSizes( aMissingSizes ), iTargetUri( aTargetUri ),
-    iThumbnailSize( aThumbnailSize ), iThumbnailId(aThumbnailId),
+    iThumbnailSize( aThumbnailSize ), iModified(aModified),
     iQualityPreference( aQualityPreference )
     {
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CThumbnailGenerateTask()", this);
@@ -354,7 +354,7 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
                 iBitmap, iOriginalSize, (*iMissingSizes)[ i ].iSize, (*iMissingSizes)[ i ].iCrop, iDisplayMode,
-                KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iThumbnailId, iScaledBitmapToPool, iEXIF );
+                KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF );
             CleanupStack::PushL( scaleTask );
             
             TInt err1 = KErrNone;
@@ -411,7 +411,7 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
         complTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
             iBitmap, iOriginalSize, iSize, iFlags& CThumbnailManager
             ::ECropToAspectRatio, iDisplayMode, KMaxPriority, iTargetUri,
-            iThumbnailSize, iThumbnailId, iScaledBitmapToPool, iEXIF );
+            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF );
         CleanupStack::PushL( complTask );
         
         TInt err1 = KErrNone;
@@ -482,12 +482,12 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
     if(iFilename != KNullDesC)
         {
         iServer.StoreForPathL( iFilename )->StoreThumbnailL( 
-            iFilename, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iThumbnailId, EFalse, ETrue );
+            iFilename, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, EFalse, ETrue );
         }
     else if(iTargetUri != KNullDesC)
         {
         iServer.StoreForPathL( iTargetUri )->StoreThumbnailL( 
-            iTargetUri, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iThumbnailId, EFalse, ETrue );
+            iTargetUri, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, EFalse, ETrue );
         }
 
     CleanupStack::PopAndDestroy( tempBitmap );
@@ -506,10 +506,12 @@ void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOr
     // error code just results in applications showing their default bitmap. 
     if( aError != KErrNone && (iFilename != KNullDesC || iTargetUri != KNullDesC ))
         {
-        if ( aError == KErrNotSupported ||
+        if (aError == KErrNotFound ||
+            aError == KErrNotSupported ||
             aError == KErrCorrupt ||
             aError == KErrCompletion ||
-            aError == KErrUnderflow)
+            aError == KErrUnderflow ||
+            aError == KErrNotReady)
             {
         
         if(iMissingSizes)

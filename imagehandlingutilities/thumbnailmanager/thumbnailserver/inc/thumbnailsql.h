@@ -53,10 +53,6 @@ _LIT8( KThumbnailCreateInfoTable, "CREATE TABLE ThumbnailInfo ("
 _LIT8( KThumbnailCreateInfoDataTable, "CREATE TABLE ThumbnailInfoData ("
         // If Thumbnail is stored in SQL then Data is NOT NULL
         "Data BLOB);");
-		
-//Create index for speedup DB searches 
-_LIT8( KThumbnailCreateInfoTableIndex1, "CREATE INDEX idx1 ON ThumbnailInfo(Path, Size);");
-_LIT8( KThumbnailCreateInfoTableIndex2, "CREATE INDEX idx2 ON ThumbnailInfo(TNId, Size);");
 
 //temp table is identical to actual main table except it's not persistent
 _LIT8( KThumbnailCreateTempInfoTable, "CREATE TEMP TABLE TempThumbnailInfo ("
@@ -85,6 +81,15 @@ _LIT8( KThumbnailVersionTable, "CREATE TABLE ThumbnailVersion ("
         "Minor INTEGER,"
         "IMEI TEXT COLLATE NOCASE);");
 
+// deleted thumbs table
+_LIT8( KThumbnailDeletedTable, "CREATE TABLE ThumbnailDeleted ("
+        // Assosiacted object in file system
+        "Path TEXT UNIQUE COLLATE NOCASE);");
+
+//Create index for speedup DB searches 
+_LIT8( KThumbnailCreateInfoTableIndex1, "CREATE INDEX idx1 ON ThumbnailInfo(Path, Size);");
+_LIT8( KThumbnailCreateDeletedTableIndex, "CREATE INDEX idx4 ON ThumbnailDeleted(Path);");
+
 _LIT8( KThumbnailMoveFromTempInfoToMainTable, "INSERT INTO ThumbnailInfo SELECT * FROM TempThumbnailInfo;");
 _LIT8( KThumbnailMoveFromTempDataToMainTable, "INSERT INTO ThumbnailInfoData SELECT * FROM TempThumbnailInfoData;");
 
@@ -104,33 +109,26 @@ _LIT8( KThumbnailCommitTransaction, "COMMIT;" );
 _LIT8( KThumbnailRollbackTransaction, "ROLLBACK;" );
 
 _LIT8( KThumbnailInsertThumbnailInfoByPathAndId, "INSERT INTO TempThumbnailInfo "
-    "(Path,TNId,Size,Format,Width,Height,OrigWidth,OrigHeight,Flags,Orientation,ThumbFromPath,Modified) ""VALUES "
-    "(:Path,:TNId,:Size,:Format,:Width,:Height,:OrigWidth,:OrigHeight,:Flags,:Orient,:ThumbFromPath,:Modified);" );
+    "(Path,Size,Format,Width,Height,OrigWidth,OrigHeight,Flags,Orientation,ThumbFromPath,Modified) ""VALUES "
+    "(:Path,:Size,:Format,:Width,:Height,:OrigWidth,:OrigHeight,:Flags,:Orient,:ThumbFromPath,:Modified);" );
 
 _LIT8( KThumbnailInsertTempThumbnailInfoData, "INSERT INTO TempThumbnailInfoData (Data) VALUES (:Data);" );
 
-_LIT8( KThumbnailSelectSizeByPath, "SELECT Size, TNId FROM ThumbnailInfo WHERE Path = :Path ORDER BY Size DESC;" );
+_LIT8( KThumbnailSelectSizeByPath, "SELECT Size FROM ThumbnailInfo "
+        "WHERE NOT EXISTS (SELECT Path FROM ThumbnailDeleted "
+        "WHERE ThumbnailInfo.Path = ThumbnailDeleted.Path) "
+        "AND Path = :Path ORDER BY Size DESC;" );
 
-_LIT8( KThumbnailSelectTempSizeByPath, "SELECT Size, TNId FROM TempThumbnailInfo WHERE Path = :Path ORDER BY Size DESC;" );
-
-_LIT8( KThumbnailSelectById, "SELECT * "
-        "FROM ThumbnailInfo "
-        "JOIN ThumbnailInfoData "
-        "ON ThumbnailInfo.RowID = ThumbnailInfoData.RowID "
-        "WHERE TNId = :TNId" );
-
-_LIT8( KThumbnailSelectTempById, "SELECT * "
-        "FROM TempThumbnailInfo "
-        "JOIN TempThumbnailInfoData "
-        "ON TempThumbnailInfo.RowID = TempThumbnailInfoData.RowID "
-        "WHERE TNId = :TNId" );
+_LIT8( KThumbnailSelectTempSizeByPath, "SELECT Size FROM TempThumbnailInfo WHERE Path = :Path ORDER BY Size DESC;" );
 
 //query by Path
 _LIT8( KThumbnailSelectInfoByPath, "SELECT ThumbnailInfo.Format, ThumbnailInfoData.Data, ThumbnailInfo.Width, ThumbnailInfo.Height, ThumbnailInfo.Flags "
         "FROM ThumbnailInfo "
         "JOIN ThumbnailInfoData "
         "ON ThumbnailInfo.RowID = ThumbnailInfoData.RowID "
-        "WHERE ThumbnailInfo.Path = :Path AND ThumbnailInfo.Size = :Size;");
+        "WHERE NOT EXISTS (SELECT Path FROM ThumbnailDeleted "
+        "WHERE ThumbnailInfo.Path = ThumbnailDeleted.Path) " 
+        "AND ThumbnailInfo.Path = :Path AND ThumbnailInfo.Size = :Size;");
 
 _LIT8( KThumbnailSelectTempInfoByPath, "SELECT TempThumbnailInfo.Format, TempThumbnailInfoData.Data, TempThumbnailInfo.Width, TempThumbnailInfo.Height, TempThumbnailInfo.Flags "
         "FROM TempThumbnailInfo "
@@ -138,41 +136,9 @@ _LIT8( KThumbnailSelectTempInfoByPath, "SELECT TempThumbnailInfo.Format, TempThu
         "ON TempThumbnailInfo.RowID = TempThumbnailInfoData.RowID "
         "WHERE TempThumbnailInfo.Path = :Path AND TempThumbnailInfo.Size = :Size;");
 
-//query by Id
-_LIT8( KThumbnailSelectInfoById, "SELECT ThumbnailInfo.Format, ThumbnailInfoData.Data, ThumbnailInfo.Width, ThumbnailInfo.Height, ThumbnailInfo.Flags "
-        "FROM ThumbnailInfo "
-        "JOIN ThumbnailInfoData "
-        "ON ThumbnailInfo.RowID = ThumbnailInfoData.RowID "
-        "WHERE TNId = :TNId AND Size = :Size;" );
-
-_LIT8( KThumbnailSelectTempInfoById, "SELECT TempThumbnailInfo.Format, TempThumbnailInfoData.Data, TempThumbnailInfo.Width, TempThumbnailInfo.Height, TempThumbnailInfo.Flags "
-        "FROM TempThumbnailInfo "
-        "JOIN TempThumbnailInfoData "
-        "ON TempThumbnailInfo.RowID = TempThumbnailInfoData.RowID "
-        "WHERE TNId = :TNId AND Size = :Size;" );
-		
-//query by Idv2
-_LIT8( KThumbnailSelectInfoByIdv2, "SELECT ThumbnailInfo.Format, ThumbnailInfoData.Data, ThumbnailInfo.Width, ThumbnailInfo.Height, ThumbnailInfo.Flags "
-        "FROM ThumbnailInfo "
-        "JOIN ThumbnailInfoData "
-        "ON ThumbnailInfo.RowID = ThumbnailInfoData.RowID "
-        "WHERE TNId = :TNId AND (Size = :SizeImage OR Size = :SizeVideo OR Size = :SizeAudio);" );
-
-_LIT8( KThumbnailSelectTempInfoByIdv2, "SELECT TempThumbnailInfo.Format, TempThumbnailInfoData.Data, TempThumbnailInfo.Width, TempThumbnailInfo.Height, TempThumbnailInfo.Flags "
-        "FROM TempThumbnailInfo "
-        "JOIN TempThumbnailInfoData "
-        "ON TempThumbnailInfo.RowID = TempThumbnailInfoData.RowID "
-        "WHERE TNId = :TNId AND (Size = :SizeImage OR Size = :SizeVideo OR Size = :SizeAudio);" );		
 
 _LIT8( KThumbnailSelectSettings, "SELECT Version FROM ThumbnailSettings;" );
 
-//qyery Path by ID
-_LIT8( KThumbnailSelectPathByID, "SELECT Path FROM ThumbnailInfo WHERE TNId = :TNId;"  );
-_LIT8( KThumbnailSelectTempPathByID, "SELECT Path FROM TempThumbnailInfo WHERE TNId = :TNId;");
-
-//query Path and Modified by ID
-_LIT8( KThumbnailSelectPathModifiedByID, "SELECT Path, Modified FROM ThumbnailInfo WHERE TNId = :TNId;"  );
-_LIT8( KThumbnailSelectTempPathModifiedByID, "SELECT Path, Modified FROM TempThumbnailInfo WHERE TNId = :TNId;");
 
 _LIT( KThumbnailSqlParamData, ":Data" );
 _LIT( KThumbnailSqlParamFlags, ":Flags" );
@@ -182,7 +148,6 @@ _LIT( KThumbnailSqlParamHeight, ":Height" );
 _LIT( KThumbnailSqlParamOriginalWidth, ":OrigWidth" );
 _LIT( KThumbnailSqlParamOriginalHeight, ":OrigHeight" );
 _LIT( KThumbnailSqlParamFormat, ":Format" );
-_LIT( KThumbnailSqlParamId, ":TNId" );
 _LIT( KThumbnailSqlParamSize, ":Size" );
 _LIT( KThumbnailSqlParamTNPath, ":TNPath" );
 _LIT( KThumbnailSqlParamMajor, ":Major" );
@@ -196,6 +161,7 @@ _LIT( KThumbnailSqlParamOrientation, ":Orient" );
 _LIT( KThumbnailSqlParamThumbFromPath, ":ThumbFromPath" );
 _LIT( KThumbnailSqlParamModified, ":Modified" );
 _LIT( KThumbnailSqlParamFlag, ":Flag" );
+_LIT( KThumbnailSqlParamLimit, ":Limit" );
 
 //Delete by path
 _LIT8( KThumbnailSqlSelectRowIDInfoByPath, "SELECT ThumbnailInfo.RowID FROM ThumbnailInfo WHERE Path = :Path;" );
@@ -206,18 +172,20 @@ _LIT8( KTempThumbnailSqlDeleteInfoByPath, "DELETE FROM TempThumbnailInfo WHERE T
 _LIT8( KTempThumbnailSqlDeleteInfoDataByPath, "DELETE FROM TempThumbnailInfoData WHERE TempThumbnailInfoData.RowID = :RowID;" );
 
 
-//Delete by ID
-_LIT8( KThumbnailSqlSelectRowIDInfoByID, "SELECT ThumbnailInfo.RowID FROM ThumbnailInfo WHERE TNId = :TNId;" );
-_LIT8( KThumbnailSqlDeleteInfoByID, "DELETE FROM ThumbnailInfo WHERE ThumbnailInfo.RowID = :RowID;" );
-_LIT8( KThumbnailSqlDeleteInfoDataByID, "DELETE FROM ThumbnailInfoData WHERE ThumbnailInfoData.RowID = :RowID;" );
-_LIT8( KTempThumbnailSqlSelectRowIDInfoByID, "SELECT TempThumbnailInfo.RowID FROM TempThumbnailInfo WHERE TNId = :TNId LIMIT 1;" );
-_LIT8( KTempThumbnailSqlDeleteInfoByID, "DELETE FROM TempThumbnailInfo WHERE TempThumbnailInfo.RowID = :RowID;" );
-_LIT8( KTempThumbnailSqlDeleteInfoDataByID, "DELETE FROM TempThumbnailInfoData WHERE TempThumbnailInfoData.RowID = :RowID;" );
+// insert to deleted
+_LIT8( KThumbnailSqlInsertDeleted, "INSERT INTO ThumbnailDeleted (Path) VALUES (:Path);" );
+_LIT8 ( KThumbnailSqlFindDeleted, "SELECT * FROM ThumbnailDeleted WHERE Path = :Path;" );
 
+// delete marked
+_LIT8( KThumbnailSqlSelectMarked, "SELECT ThumbnailInfo.RowID FROM ThumbnailInfo "
+        "WHERE EXISTS (SELECT Path FROM ThumbnailDeleted "
+        "WHERE ThumbnailInfo.Path = ThumbnailDeleted.Path) LIMIT :Limit;" );
+_LIT8( KThumbnailSqlDeleteInfoByRowID, "DELETE FROM ThumbnailInfo WHERE ThumbnailInfo.RowID = :RowID;" );
+_LIT8( KThumbnailSqlDeleteInfoDataByRowID, "DELETE FROM ThumbnailInfoData WHERE ThumbnailInfoData.RowID = :RowID;" );
+_LIT8( KThumbnailSqlDeleteFromDeleted, "DELETE FROM ThumbnailDeleted "
+        "WHERE NOT EXISTS (SELECT Path FROM ThumbnailInfo "
+        "WHERE ThumbnailDeleted.Path = ThumbnailInfo.Path);" );
 
-//Update path by Id
-_LIT8( KTempThumbnailSqlUpdateById, "UPDATE TempThumbnailInfo SET Path = :Path WHERE TNId = :TNId" );
-_LIT8( KThumbnailSqlUpdateById, "UPDATE ThumbnailInfo SET Path = :Path WHERE TNId = :TNId" );
 
 //version commands
 _LIT8( KThumbnailInsertToVersion, "INSERT INTO ThumbnailVersion (IMEI, Minor, Major) VALUES (:IMEI, :Minor,:Major);" );
@@ -230,21 +198,13 @@ _LIT8( KThumbnailResetIDs, "UPDATE ThumbnailInfo SET TNId = NULL WHERE TNId NOT 
 //update IMEI
 _LIT8( KThumbnailUpdateIMEI, "UPDATE ThumbnailVersion SET IMEI = :IMEI" );
 
-//update ID by Path
-_LIT8( KTempThumbnailUpdateIdByPath, "UPDATE TempThumbnailInfo SET TNId = :TNId WHERE Path = :Path" );
-_LIT8( KThumbnailUpdateIdByPath, "UPDATE ThumbnailInfo SET TNId = :TNId WHERE Path = :Path" );
-
-//qyery Modification timestamp by ID
-_LIT8( KThumbnailSelectModifiedByID, "SELECT Modified FROM ThumbnailInfo WHERE TNId = :TNId AND ThumbFromPath = 1"  );
-_LIT8( KThumbnailSelectTempModifiedByID, "SELECT Modified FROM TempThumbnailInfo WHERE TNId = :TNId AND ThumbFromPath = 1");
-
 //query Modification timestamp by path
 _LIT8( KThumbnailSelectModifiedByPath, "SELECT Modified FROM ThumbnailInfo WHERE Path = :Path"  );
 _LIT8( KThumbnailSelectTempModifiedByPath, "SELECT Modified FROM TempThumbnailInfo WHERE Path = :Path");
 
 // query possible duplicates
-_LIT8 ( KTempFindDuplicate, "SELECT Path FROM TempThumbnailInfo WHERE Size = :Size AND (TNId = :TNId OR Path = :Path);" );
-_LIT8 ( KFindDuplicate, "SELECT Path FROM ThumbnailInfo WHERE Size = :Size AND (TNId = :TNId OR Path = :Path);" );
+_LIT8 ( KTempFindDuplicate, "SELECT Path FROM TempThumbnailInfo WHERE Path = :Path AND Size = :Size;" );
+_LIT8 ( KFindDuplicate, "SELECT Path FROM ThumbnailInfo WHERE Path = :Path AND Size = :Size;" );
 
 // check rowIDs
 _LIT8 ( KGetInfoRowID, "SELECT MAX (ThumbnailInfo.rowID) FROM ThumbnailInfo" );
@@ -252,5 +212,11 @@ _LIT8 ( KGetDataRowID, "SELECT MAX (ThumbnailInfoData.rowID) FROM ThumbnailInfoD
 
 //remove KThumbnailDbFlagBlacklisted flag
 _LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Modified = 0 WHERE Flags & :Flag" );
+
+// existence check
+_LIT8( KThumbnailSelectAllPaths, "SELECT ThumbnailInfo.RowID,Path FROM ThumbnailInfo "
+        "WHERE NOT EXISTS (SELECT Path FROM ThumbnailDeleted "
+        "WHERE ThumbnailInfo.Path = ThumbnailDeleted.Path) "
+        "AND ThumbnailInfo.RowID > :RowID ORDER BY ThumbnailInfo.RowID ASC LIMIT :Limit;" );
 
 #endif // THUMBNAILSQL_H

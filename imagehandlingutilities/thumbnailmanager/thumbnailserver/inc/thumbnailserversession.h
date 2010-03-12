@@ -212,14 +212,6 @@ private:
     TInt ChangePriority( const RMessage2& aMessage );
 
     /**
-     * Create thumbnails.
-     *
-     * @since S60 v5.0
-     * @param aMessage Message.
-     */
-    void CreateThumbnailsL( const RMessage2& aMessage );
-
-    /**
      * Delete thumbnails.
      *
      * @since S60 v5.0

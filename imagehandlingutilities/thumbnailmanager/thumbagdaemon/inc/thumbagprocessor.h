@@ -29,9 +29,9 @@
 #include <harvesterclient.h>
 #include <e32property.h>
 #include <mpxcollectionobserver.h>
-#include <hwrmlight.h>
 #include "tmactivitymanager.h"
 #include "tmformatobserver.h"
+#include "tmrpropertyobserver.h"
 
 //FORWARD DECLARATIONS
 class MMPXCollectionUtility;
@@ -46,9 +46,9 @@ class CThumbAGProcessor: public CActive,
                          public MMdEQueryObserver,
                          public MHarvesterEventObserver,
                          public MMPXCollectionObserver,
-                         public MHWRMLightObserver,
                          public MTMActivityManagerObserver,
-                         public MTMFormatObserver
+                         public MTMFormatObserver,
+                         public MTMRPropertyObserver
     {
 public:
 
@@ -102,12 +102,11 @@ private:
     /// See @ref MMPXCollectionObserver::HandleCollectionMediaL
     void HandleCollectionMediaL( const CMPXMedia& aMedia, TInt aError );
     
-private: //From MHWRMLightObserver
-    void LightStatusChanged(TInt aTarget, CHWRMLight::TLightStatus aStatus);
-    
 private: //From MTMActivityManagerObserver
-    void ActivityDetected();
-    void InactivityDetected();
+    void ActivityChanged(const TBool aActive);
+    
+private: //From MTMRPropertyObserver
+    void RPropertyNotification(const TInt aError, const TUid aKeyCategory, const TUint aPropertyKey, const TInt aValue);
     
 public:     
     
@@ -127,7 +126,7 @@ public:
      * @param aIDArray IDs for thumbnail creation
      * @param aForce pass ETrue if processor is forced to run without waiting harvesting complete
      */
-    void AddToQueueL( TObserverNotificationType aType, const RArray<TItemId>& aIDArray, TBool aPresent );
+    void AddToQueueL( TObserverNotificationType aType, const RArray<TItemId>& aIDArray, const RPointerArray<HBufC>& aObjectUriArray, TBool aPresent );
     
     /**
      * Calls Thumbnail Manager to create thumbnails
@@ -146,8 +145,6 @@ public:
     void RemoveFromQueues( const RArray<TItemId>& aIDArray, const TBool aRemoveFromDelete = EFalse);
     
     void SetForceRun( const TBool aForceRun );
-    
-    TBool IsInactive();
     
 protected:
     
@@ -237,6 +234,14 @@ private:
      * @since S60 v5.0
      */
     void CancelTimeout();
+   
+    /**
+     * Update KItemsLeft PS value
+     * 
+     * @since S60 v5.0
+ 	 * @param aDefine (re)define PS key before setting value
+     */
+    void UpdatePSValues(const TBool aDefine = EFalse);
        
 private:
     
@@ -252,10 +257,15 @@ private:
     
     RArray<TItemId> iAddQueue;
     RArray<TItemId> iModifyQueue;
-    RArray<TItemId> iRemoveQueue;
+    RPointerArray<HBufC> iRemoveQueue;
     RArray<TItemId> iQueryQueue;
     RArray<TItemId> iPlaceholderQueue;
+    //not processing queue, used to keep KItemsLeft PS correct
+    RArray<TItemId> i2ndRoundGenerateQueue;
+	//reference to current processing queue
+    RArray<TItemId>* iLastQueue;
     
+    TBool i2ndRound;    
     
     TBool iQueryActive;
     TBool iQueryReady;
@@ -279,23 +289,21 @@ private:
     //Set when running RunL() first time
     TBool iInit;
     
+    //2nd phase init after MDE session is open
+    TBool iInit2;
+    
     // auto create
     TBool iAutoImage;
     TBool iAutoVideo;
     TBool iAutoAudio;
     
-#ifdef _DEBUG
-    TUint32 iAddCounter;
-    TUint32 iModCounter;
-    TUint32 iDelCounter;
-#endif
-
+    // in case of modified files force TN update
     TBool iForceRun; 
+    // controlled by Photos application to run TN generation on foreground
+    TBool iForegroundRun;
 	//request pending in TNM side
     TBool iActive;
-    //PS key to get info server's idle status
-    RProperty iProperty;
-    
+   
     CTMFormatObserver* iFormatObserver;
    
     TBool iFormatting;
@@ -312,15 +320,14 @@ private:
     //overall status of device
     TBool iIdle;
     
-    //Backlight control 
-    CHWRMLight* iLight;
-	#ifdef _DEBUG 
-    TInt iLightMask;
-	#endif
-    //backlight status
-    TBool iLights;
-    
     CTMActivityManager* iActivityManager;
+    
+	//Observer foreground generation 
+    CTMRPropertyObserver* iForegroundGenerationObserver;
+    
+	//Previously notified amount of items in processing queues (add/modify)
+    TInt iPreviousItemsLeft;
+    TBool iPreviousDaemonProcessing; 
 };
 
 #endif // THUMBAGPROCESSOR_H

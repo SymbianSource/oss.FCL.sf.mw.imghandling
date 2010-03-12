@@ -82,15 +82,7 @@ public:
      * @since S60 v5.0
      * @param aId ID
      */
-    void QueryPathByIdL(TThumbnailId aId);
-    
-    /**
-     * Query Id by path
-     *
-     * @since S60 v5.0
-     * @param aUri the Path
-     */
-    void QueryIdByPathL(const TDesC& aUri);
+    void QueryPathByIdL(TThumbnailId aId, TBool aDelete);
     
     /**
      * Sets are values updated to db automatically
@@ -136,6 +128,8 @@ private:
      TBool iUpdateToDb;
      
      TFileName iUri;
+     
+     TBool iDelete;
 };
 
 #endif // THUMBNAILMDSQUERYTASK_H

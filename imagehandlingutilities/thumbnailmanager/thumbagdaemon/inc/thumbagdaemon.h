@@ -39,6 +39,9 @@ NONSHARABLE_CLASS( CThumbAGDaemon ): public CServer2,
                                      public MMdEObjectObserver,
                                      public MTMShutdownObserver,
                                      public MMdEObjectPresentObserver
+#ifdef MDS_URI_OBSERVER
+                                     ,public MMdEObjectObserverWithUri
+#endif
                                      
     {
 public:
@@ -97,6 +100,13 @@ public:
                                   TObserverNotificationType aType,
                                   const RArray<TItemId>& aObjectIdArray);
     
+#ifdef MDS_URI_OBSERVER
+    void HandleUriObjectNotification(CMdESession& aSession, 
+                            TObserverNotificationType aType,
+                            const RArray<TItemId>& aObjectIdArray,
+                            const RPointerArray<HBufC>& aObjectUriArray);
+#endif
+    
     void HandleObjectPresentNotification(CMdESession& aSession, 
                 TBool aPresent, const RArray<TItemId>& aObjectIdArray);
     
@@ -142,6 +152,13 @@ private:
      * @since S60 v5.2
      */
     void InitializeL();
+    
+    /**
+     * Callback for reconnect timer
+     *
+     * @since S60 v5.0
+     */
+    static TInt ReconnectCallBack(TAny* aAny);
 
 private:
 	
@@ -153,6 +170,9 @@ private:
     
     TBool iShutdown;
  
+    // reconnect timer
+    CPeriodic* iReconnect;
+    
 #ifdef _DEBUG
     TUint32 iAddCounter;
     TUint32 iModCounter;

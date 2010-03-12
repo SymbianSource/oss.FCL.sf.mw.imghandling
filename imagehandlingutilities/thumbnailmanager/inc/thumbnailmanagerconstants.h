@@ -43,17 +43,24 @@ const TInt KShutdown = 0x00000001;
 const TInt KMdSShutdown = 0x00000002;
 //used to signal from server side when it's idle
 const TInt KIdle = 0x00000004;
+//daemon exposes items in processing queues
+const TInt KItemsleft = 0x00000008;
+const TInt KForceBackgroundGeneration = 0x00000010;
+const TInt KMPXHarvesting = 0x00000020;
+const TInt KDaemonProcessing = 0x00000040;
 
 //insert to temp table first wo indexing and move data to main table as batch
-const TUint KMaxBatchItems = 18;
+const TUint KMaxBatchItems = 36;
+//how many items daemon will query at once from MDS
+const TUint KMaxQueryItems = 100;
 
-const TUint KMaxQueryItems = 1;
-
-// maximum number of active client queue requests
+// maximum number of active client side queue requests
 const TUint KMaxClientRequests = 2;
 
 // maximum number of active daemon requests
-const TUint KMaxDaemonRequests = 3;
+const TUint KMaxDaemonRequests = 2;
+
+const TUint KMdEReconnect = 100000; //100 ms
 
 const TUint KClientRequestTimeout = 60000000; //60 sec
 const TUint KClientRequestStartErrorTimeout = 100000; //100 ms
@@ -69,10 +76,19 @@ const TInt KHarvestingCompleteTimeout = 10000000; //10 sec
 
 const TInt KPSKeyTimeout = 10000000; //10 sec
 //Store's auto flush timeout
-const TInt KAutoFlushTimeout = 30000000; //30 sec
+const TInt KAutoFlushTimeout = 65; //65 sec
 
 // minimum background generation idle time seconds
-const TInt KBackgroundGenerationIdle = 2;
+const TInt KBackgroundGenerationIdle = 60;
+// minimum store maintenance idle time seconds
+const TInt KStoreMaintenanceIdle = 300; // 5 min
+// interval for store maintenance rounds
+const TInt KStoreMaintenancePeriodic = 100000; //100 ms
+
+// maximum number of rows deleted in one transaction
+const TInt KStoreMaintenanceDeleteLimit = 10;
+// maximum number of thumbs checked for source file existance
+const TInt KStoreMaintenanceExistLimit = 50;
 
 // video decoder timeout
 const TInt KVideoDecoderTimeout = 5000000; // 5 seconds
@@ -86,7 +102,7 @@ const TDisplayMode KStoreDisplayMode = EColor16M;
 //required amount of memory to keep bitmaps on RAM in bits
 const TInt KMemoryNeed = 5000000;
 
-const TInt64 KDiskFullThreshold = 1024*1024*1; // 1 MB
+const TInt64 KDiskFullThreshold = 1024*1024*10; // 10 MB
 
 _LIT( KThumbnailServerName, "ThumbnailServer" );
 _LIT( KThumbnailServerProcess, "*ThumbnailServer*" );
@@ -249,8 +265,17 @@ public:
      * Control flags set by the server for handling specific situations
      * (for example for distinguishing between preview thumbnails and
      * final thumbnails).
+	 * Control flags may be modified by server to signal client side what actually was done, like preview TN
      */
     TThumbnailControlFlags iControlFlags;
+    
+	
+    /**
+     * Original control flags set by the server for handling specific situations
+     * (for example for distinguishing between preview thumbnails and
+     * final thumbnails).
+     */
+    TThumbnailControlFlags iOriginalControlFlags;
     
     /**
      * Thumbnail's modify timestamp
@@ -365,8 +390,8 @@ enum TThumbnailServerRequest
     EChangePriority, 
 
     /**
-     * Create thumbnails for a file. File path is passed as a
-     * parameter.
+     * Deprecated
+     *
      */
     ECreateThumbnails, 
 
@@ -519,10 +544,6 @@ public:
  */
 enum TMDSQueryType
     {
-    /**
-     * Query Id by Path
-     */
-    EId,
     /**
      * Query Path by Id
      */

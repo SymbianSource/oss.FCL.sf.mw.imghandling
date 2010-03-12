@@ -23,8 +23,8 @@
 #include "thumbnailimagedecoderv3.h"
 #include "thumbnailmanageruids.hrh"
 #include "thumbnaillog.h"
-#include <metadatautility.h>
-#include <metadatafieldcontainer.h>
+#include <MetaDataUtility.h>
+#include <MetaDataFieldContainer.h>
 #include "thumbnailmanagerconstants.h"
 
 
@@ -82,6 +82,7 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     TDataType& aMimeType  , const CThumbnailManager::TThumbnailFlags aFlags,
     const TDisplayMode /*aDisplayMode*/, const CThumbnailManager::TThumbnailQualityPreference /*aQualityPreference*/  )
     {   
+    TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - rfile " );
     CMetaDataUtility* metaDataUtil = CMetaDataUtility::NewL();
     CleanupStack::PushL( metaDataUtil );
     
@@ -129,7 +130,8 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8* /* aBuffer 
     TDataType& /*aMimeType */, const CThumbnailManager::TThumbnailFlags /* aFlags */,
     const TDisplayMode /* aDisplayMode */, const CThumbnailManager::TThumbnailQualityPreference /*aQualityPreference*/ )
     {
-
+    TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - buffer" );
+	__ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbnailAudioProvider::GetThumbnailL"), KErrNotSupported));
     }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +141,8 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8* /* aBuffer 
 //
 void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8& /*aBuffer */)
     {
-    User::Leave( KErrNotSupported );
+    TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - buffer no mime" );
+	__ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbnailAudioProvider::GetThumbnailL"), KErrNotSupported));
     }
 
 // ---------------------------------------------------------------------------

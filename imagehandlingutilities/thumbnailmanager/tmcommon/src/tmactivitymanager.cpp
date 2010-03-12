@@ -24,6 +24,7 @@
 //
 CTMActivityManager* CTMActivityManager::NewL(MTMActivityManagerObserver* aObserver, TInt aTimeout)
     {
+    TN_DEBUG1( "CTMActivityManager::NewL()");
     CTMActivityManager* self = new (ELeave) CTMActivityManager(aObserver, aTimeout);
     CleanupStack::PushL(self);
     self->ConstructL();
@@ -36,8 +37,9 @@ CTMActivityManager* CTMActivityManager::NewL(MTMActivityManagerObserver* aObserv
 // ---------------------------------------------------------------------------
 //
 CTMActivityManager::CTMActivityManager(MTMActivityManagerObserver* aObserver, TInt aTimeout)
-: CActive(CActive::EPriorityHigh), iObserver(aObserver), iTimeout(aTimeout)
-    {   
+: CActive(CActive::EPriorityHigh), iObserver(aObserver), iTimeout(aTimeout), iPreviousStatus(KErrNotFound)
+    {
+    TN_DEBUG1( "CTMActivityManager::CTMActivityManager()");
     CActiveScheduler::Add(this);
     }
 
@@ -47,6 +49,9 @@ CTMActivityManager::CTMActivityManager(MTMActivityManagerObserver* aObserver, TI
 //
 CTMActivityManager::~CTMActivityManager()
     {
+    TN_DEBUG1( "CTMActivityManager::~CTMActivityManager()");
+    delete iLight;
+    iLight = NULL;
     Cancel();
     iTimer.Close();
     }
@@ -57,6 +62,7 @@ CTMActivityManager::~CTMActivityManager()
 //
 void CTMActivityManager::ConstructL()
     {
+    TN_DEBUG1( "CTMActivityManager::ConstructL()");
     iTimer.CreateLocal();
     }
 
@@ -66,6 +72,7 @@ void CTMActivityManager::ConstructL()
 //
 void CTMActivityManager::SetTimeout(TInt aTimeout)
     {
+    TN_DEBUG1( "CTMActivityManager::SetTimeout()");
     iTimeout = aTimeout;
     Reset();
     }
@@ -76,6 +83,9 @@ void CTMActivityManager::SetTimeout(TInt aTimeout)
 //
 void CTMActivityManager::Reset()
     {
+    TN_DEBUG1( "CTMActivityManager::Reset()");
+    delete iLight;
+    iLight = NULL;
     Cancel();
     Start();
     }
@@ -85,6 +95,7 @@ void CTMActivityManager::Reset()
 // ---------------------------------------------------------------------------
 void CTMActivityManager::DoCancel()
     {
+    TN_DEBUG1( "CTMActivityManager::DoCancel()");
     iTimer.Cancel();
     iWatch = ENone;
     }
@@ -95,11 +106,20 @@ void CTMActivityManager::DoCancel()
 //
 void CTMActivityManager::Start()
     {
-    if (!IsActive())
+    TN_DEBUG1( "CTMActivityManager::Start()");
+    
+    iFirstRound = ETrue;
+    
+    if(!iLight)
         {
-        iWatch = EWaitingForInactivity;
-        iTimer.Inactivity(iStatus, iTimeout);
+        TRAP_IGNORE(iLight = CHWRMLight::NewL(this));
+        }
+    
+    if( !IsActive() )
+        {
         SetActive();
+        TRequestStatus* statusPtr = &iStatus;
+        User::RequestComplete( statusPtr, KErrNone );
         }
     }
 
@@ -109,6 +129,22 @@ void CTMActivityManager::Start()
 //
 void CTMActivityManager::RunL()
     {
+    TN_DEBUG4( "CTMActivityManager::RunL(0x%08x) %d, observer = 0x%08x", this, iStatus.Int(), iObserver);
+    
+    if(iFirstRound)
+        {
+        TN_DEBUG1( "CTMActivityManager::RunL() iFirstRound");
+        iFirstRound = EFalse;
+        if (!IsActive())
+             {
+             iWatch = EWaitingForInactivity;
+             iTimer.Inactivity(iStatus, iTimeout);
+             SetActive();
+             }
+        NotifyObserver();
+        return;
+        }
+    
     if (iStatus == KErrNone)
         {
         if (iWatch == EWaitingForInactivity)
@@ -116,10 +152,9 @@ void CTMActivityManager::RunL()
             TInt inactivity = User::InactivityTime().Int();
             if (inactivity >= iTimeout)
                 {
-                if (iObserver)
-                    {
-                    iObserver->InactivityDetected();
-                    }
+                TN_DEBUG1( "CTMActivityManager::RunL() inactive");
+                NotifyObserver();
+
             if (!IsActive()) //observer might have called a Reset()
                 {
                 iTimer.Inactivity(iStatus,0);
@@ -133,17 +168,15 @@ void CTMActivityManager::RunL()
             }
         else if (iWatch == EWaitingForActivity)
             {
-            if (iObserver)
-                {
-                iObserver->ActivityDetected();
-                }
-            
+                TN_DEBUG1( "CTMActivityManager::RunL() active");
+                NotifyObserver();
+             
             if (!IsActive()) //observer might have called a Reset()
                 {
                 iTimer.Inactivity(iStatus,iTimeout);
                 iWatch = EWaitingForInactivity;
                 }
-        }
+            }
     
         if (!IsActive()) //observer might have called a Reset()
             {
@@ -154,6 +187,7 @@ void CTMActivityManager::RunL()
         {
         iWatch = ENone;
         }
+        TN_DEBUG1( "CTMActivityManager::RunL() end");
     }
 
 // ---------------------------------------------------------------------------
@@ -162,11 +196,10 @@ void CTMActivityManager::RunL()
 //
 TInt CTMActivityManager::RunError(TInt aError)
     {
-    TN_DEBUG1( "CTMActivityManager::RunError()");
+    TN_DEBUG2( "CTMActivityManager::RunError() %d", aError);
     
     if (aError != KErrNone)
         {
-        TN_DEBUG2( "CTMActivityManager::RunError = %d", aError );
         Reset();
         }
     
@@ -174,3 +207,63 @@ TInt CTMActivityManager::RunError(TInt aError)
     return KErrNone;
     }
 
+// -----------------------------------------------------------------------------
+// IsInactive()
+// -----------------------------------------------------------------------------
+//
+TBool CTMActivityManager::IsInactive()
+    {
+#ifdef _DEBUG
+TN_DEBUG3( "CTMActivityManager::IsInactive()= %d, iLights = %d", User::InactivityTime().Int(), iLights);
+#endif
+
+    //if lights are off or inactivity timer is less that target the device is not idle
+    if( User::InactivityTime() >= TTimeIntervalSeconds(iTimeout) || !iLights )
+      {
+      TN_DEBUG1( "CTMActivityManager::IsInactive() ETrue");
+      return ETrue;
+      }
+    TN_DEBUG1( "CTMActivityManager::IsInactive() EFalse");
+    return EFalse;
+    }
+
+// -----------------------------------------------------------------------------
+// LightStatusChanged()
+// -----------------------------------------------------------------------------
+//
+void CTMActivityManager::LightStatusChanged(TInt /*aTarget*/, CHWRMLight::TLightStatus aStatus)
+    {
+    TN_DEBUG2( "CTMActivityManager::LightStatusChanged() aStatus == %d", aStatus);
+    
+     if( aStatus == CHWRMLight::ELightOff)
+        {
+        TN_DEBUG1( "CTMActivityManager::LightStatusChanged() -- OFF");
+        iLights = EFalse;
+        }
+    else
+        {
+        TN_DEBUG1( "CTMActivityManager::LightStatusChanged() -- ON");
+        iLights = ETrue;
+        }
+     
+        NotifyObserver();
+    }
+
+// -----------------------------------------------------------------------------
+// NotifyObserver()
+// -----------------------------------------------------------------------------
+//
+void CTMActivityManager::NotifyObserver()
+    {
+    TN_DEBUG1( "void CTMAActivityManager::NotifyObserver()");
+    TBool status = IsInactive();
+    
+    if( iPreviousStatus != status )
+        {
+        iPreviousStatus = status; 
+        if (iObserver)
+            {
+            iObserver->ActivityChanged(!status);
+            }
+        }
+    }
