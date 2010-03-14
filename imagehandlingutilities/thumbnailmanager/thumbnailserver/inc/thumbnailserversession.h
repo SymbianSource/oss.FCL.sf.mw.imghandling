@@ -256,11 +256,18 @@ private:
     /**
      * Update thumbnails by Thumbnail ID.
      * 
-     * 
      * @since S60 v5.0
      * @param aMessage Message.
      */
     void UpdateThumbnailsL( const RMessage2& aMessage );
+    
+    /**
+     * Checks if client thread is still alive and RMessage2 handle valid.
+     *
+     * @since S60 v5.0
+     * @param aMessage Message.
+     */
+    TBool ClientThreadAlive(RMessage2& aMessage);    
     
 private:
     // data

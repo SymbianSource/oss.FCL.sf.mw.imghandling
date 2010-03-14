@@ -169,6 +169,7 @@ void CThumbnailVideoProvider::GetThumbnailL( RFs& /*aFs*/,
 void CThumbnailVideoProvider::GetThumbnailL( RFs& /*aFs*/, TDesC8& /*aBuffer*/)
     {
     TN_DEBUG1( "CThumbnailVideoProvider::GetThumbnailL() - nothing to do" );
+    User::Leave( KErrNotSupported );
     }
 
 // ---------------------------------------------------------------------------

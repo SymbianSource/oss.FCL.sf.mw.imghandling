@@ -141,9 +141,9 @@ void CThumbnailDecodeTask::ThumbnailProviderReady( const TInt aError,
         return;
         }
       
-    if ( iMessage.Handle())
+    if ( ClientThreadAlive() )
        {
-       TRAP_IGNORE(iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap ));
+       TRAP_IGNORE(iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap, iRequestId ));
        const TSize bitmapSize = aBitmap->SizeInPixels();
        iBitmapHandle = aBitmap->Handle();
        aBitmap = NULL;

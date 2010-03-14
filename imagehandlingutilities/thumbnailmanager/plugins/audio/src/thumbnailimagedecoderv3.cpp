@@ -198,18 +198,25 @@ void CThumbnailImageDecoderv3::CreateDecoderL()
     iDecoder = NULL;
 	
     CImageDecoder::TOptions options = ( CImageDecoder::TOptions )( 
-            CImageDecoder::EOptionNoDither | CImageDecoder::EPreferFastDecode );
+            CImageDecoder::EOptionNoDither | CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
  
     TRAPD( decErr, iDecoder = CExtJpegDecoder::DataNewL(
             CExtJpegDecoder::EHwImplementation, iFs, *iBuffer, options ));
     
     if ( decErr != KErrNone )
         {
+        TN_DEBUG2( "CThumbnailImageDecoderv3::CreateDecoderL() - HW CExtJpegDecoder failed %d", decErr);
+        
+        LeaveIfCorruptL( decErr );
+        
         TRAP( decErr, iDecoder = CExtJpegDecoder::DataNewL(
                 CExtJpegDecoder::ESwImplementation, iFs, *iBuffer, options ));
         
         if ( decErr != KErrNone )
-            {                                              
+            {                             
+            TN_DEBUG2( "CThumbnailImageDecoderv3::CreateDecoderL() - SW CExtJpegDecoder failed %d", decErr);
+            
+            LeaveIfCorruptL( decErr );
             // don't force any mime type
             TRAPD( decErr, iDecoder = CImageDecoder::DataNewL( iFs, *iBuffer, options ) );
             if ( decErr != KErrNone )
@@ -217,7 +224,7 @@ void CThumbnailImageDecoderv3::CreateDecoderL()
                 delete iBuffer;
                 iBuffer = NULL;
                 
-                TN_DEBUG1( "CThumbnailImageDecoderv3::CreateDecoderL() - error" );
+                TN_DEBUG2( "CThumbnailImageDecoderv3::CreateDecoderL() - CImageDecoder error %d", decErr );
                 
                 User::Leave( decErr );
                 }     
@@ -244,6 +251,20 @@ void CThumbnailImageDecoderv3::CreateDecoderL()
 const TSize& CThumbnailImageDecoderv3::OriginalSize()const
     {
     return iOriginalSize;
+    }
+
+// -----------------------------------------------------------------------------
+// CThumbnailImageDecoder3::LeaveIfCorruptL()
+// Leave is image is corrupted
+// -----------------------------------------------------------------------------
+//
+void CThumbnailImageDecoderv3::LeaveIfCorruptL(const TInt aError )
+    {
+    //no sense to try other codecs if image is corrupted
+    if( aError == KErrCorrupt || aError == KErrUnderflow)
+        {
+        User::Leave( aError );
+        }
     }
 
 //End of file

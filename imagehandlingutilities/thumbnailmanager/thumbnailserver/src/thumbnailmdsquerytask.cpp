@@ -90,8 +90,8 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
             if( iUpdateToDb)
                 {
                 //update IDs to database by Path
-                if (iMessage.Handle())
-                    {
+                if (ClientThreadAlive(EFalse))
+                    {               
                     TInt err = iMessage.Read( 0, iRequestParams );
                     if( err == KErrNone)
                         {
@@ -101,7 +101,7 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
                     }
                 }
     
-           // return path to client side            
+            // return path to client side            
             ReturnPath(object->Uri());
             }
         else if (iQueryType == EId )
@@ -119,7 +119,7 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
                 else
                     {
                     // add Id to message
-                    if (iMessage.Handle())
+                    if (ClientThreadAlive(EFalse))
                         {
                         TInt ret = iMessage.Read( 0, iRequestParams );
                         if( ret == KErrNone)
@@ -134,36 +134,48 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
             
             // complete the message with a code from which client side
             // knows to make a new request using the path
-            Complete( KThumbnailErrThumbnailNotFound );
-            ResetMessageData();
+            if (ClientThreadAlive(EFalse))
+                {  
+                Complete( KThumbnailErrThumbnailNotFound );
+                ResetMessageData();
+                }
             }
         else
             {
             TN_DEBUG1( "CThumbnailMDSQueryTask::HandleQueryCompleted() - Don't ever come here" );
-            Complete( KErrNotFound );
-            ResetMessageData();
+            if (ClientThreadAlive(EFalse))
+                {  
+                Complete( KErrNotFound );
+                ResetMessageData();
+                }
             }
         }
     else
         {
         TN_DEBUG1( "CThumbnailMDSQueryTask::HandleQueryCompleted() - No results." );
         
-	        if( iQueryType == EId )
-	            {
-	               if( iUpdateToDb)
-	                    {
-	                    TN_DEBUG2( "CThumbnailMDSQueryTask::HandleQueryCompleted() delete %S", &iUri );
-	                    TRAP_IGNORE( iServer.DeleteThumbnailsL( iUri ) );
-	                    }
-	               
-	            Complete( KThumbnailErrThumbnailNotFound );
-	            ResetMessageData();
-	            }
-	        else 
-	            {
-	            Complete( KErrNotFound );
-	            ResetMessageData();
-            	}
+        if( iQueryType == EId )
+            {
+            if( iUpdateToDb)
+                {
+                TN_DEBUG2( "CThumbnailMDSQueryTask::HandleQueryCompleted() delete %S", &iUri );
+                TRAP_IGNORE( iServer.DeleteThumbnailsL( iUri ) );
+                }
+               
+            if (ClientThreadAlive(EFalse))
+                {     
+                Complete( KThumbnailErrThumbnailNotFound );
+                ResetMessageData();
+                }
+            }
+        else 
+            {
+            if (ClientThreadAlive(EFalse))
+                {  
+                Complete( KErrNotFound );
+                ResetMessageData();
+                }
+            }
         }
    }
 
@@ -178,6 +190,15 @@ void CThumbnailMDSQueryTask::StartL()
 
     CThumbnailTask::StartL();
 
+    // get client thread
+    TInt err = iMessage.Client( iClientThread );
+    if (err != KErrNone)
+        {
+        TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - client thread not found", this);
+    
+        ResetMessageData();
+        }
+    
     // start query
     iQuery->FindL();
     }
@@ -232,20 +253,17 @@ void CThumbnailMDSQueryTask::QueryPathByIdL(TThumbnailId aId)
 //
 void CThumbnailMDSQueryTask::ReturnPath(const TDesC& aUri)
     {
-    if ( iMessage.Handle())
+    if ( ClientThreadAlive(EFalse) )
         {
         // add path to message
-        if (iMessage.Handle())
+        TInt ret = iMessage.Read( 0, iRequestParams );      
+        if(ret == KErrNone)
             {
-            TInt ret = iMessage.Read( 0, iRequestParams );      
-            if(ret == KErrNone)
-                {
-                TThumbnailRequestParams& params = iRequestParams();
-                params.iFileName = aUri;
-                ret = iMessage.Write( 0, iRequestParams );
-                }
+            TThumbnailRequestParams& params = iRequestParams();
+            params.iFileName = aUri;
+            ret = iMessage.Write( 0, iRequestParams );
             }
-    
+            
         // complete the message with a code from which client side
         // knows to make a new request using the path
         Complete( KThumbnailErrThumbnailNotFound );

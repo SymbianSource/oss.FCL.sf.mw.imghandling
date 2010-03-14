@@ -32,6 +32,7 @@
 #include "thumbnailmanagerconstants.h" // TThumbnailServerRequestId
 #include "thumbnailstore.h"     // TThumbnailPersistentSize
 #include "tmshutdownobserver.h"
+#include "tmformatobserver.h"
 
 // Needed for creating server thread.
 const TUint KDefaultHeapSize = 160 * 1024;
@@ -44,7 +45,6 @@ class MIHLScaler;
 class CThumbnailServerSession;
 class CThumbnailDiskUnmountObserver;
 class CThumbnailMemoryCardObserver;
-class CThumbnailFormatObserver;
 
 /**
  * Helper function to destroy all objects which are referred to
@@ -75,7 +75,8 @@ template <class K, class V> void ResetAndDestroyHashMap( RHashMap<K, V* > &
  */
 NONSHARABLE_CLASS( CThumbnailServer ): public CPolicyServer,
                                        public MMdESessionObserver,
-                                       public MTMShutdownObserver
+                                       public MTMShutdownObserver,
+                                       public MTMFormatObserver
     {
 public:
 
@@ -135,6 +136,9 @@ public:
     // from MTMShutdownObserver
     void ShutdownNotification();
 
+    //From MTMFormatObserver
+    void FormatNotification(TBool aFormat);    
+    
     /**
      * Adds bitmap to bitmap pool. Server assumes ownership of the bitmap and
      * implements reference counting to know when it is safe to delete
@@ -144,9 +148,10 @@ public:
      * @since S60 v5.0
      * @param aSession Server side session which owns the bitmap.
      * @param aBitmap Bitmap to be added to pool.
+     * @param aRequestId Session specific thumbnail request ID.
      */
     void AddBitmapToPoolL( CThumbnailServerSession* aSession, CFbsBitmap*
-        aBitmap );
+        aBitmap, TThumbnailServerRequestId aRequestId );
 
     /**
      * Store thumbnail.
@@ -572,6 +577,12 @@ public:
          * Not own.
          */
         CFbsBitmap* iBitmap;
+        
+        /**
+         * Request Id 
+         */
+        TThumbnailRequestId iRequestId;        
+        
         };
 
 private:
@@ -650,7 +661,7 @@ private:
     
     CThumbnailMemoryCardObserver* iMMCObserver;
     
-    CThumbnailFormatObserver* iFormatObserver;
+    CTMFormatObserver* iFormatObserver;
 
     /**
      * Databases for each drive, identified by drive (EDriveC, etc).

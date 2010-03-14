@@ -71,6 +71,9 @@ const TInt KPSKeyTimeout = 10000000; //10 sec
 //Store's auto flush timeout
 const TInt KAutoFlushTimeout = 30000000; //30 sec
 
+// minimum background generation idle time seconds
+const TInt KBackgroundGenerationIdle = 2;
+
 // video decoder timeout
 const TInt KVideoDecoderTimeout = 5000000; // 5 seconds
 

@@ -86,7 +86,7 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
 //
 void CThumbnailScaleTask::ConstructL()
     {
-    iServer.AddBitmapToPoolL( NULL, iOwnBitmap );
+    iServer.AddBitmapToPoolL( iRequestId.iSession, iOwnBitmap, iRequestId );
 
     // Successfully added bitmap to pool, we are no longer responsible for
     // deleting it directly.
@@ -362,20 +362,22 @@ void CThumbnailScaleTask::StoreAndCompleteL()
             }
         }    
     
-    if ( iMessage.Handle() )
+    if ( ClientThreadAlive() )
         {
         TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap handle to params");
         
-    	TThumbnailRequestParams& params = iParamsBuf();
-		iMessage.ReadL( 0, iParamsBuf );
-		params.iBitmapHandle = iScaledBitmap->Handle();
-	   
+        TThumbnailRequestParams& params = iParamsBuf();
+        iMessage.ReadL( 0, iParamsBuf );
+                    
         // if need to add scaled bitmap to pool
         if (iBitmapToPool)
             {
             TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap to pool");
             
-            iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap );
+            
+            params.iBitmapHandle = iScaledBitmap->Handle();
+            
+            iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap, iRequestId );
             iScaledBitmapHandle = params.iBitmapHandle;
             }    
 		

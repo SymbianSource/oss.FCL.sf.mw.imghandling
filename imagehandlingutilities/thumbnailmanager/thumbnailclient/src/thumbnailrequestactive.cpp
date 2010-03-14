@@ -192,6 +192,7 @@ void CThumbnailRequestActive::StartL()
             }
         }
     
+    iTimer->Cancel();
     iTimer->Start( KClientRequestTimeout, KClientRequestTimeout, 
                    TCallBack(TimerCallBack, this));
     SetActive();
@@ -244,7 +245,7 @@ void CThumbnailRequestActive::RunL()
         
         TN_DEBUG2( "CThumbnaiRequestActive::RunL() - file handle opened for %S", &iParams.iFileName );
         
-        iSession.RequestThumbnailL( iFile, iParams.iTargetUri, iParamsPckg, iStatus );
+        iSession.RequestThumbnailL( iFile, iParams.iFileName, iParamsPckg, iStatus );
         CleanupStack::PopAndDestroy( &iFile );
         
         iTimer->Start( KClientRequestTimeout, KClientRequestTimeout, 
@@ -382,10 +383,10 @@ void CThumbnailRequestActive::DoCancel()
 //
 void CThumbnailRequestActive::ReleaseServerBitmap()
     {
-    TN_DEBUG1( "CThumbnailRequestActive::ReleaseServerBitmap");
-    
     if ( iBitmapHandle && iSession.Handle())
         {
+    	TN_DEBUG1( "CThumbnailRequestActive::ReleaseServerBitmap");
+    
         iSession.ReleaseBitmap( iBitmapHandle );
         iBitmapHandle = 0;
         }

@@ -139,7 +139,7 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8* /* aBuffer 
 //
 void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8& /*aBuffer */)
     {
-
+    User::Leave( KErrNotSupported );
     }
 
 // ---------------------------------------------------------------------------

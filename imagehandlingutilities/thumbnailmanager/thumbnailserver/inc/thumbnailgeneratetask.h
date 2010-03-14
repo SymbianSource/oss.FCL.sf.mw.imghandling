@@ -134,6 +134,8 @@ private:
      * @param aOriginalSize Original size of bitmap.
      */
     void CreateBlackListedL( const TSize& aOriginalSize );
+    
+    void DoBlacklisting( const TInt aError, const TSize& aOriginalSize );
 
 private:
     // Data
