@@ -51,13 +51,15 @@ public:
      * @param aThumbnailSize Prededined size of thumbnail.
      * @return New CThumbnailScaleTask object.
      * @param aEXIF is origin EXIF.
+     * @param aRequestId Request ID.
      */
     static CThumbnailScaleTask* NewL( CThumbnailTaskProcessor& aProcessor,
         CThumbnailServer& aServer, const TDesC& aFilename, CFbsBitmap* aBitmap,
         const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
         TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
         const TThumbnailSize aThumbnailSize, const TInt64 aModified,
-        const TBool aBitmapToPool, const TBool aEXIF);
+        const TBool aBitmapToPool, const TBool aEXIF, 
+        const TThumbnailServerRequestId aRequestId);
 
     /**
      * Destructor
@@ -121,13 +123,15 @@ private:
      * @param aThumbnailSize Prededined size of thumbnail.
      * @return New CThumbnailScaleTask object.
      * @param aEXIF is origin EXIF.
+     * @param aRequestId Request ID.
      */
     CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor, CThumbnailServer&
         aServer, const TDesC& aFilename, CFbsBitmap* aBitmap, const TSize&
         aOriginalSize, const TSize& aTargetSize, TBool aCrop, TDisplayMode
         aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
         const TThumbnailSize aThumbnailSize, const TInt64 aModified,
-        const TBool aBitmapToPool, const TBool aEXIF);
+        const TBool aBitmapToPool, const TBool aEXIF, 
+        const TThumbnailServerRequestId aRequestId);
 
     /**
      * Symbian 2nd phase constructor can leave.

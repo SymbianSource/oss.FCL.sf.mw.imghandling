@@ -174,6 +174,8 @@ void CThumbnailGenerateTask::StartL()
     DoBlacklisting( providerErr, TSize(0,0) );
     
     User::LeaveIfError( providerErr );
+    
+    TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::StartL() end", this );
     }
 
 
@@ -354,7 +356,8 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
                 iBitmap, iOriginalSize, (*iMissingSizes)[ i ].iSize, (*iMissingSizes)[ i ].iCrop, iDisplayMode,
-                KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF );
+                KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF,
+                iRequestId);
             CleanupStack::PushL( scaleTask );
             
             TInt err1 = KErrNone;
@@ -401,17 +404,17 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                  iThumbnailSize == EVideoFullScreenThumbnailSize ||
                  iThumbnailSize == EAudioFullScreenThumbnailSize ||
                  iThumbnailSize == EImageFullScreenThumbnailSize )
-                      {
-                      TInt width = iSize.iWidth; 
-                      iSize.iWidth = iSize.iHeight;
-                      iSize.iHeight = width;
-                      }
+                {
+                TInt width = iSize.iWidth; 
+                iSize.iWidth = iSize.iHeight;
+                iSize.iHeight = width;
+                }
             }
         
         complTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
             iBitmap, iOriginalSize, iSize, iFlags& CThumbnailManager
             ::ECropToAspectRatio, iDisplayMode, KMaxPriority, iTargetUri,
-            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF );
+            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF, iRequestId );
         CleanupStack::PushL( complTask );
         
         TInt err1 = KErrNone;
@@ -511,7 +514,8 @@ void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOr
             aError == KErrCorrupt ||
             aError == KErrCompletion ||
             aError == KErrUnderflow ||
-            aError == KErrNotReady)
+            aError == KErrNotReady || 
+            aError == KErrGeneral )
             {
         
         if(iMissingSizes)

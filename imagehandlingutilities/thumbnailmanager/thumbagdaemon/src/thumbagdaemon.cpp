@@ -306,7 +306,7 @@ void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError 
 // -----------------------------------------------------------------------------
 //
 
-void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& aSession, 
+void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/, 
         TObserverNotificationType aType,
         const RArray<TItemId>& aObjectIdArray,
         const RPointerArray<HBufC>& aObjectUriArray)
@@ -510,7 +510,9 @@ void CThumbAGDaemon::AddObserversL()
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
    // modify observer
-   //iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+#ifdef MDS_MODIFY_OBSERVER
+   iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+#endif
  
 #ifdef MDS_URI_OBSERVER
     // remove observer with uri

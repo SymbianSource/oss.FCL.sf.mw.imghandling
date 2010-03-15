@@ -154,7 +154,7 @@ CThumbnailStore* CThumbnailStore::NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CTh
 //
 CThumbnailStore::~CThumbnailStore()
     {
-    TN_DEBUG1( "CThumbnailStore::~CThumbnailStore()" );
+    TN_DEBUG2( "CThumbnailStore::~CThumbnailStore() drive: %d", iDrive );
     
     if(iActivityManager)
         {
@@ -190,7 +190,8 @@ CThumbnailStore::~CThumbnailStore()
 // ---------------------------------------------------------------------------
 //
 CThumbnailStore::CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei,  CThumbnailServer* aServer ): 
-    iFs( aFs ), iDrive( aDrive ), iBatchItemCount(0), iImei(aImei), iServer(aServer), iDiskFull(EFalse)
+    iFs( aFs ), iDrive( aDrive ), iDriveChar( 0 ), iBatchItemCount(0), iImei(aImei), 
+    iServer(aServer), iDiskFull(EFalse)
     {
     // no implementation required
     }
@@ -211,9 +212,8 @@ void CThumbnailStore::ConstructL()
     
     HBufC* databasePath = HBufC::NewLC( KMaxFileName );
     TPtr pathPtr = databasePath->Des();
-    TChar driveChar = 0;
-    User::LeaveIfError( RFs::DriveToChar( iDrive, driveChar ));
-    pathPtr.Append( driveChar );
+    User::LeaveIfError( RFs::DriveToChar( iDrive, iDriveChar ));
+    pathPtr.Append( iDriveChar );
     pathPtr.Append( KThumbnailDatabaseName );
     
 	//start disk space monitor
@@ -222,6 +222,8 @@ void CThumbnailStore::ConstructL()
                                             pathPtr );
 
     CleanupStack::PopAndDestroy( databasePath );
+    
+    TN_DEBUG2( "CThumbnailStore::ConstructL() drive: %d", iDrive );
     
     OpenDatabaseL();
              
@@ -241,6 +243,7 @@ void CThumbnailStore::ConstructL()
 TInt CThumbnailStore::OpenDatabaseFileL()
     {
     TN_DEBUG1( "CThumbnailStore::OpenDatabaseFile()" );
+    
     HBufC* databasePath = HBufC::NewLC( KMaxFileName );
     TPtr pathPtr = databasePath->Des();
     TChar driveChar = 0;
@@ -258,7 +261,7 @@ TInt CThumbnailStore::OpenDatabaseFileL()
 // ---------------------------------------------------------------------------
 TInt CThumbnailStore::OpenDatabaseL()
     {
-    TN_DEBUG1( "CThumbnailStore::OpenDatabaseL()" );
+    TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() drive: %d", iDrive );
         
     iDatabase.Close();
     
@@ -267,24 +270,26 @@ TInt CThumbnailStore::OpenDatabaseL()
     
     TInt err = OpenDatabaseFileL();
    
-   if ( err == KErrNotFound )
-       {
-       // db not found, create new
-       RecreateDatabaseL( EFalse);
-       newDatabase = ETrue;
-       err = KErrNone;
-       }
-   else if ( err == KErrNone)
-       {
-       // db found, check version and rowids
-       error = CheckVersionL();
-       if(error == KErrNone)
-           {
-           error = CheckRowIDsL();
-           }  
-       }
+    TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() -- err = %d", err);
+    
+    if ( err == KErrNotFound )
+        {
+        // db not found, create new
+        RecreateDatabaseL( EFalse);
+        newDatabase = ETrue;
+        err = KErrNone;
+        }
+    else if ( err == KErrNone)
+        {
+        // db found, check version and rowids
+        error = CheckVersionL();
+        if(error == KErrNone)
+            {
+            error = CheckRowIDsL();
+            }  
+        }
    
-   TN_DEBUG3( "CThumbnailStore::ConstructL() -- error = %d, err = %d", error, err);
+   TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() -- error = %d", error);
    
    // if wrong version, corrupted database or other error opening db
    if ( error == KErrNotSupported || (err != KErrNone && err != KErrNotFound) )
@@ -354,34 +359,38 @@ void CThumbnailStore::PrepareDbL()
     TRAPD(tableError, CreateTablesL() );
       
     if(!tableError)
-      {
-      TRAPD(err, AddVersionAndImeiL());
-      if (err == KSqlErrCorrupt)
-          {
-          RecreateDatabaseL( ETrue);
-          }
-      User::LeaveIfError(err);
-      }
+        {
+        TRAPD(err, AddVersionAndImeiL());
+        if (err == KSqlErrCorrupt)
+            {
+            RecreateDatabaseL( ETrue);
+            }
+        User::LeaveIfError(err);
+        }
           
-      err = iDatabase.Exec( KThumbnailCreateTempInfoTable );
+    err = iDatabase.Exec( KThumbnailCreateTempInfoTable );
+
 #ifdef _DEBUG
-  if(err < 0)
-      {
-       TPtrC errorMsg = iDatabase.LastErrorMessage();
-       TN_DEBUG2( "CThumbnailStore::ConstructL() KThumbnailCreateTempInfoTable %S" , &errorMsg);
-      }
+    if(err < 0)
+        {
+        TPtrC errorMsg = iDatabase.LastErrorMessage();
+        TN_DEBUG2( "CThumbnailStore::PrepareDbL() KThumbnailCreateTempInfoTable %S" , &errorMsg);
+        }
 #endif
+    
     User::LeaveIfError( err );
 
-  err = iDatabase.Exec( KThumbnailCreateTempInfoDataTable );
+    err = iDatabase.Exec( KThumbnailCreateTempInfoDataTable );
+
 #ifdef _DEBUG
-  if(err < 0)
-      {
-       TPtrC errorMsg = iDatabase.LastErrorMessage();
-       TN_DEBUG2( "CThumbnailStore::ConstructL() KThumbnailCreateTempInfoDataTable %S" , &errorMsg);
-      }
+    if(err < 0)
+        {
+        TPtrC errorMsg = iDatabase.LastErrorMessage();
+        TN_DEBUG2( "CThumbnailStore::PrepareDbL() KThumbnailCreateTempInfoDataTable %S" , &errorMsg);
+        }
 #endif
-       User::LeaveIfError( err );
+    
+    User::LeaveIfError( err );
 }
 
 // ---------------------------------------------------------------------------
@@ -415,7 +424,7 @@ void CThumbnailStore::CreateTablesL()
 
 void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     {
-    TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL()" );
+    TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() drive: %d", iDrive );
     
     TVolumeInfo volumeinfo;
     iFs.Volume(volumeinfo, iDrive);
@@ -426,40 +435,38 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     // delete db and create new
     iDatabase.Close();
     
+    TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() database closed" );
+    
     HBufC* databasePath = HBufC::NewLC( KMaxFileName );
     TPtr pathPtr = databasePath->Des();
-    TChar driveChar = 0;
-    User::LeaveIfError( RFs::DriveToChar( iDrive, driveChar ));
-    pathPtr.Append( driveChar );
+    User::LeaveIfError( RFs::DriveToChar( iDrive, iDriveChar ));
+    pathPtr.Append( iDriveChar );
     pathPtr.Append( KThumbnailDatabaseName );
     
     TInt err(KErrNone);
     
     if(aDelete)
         {
-        iDatabase.Delete(pathPtr);
+        TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() delete database" );
+        TInt del = iDatabase.Delete(pathPtr);
+        TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() deleted database, err: %d", del );
         }
         
     const TDesC8& config = KThumbnailSqlConfig;
 
     RSqlSecurityPolicy securityPolicy;
     CleanupClosePushL( securityPolicy );
-    securityPolicy.Create( KThumbnailDatabaseSecurityPolicy );
+    securityPolicy.CreateL( KThumbnailDatabaseSecurityPolicy );
 
-    TRAP(err, iDatabase.CreateL( pathPtr, securityPolicy, &config ));
-    CleanupStack::PopAndDestroy( &securityPolicy );
+    TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() create new" );
     
-        
-#ifdef _DEBUG
-    if(err < 0)
-        {
-        TPtrC errorMsg = iDatabase.LastErrorMessage();
-        TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() KThumbnailInsertTempThumbnailInfoData %S" , &errorMsg);
-        }
-#endif
+    TRAP(err, iDatabase.CreateL( pathPtr, securityPolicy, &config ));
+    
     TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() -- database created err = %d", err );
-    User::LeaveIfError( err );
+    
+    CleanupStack::PopAndDestroy( &securityPolicy );
     CleanupStack::PopAndDestroy( databasePath );
+    User::LeaveIfError( err );
     
     RFile64 file;
     file.Create(iFs, mediaid, EFileShareReadersOrWriters );
@@ -548,13 +555,29 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
         }
     else
         {
-
+        TInt timeErr = KErrNone;
+    
         if (aPath.Length())
             {
-            iFs.Modified(aPath, timeStamp);
-            TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() timeStamp       iFs %Ld", timeStamp.Int64() );
+            // need to add drive letter
+            TFileName path;
+            path.Append(iDriveChar);
+            path.Append(KDrv);
+            path.Append(aPath);
+        
+            timeErr = iFs.Modified(path, timeStamp);
+            
+            if (timeErr != KErrNone)
+                {
+                TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() error getting timeStamp: %d", timeErr );
+                }
+            else
+                {
+                TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() timeStamp       iFs %Ld", timeStamp.Int64() );
+                }
             }
-        else
+        
+        if (!aPath.Length() || timeErr != KErrNone)
             {
             // otherwise current time
             timeStamp.UniversalTime();
@@ -1671,6 +1694,24 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
  
     self->iMaintenanceTimer->Cancel();
     
+    TInt MPXHarvesting(0);
+    TInt DaemonProcessing(0);
+    TInt ret = RProperty::Get(KTAGDPSNotification, KMPXHarvesting, MPXHarvesting);
+    if(ret != KErrNone || MPXHarvesting)
+        {
+        TN_DEBUG3( "CThumbnailStore::MaintenanceTimerCallBack() KMPXHarvesting err == %d, MPXHarvesting == %d", ret, MPXHarvesting);
+        self->iIdle = EFalse;
+        }
+    TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() KMPXHarvesting == %d", MPXHarvesting);
+
+    ret = RProperty::Get(KTAGDPSNotification, KDaemonProcessing, DaemonProcessing);
+    if(ret != KErrNone || DaemonProcessing)
+        {
+        TN_DEBUG3( "CThumbnailStore::MaintenanceTimerCallBack() KDaemonProcessing err == %d, DaemonProcessing == %d", ret, DaemonProcessing);
+        self->iIdle = EFalse;
+        }
+    TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() DaemonProcessing == %d", DaemonProcessing);
+    
     if (self->iIdle)
         {
         TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - maintenance, store %d", self->iDrive);
@@ -2042,9 +2083,6 @@ TInt CThumbnailStore::FileExistenceCheckL()
     
     TBool finished = EFalse;
     
-    TChar dChar = 0;
-    User::LeaveIfError( iFs.DriveToChar( iDrive, dChar ));
-    
     RThumbnailTransaction transaction( iDatabase );
     CleanupClosePushL( transaction );    
     transaction.BeginL();
@@ -2074,7 +2112,7 @@ TInt CThumbnailStore::FileExistenceCheckL()
         stmt.ColumnText( column, path );
     
         full.Zero();
-        full.Append(dChar);
+        full.Append(iDriveChar);
         full.Append(KDrv);
         full.Append(path);
         
@@ -2170,25 +2208,26 @@ void CThumbnailStore::ActivityChanged(const TBool aActive)
         {
         TInt MPXHarvesting(0);
         TInt DaemonProcessing(0);
-        TInt ret = RProperty::Get(KTAGDPSNotification, KMPXHarvesting, MPXHarvesting);
-        if(!ret)
-            return;
         
-        TN_DEBUG2( "CThumbnailStore::ActivityChanged() KMPXHarvesting == %d", KMPXHarvesting);
+        TInt ret = RProperty::Get(KTAGDPSNotification, KMPXHarvesting, MPXHarvesting);
+        if(ret != KErrNone || MPXHarvesting)
+            {
+            TN_DEBUG3( "CThumbnailStore::ActivityChanged() KMPXHarvesting err == %d, MPXHarvesting == %d", ret, MPXHarvesting);
+            iIdle = EFalse;
+            return;
+            }
         
         ret = RProperty::Get(KTAGDPSNotification, KDaemonProcessing, DaemonProcessing);
-        
-        if(!ret)
-            return;
-        
-        TN_DEBUG2( "CThumbnailStore::ActivityChanged() DaemonProcessing == %d", DaemonProcessing);
-        
-        if(!MPXHarvesting && !DaemonProcessing)
+        if(ret != KErrNone || DaemonProcessing)
             {
-            TN_DEBUG1( "CThumbnailStore::ActivityChanged() - starting maintenance");
-            iIdle = ETrue;
-            StartMaintenance();
+            TN_DEBUG3( "CThumbnailStore::ActivityChanged() KDaemonProcessing err == %d DaemonProcessing == %d", ret, DaemonProcessing );
+            iIdle = EFalse;
+            return;
             }
+        
+        TN_DEBUG1( "CThumbnailStore::ActivityChanged() - starting maintenance");
+        iIdle = ETrue;
+        StartMaintenance();
         }
     }
 

@@ -113,7 +113,7 @@ void CThumbnailVideoProvider::RunL()
     // video thumbnail engine doesn't respond
     if (iTimeout)
         {
-        iObserver->ThumbnailProviderReady( KErrNotSupported, NULL, TSize(), EFalse, EFalse);
+        iObserver->ThumbnailProviderReady( KErrCompletion, NULL, TSize(), EFalse, EFalse);
         iTimeout = EFalse;
         
         TN_DEBUG1( "CThumbnailVideoProvider::RunL() - timeout" );

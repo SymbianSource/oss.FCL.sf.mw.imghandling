@@ -523,9 +523,10 @@ private:
     RFs& iFs;
 
     /**
-     * Drive number
+     * Drive number & char
      */
     TInt iDrive;
+    TChar iDriveChar;
 
     /**
      * Thumbnail database.

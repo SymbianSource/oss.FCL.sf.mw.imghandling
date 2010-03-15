@@ -328,6 +328,8 @@ private:
 	//Previously notified amount of items in processing queues (add/modify)
     TInt iPreviousItemsLeft;
     TBool iPreviousDaemonProcessing; 
+	//set ETrue when QueryAllItems needs to be run after placeholder query
+    TBool iDoQueryAllItems;
 };
 
 #endif // THUMBAGPROCESSOR_H

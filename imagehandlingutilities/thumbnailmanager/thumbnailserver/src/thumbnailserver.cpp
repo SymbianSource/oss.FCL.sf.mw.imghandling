@@ -36,6 +36,7 @@
 #include "thumbnailcenrep.h"
 #include "thumbnailmemorycardobserver.h"
 #include "tmgetimei.h"
+//#include "thumbnailfetchedchecker.h"
 
 
 _LIT8( KThumbnailMimeWildCard, "*" );
@@ -253,6 +254,8 @@ void CThumbnailServer::ConstructL()
     AddUnmountObserversL();
     
     iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
+	
+    //iFetchedChecker = CThumbnailFetchedChecker::NewL();
     }
 
 
@@ -266,6 +269,7 @@ CThumbnailServer::~CThumbnailServer()
 
     iShutdown = ETrue;
     
+    //delete iFetchedChecker;
     delete iShutdownObserver;
     delete iProcessor;
     
@@ -484,7 +488,7 @@ void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
 
     TThumbnailBitmapRef* ptr = iBitmapPool.Find( aBitmap->Handle());
 
-    TN_DEBUG2( "CThumbnailServer::AddBitmapToPoolL() - id = %d", aRequestId.iRequestId );
+    TN_DEBUG2( "CThumbnailServer::AddBitmapToPoolL() - req id = %d", aRequestId.iRequestId );
     
     if ( ptr )
         {
@@ -535,6 +539,10 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
         {
         TN_DEBUG1( "CThumbnailServer::StoreThumbnailL() - file doesn't exists anymore, skip store!");
         }
+	/*if( iFetchedChecker )
+		{	
+    	iFetchedChecker->SetFetchResult( aPath, KErrNone );
+		}*/
     }
 
 
@@ -546,8 +554,17 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     aThumbnail, TDesC8* & aData, const TThumbnailSize aThumbnailSize, TSize &aOriginalSize )
     {
     TN_DEBUG3( "CThumbnailServer::FetchThumbnailL(aPath=%S aThumbnailSize=%d)", &aPath, aThumbnailSize );
-
     StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize);
+/*    TInt err( iFetchedChecker->LastFetchResult( aPath ) );
+    if ( err == KErrNone ) // To avoid useless sql gets that fails for sure
+        {
+        TRAP( err, StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize) );
+        if ( err != KErrNone )
+            {
+            iFetchedChecker->SetFetchResult( aPath, err );
+            }
+        }
+    User::LeaveIfError( err );*/
     }
 
 
@@ -599,6 +616,11 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     TN_DEBUG2( "CThumbnailServer::DeleteThumbnailsL(%S)", &aPath);
     
     StoreForPathL( aPath )->DeleteThumbnailsL( aPath );
+	/*
+	if( iFetchedChecker )
+		{
+    	iFetchedChecker->SetFetchResult( aPath, KErrNone );
+		}*/
     }
 
 // -----------------------------------------------------------------------------

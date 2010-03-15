@@ -42,14 +42,14 @@ CThumbnailScaleTask* CThumbnailScaleTask::NewL( CThumbnailTaskProcessor&
     aBitmap, const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
     TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
     const TThumbnailSize aThumbnailSize, const TInt64 aModified,
-    TBool aBitmapToPool, const TBool aEXIF)
+    TBool aBitmapToPool, const TBool aEXIF, const TThumbnailServerRequestId aRequestId)
     {
     // We take ownership of aBitmap
     CleanupStack::PushL( aBitmap );
     CThumbnailScaleTask* self = new( ELeave )CThumbnailScaleTask( aProcessor,
         aServer, aFilename, aBitmap, aOriginalSize, aTargetSize, aCrop,
         aDisplayMode, aPriority, aTargetUri, aThumbnailSize, aModified,
-        aBitmapToPool, aEXIF);
+        aBitmapToPool, aEXIF, aRequestId);
     CleanupStack::Pop( aBitmap );
     CleanupStack::PushL( self );
     self->ConstructL();
@@ -68,7 +68,7 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
     const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
     TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
     const TThumbnailSize aThumbnailSize, const TInt64 aModified,
-    TBool aBitmapToPool, const TBool aEXIF):
+    TBool aBitmapToPool, const TBool aEXIF, const TThumbnailServerRequestId aRequestId):
     CThumbnailTask( aProcessor, aPriority ), iServer( aServer ), iOwnBitmap( aBitmap ),
     iOriginalSize( aOriginalSize ), iTargetSize(aTargetSize), iTargetSizeTN( aTargetSize ), iCrop( aCrop ),
     iDisplayMode( aDisplayMode ), iFilename( aFilename ), iTargetUri( aTargetUri ),
@@ -76,6 +76,8 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
     iBitmapToPool(aBitmapToPool), iEXIF(aEXIF)
     {
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::CThumbnailScaleTask()", this );
+    
+    iRequestId = aRequestId;
     }
 
 
@@ -150,6 +152,8 @@ void CThumbnailScaleTask::StartL()
         CalculateCropRectangle();
         }
     
+    TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - sizes calculated", this );
+    
 #ifdef _DEBUG
     aStart.UniversalTime();
 #endif
@@ -162,6 +166,8 @@ void CThumbnailScaleTask::StartL()
     
     if(bitmapSize.iHeight == iTargetSize.iHeight && bitmapSize.iWidth == iTargetSize.iWidth)
         {
+        TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - no need for scaling", this);
+    
         // copy bitmap 1:1
         User::LeaveIfError( iScaledBitmap->Create( bitmapSize, iBitmap->DisplayMode() ));
         CFbsBitmapDevice* device = CFbsBitmapDevice::NewL(iScaledBitmap);
@@ -172,7 +178,6 @@ void CThumbnailScaleTask::StartL()
         gc->BitBlt(TPoint(0, 0), iBitmap);
         CleanupStack::PopAndDestroy(2, device); // gc
         
-        TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - no need for scaling", this);
         TRAPD( err, StoreAndCompleteL());
         Complete( err );
         ResetMessageData();
@@ -180,11 +185,13 @@ void CThumbnailScaleTask::StartL()
     else
         {
         TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - scaling", this);
+        
         User::LeaveIfError( iScaledBitmap->Create( iTargetSize, iBitmap->DisplayMode() ));
         iServer.ScaleBitmapL( iStatus, * iBitmap, * iScaledBitmap, iCropRectangle );
         SetActive();
-        }
-   
+        }  
+    
+    TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() end", this );
     }
 
 

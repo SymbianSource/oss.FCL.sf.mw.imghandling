@@ -676,13 +676,15 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( Server()->Processor(),
                 *Server(), params.iTargetUri, bitmap, bitmapSize,
                 (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
-                KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse );
+                KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
+                reqId);
             CleanupStack::PushL( scaleTask );
             scaleTask->SetDoStore( ETrue );
             Server()->Processor().AddTaskL( scaleTask );
             CleanupStack::Pop( scaleTask );
             
-            if( i == count-1 )
+            // completion to first task, because task processor works like stack
+            if( i == 0 )
                 {
                 // scaleTask is now responsible for completing the RMessage
                 scaleTask->SetMessageData( reqId, iMessage );
@@ -1349,6 +1351,9 @@ TBool CThumbnailServerSession::ClientThreadAlive(RMessage2& aMessage)
     
         // check if client thread alive
         TExitType exitType = clientThread.ExitType();
+        
+        clientThread.Close();
+        
         if( exitType != EExitPending )
             {
             TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - client thread died");
