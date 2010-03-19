@@ -277,23 +277,6 @@ TInt RThumbnailSession::ChangePriority( TThumbnailRequestId aRequestId, TInt
 // Delete thumbnails for given object file
 // ---------------------------------------------------------------------------
 //
-TInt RThumbnailSession::CreateThumbnails( const RFile64& aFile, TDisplayMode aDisplayMode )
-    {
-    TIpcArgs args( aDisplayMode ); // 1st argument
-    TInt err = aFile.TransferToServer( args, 1, 2 ); // 2.&3. argument
-    err = Send( ECreateThumbnails, args );
-    while ( err == KErrServerBusy )
-        {
-        err = Send( ECreateThumbnails, args );
-        }
-    return err;
-    }
-
-
-// ---------------------------------------------------------------------------
-// Delete thumbnails for given object file
-// ---------------------------------------------------------------------------
-//
 void RThumbnailSession::DeleteThumbnails( const TDesC& aPath,
         TThumbnailRequestParamsPckg& aParams, TRequestStatus& aStatus )
     {

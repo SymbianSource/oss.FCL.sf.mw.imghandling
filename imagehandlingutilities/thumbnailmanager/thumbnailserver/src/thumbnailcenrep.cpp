@@ -31,12 +31,13 @@
 // ---------------------------------------------------------------------------
 //
 TThumbnailPersistentSize::TThumbnailPersistentSize( const TSize& aSize, TBool
-    aCrop, TDisplayMode aMode, TInt aFormat ): iSize( aSize ), iCrop( aCrop ),
+    aCrop, TDisplayMode aMode, TInt aFormat ) : iSize( aSize ), iCrop( aCrop ),
     iMode( aMode ), iFormat( aFormat )
     {
     iType = EUnknownThumbnailSize;
     iSourceType = EUnknownSourceType;
     iAutoCreate = ETrue;
+    iSizeType = EUnknownSizeType;
     }
 
 // ---------------------------------------------------------------------------
@@ -45,9 +46,9 @@ TThumbnailPersistentSize::TThumbnailPersistentSize( const TSize& aSize, TBool
 //
 TThumbnailPersistentSize::TThumbnailPersistentSize( TThumbnailSize aType,
     const TSize& aSize, TBool aCrop, TDisplayMode aMode, TInt aFormat,
-    TBool aAutoCreate )
+    TBool aAutoCreate, TThumbnailSizeType aSizeType )
     : iType( aType ), iSize( aSize ), iCrop( aCrop ), iMode( aMode ),
-      iFormat( aFormat ), iAutoCreate( aAutoCreate )
+      iFormat( aFormat ), iAutoCreate( aAutoCreate ), iSizeType( aSizeType ) 
     {
     switch ( aType )
         {        
@@ -145,63 +146,63 @@ void CThumbnailCenRep::ConstructL()
     User::LeaveIfError( iRepository->Get( KAutoCreateImageGrid, autoCreate ));
 
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EImageGridThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EGrid ));
 
     User::LeaveIfError( iRepository->Get( KSizeImageListWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeImageListHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateImageList, autoCreate ));
 
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EImageListThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EList ));
     
     User::LeaveIfError( iRepository->Get( KSizeImageFullscreenWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeImageFullscreenHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateImageFullscreen, autoCreate ));
     
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EImageFullScreenThumbnailSize, TSize( xSize, ySize ),
-                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));
     
     User::LeaveIfError( iRepository->Get( KSizeVideoGridWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeVideoGridHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateVideoGrid, autoCreate ));
 
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EVideoGridThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EGrid ));
 
     User::LeaveIfError( iRepository->Get( KSizeVideoListWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeVideoListHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateVideoList, autoCreate ));
 
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EVideoListThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EList ));
     
     User::LeaveIfError( iRepository->Get( KSizeVideoFullscreenWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeVideoFullscreenHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateVideoFullscreen, autoCreate ));
     
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EVideoFullScreenThumbnailSize, TSize( xSize, ySize ),
-                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));  
+                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));  
     
     User::LeaveIfError( iRepository->Get( KSizeAudioGridWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeAudioGridHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioGrid, autoCreate ));
 
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EAudioGridThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EGrid ));
 
     User::LeaveIfError( iRepository->Get( KSizeAudioListWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeAudioListHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioList, autoCreate ));
 
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EAudioListThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EList ));
     
     User::LeaveIfError( iRepository->Get( KSizeAudioFullscreenWidth, xSize ));
     User::LeaveIfError( iRepository->Get( KSizeAudioFullscreenHeight, ySize ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioFullscreen, autoCreate ));
     
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EAudioFullScreenThumbnailSize, TSize( xSize, ySize ),
-                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate ));     
+                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));     
     
     iAutoCreate = new (ELeave) TThumbnailAutoCreate();
     

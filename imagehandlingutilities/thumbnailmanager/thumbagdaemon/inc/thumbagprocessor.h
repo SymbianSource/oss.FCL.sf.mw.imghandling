@@ -29,9 +29,11 @@
 #include <harvesterclient.h>
 #include <e32property.h>
 #include <mpxcollectionobserver.h>
+#include "tmactivitymanager.h"
+#include "tmformatobserver.h"
+#include "tmrpropertyobserver.h"
 
 //FORWARD DECLARATIONS
-class CThumbAGFormatObserver;
 class MMPXCollectionUtility;
 
 /**
@@ -43,7 +45,10 @@ class CThumbAGProcessor: public CActive,
                          public MThumbnailManagerObserver,
                          public MMdEQueryObserver,
                          public MHarvesterEventObserver,
-                         public MMPXCollectionObserver
+                         public MMPXCollectionObserver,
+                         public MTMActivityManagerObserver,
+                         public MTMFormatObserver,
+                         public MTMRPropertyObserver
     {
 public:
 
@@ -80,7 +85,11 @@ public:
              HarvesterEventState aHarvesterEventState,
              TInt aItemsLeft );
     
-private: // From MMPXCollectionObserver
+    //From MTMFormatObserver
+    void FormatNotification(TBool aFormat);
+    
+private: 
+    // From MMPXCollectionObserver
     /// See @ref MMPXCollectionObserver::HandleCollectionMessageL
     void HandleCollectionMessage( CMPXMessage* aMessage,  TInt aError );
 
@@ -92,7 +101,13 @@ private: // From MMPXCollectionObserver
     
     /// See @ref MMPXCollectionObserver::HandleCollectionMediaL
     void HandleCollectionMediaL( const CMPXMedia& aMedia, TInt aError );
-
+    
+private: //From MTMActivityManagerObserver
+    void ActivityChanged(const TBool aActive);
+    
+private: //From MTMRPropertyObserver
+    void RPropertyNotification(const TInt aError, const TUid aKeyCategory, const TUint aPropertyKey, const TInt aValue);
+    
 public:     
     
     /**
@@ -111,7 +126,7 @@ public:
      * @param aIDArray IDs for thumbnail creation
      * @param aForce pass ETrue if processor is forced to run without waiting harvesting complete
      */
-    void AddToQueueL( TObserverNotificationType aType, const RArray<TItemId>& aIDArray, TBool aPresent );
+    void AddToQueueL( TObserverNotificationType aType, const RArray<TItemId>& aIDArray, const RPointerArray<HBufC>& aObjectUriArray, TBool aPresent );
     
     /**
      * Calls Thumbnail Manager to create thumbnails
@@ -131,11 +146,9 @@ public:
     
     void SetForceRun( const TBool aForceRun );
     
-    void SetFormat(TBool aStatus);
-    
-    void QueryForPlaceholdersL();
-
 protected:
+    
+    void QueryAllItemsL();
     
     /**
      * QueryL
@@ -144,6 +157,8 @@ protected:
      * @param aIDArray Item IDs to query
      */
     void QueryL( RArray<TItemId>& aIDArray );
+    
+    void QueryPlaceholdersL();
     
 protected:
 
@@ -219,7 +234,15 @@ private:
      * @since S60 v5.0
      */
     void CancelTimeout();
-
+   
+    /**
+     * Update KItemsLeft PS value
+     * 
+     * @since S60 v5.0
+ 	 * @param aDefine (re)define PS key before setting value
+     */
+    void UpdatePSValues(const TBool aDefine = EFalse);
+       
 private:
     
     // not own
@@ -229,23 +252,23 @@ private:
     // own
     CThumbnailManager* iTMSession;
     CMdEObjectQuery* iQuery;
-    CMdEObjectQuery* iQueryForPlaceholders;
+    CMdEObjectQuery* iQueryAllItems;
+    CMdEObjectQuery* iQueryPlaceholders;
     
     RArray<TItemId> iAddQueue;
     RArray<TItemId> iModifyQueue;
-    RArray<TItemId> iRemoveQueue;
-    RArray<TItemId> iPresentQueue;
+    RPointerArray<HBufC> iRemoveQueue;
     RArray<TItemId> iQueryQueue;
+    RArray<TItemId> iPlaceholderQueue;
+    //not processing queue, used to keep KItemsLeft PS correct
+    RArray<TItemId> i2ndRoundGenerateQueue;
+	//reference to current processing queue
+    RArray<TItemId>* iLastQueue;
     
-    RArray<TItemId> iTempModifyQueue;
-    RArray<TItemId> iTempAddQueue;
-    
-    RArray<TItemId> iPlaceholderIDs;
+    TBool i2ndRound;    
     
     TBool iQueryActive;
     TBool iQueryReady;
-    
-    TBool iQueryForPlaceholdersActive;
     
     TBool iModify;
     TInt iProcessingCount;
@@ -254,8 +277,11 @@ private:
     TBool iHarvesting;
     TBool iHarvestingTemp;
     
+	//Flag is MDS placeholder harvesting active
+    TBool iPHHarvesting;
+    TBool iPHHarvestingTemp;
+    
     CPeriodic* iPeriodicTimer;
-    TBool iTimerActive;
 
 	//MDS Harvester client
     RHarvesterClient iHarvesterClient;
@@ -263,24 +289,22 @@ private:
     //Set when running RunL() first time
     TBool iInit;
     
+    //2nd phase init after MDE session is open
+    TBool iInit2;
+    
     // auto create
     TBool iAutoImage;
     TBool iAutoVideo;
     TBool iAutoAudio;
     
-#ifdef _DEBUG
-    TUint32 iAddCounter;
-    TUint32 iModCounter;
-    TUint32 iDelCounter;
-#endif
-
+    // in case of modified files force TN update
     TBool iForceRun; 
+    // controlled by Photos application to run TN generation on foreground
+    TBool iForegroundRun;
 	//request pending in TNM side
     TBool iActive;
-    //PS key to get info server's idle status
-    RProperty iProperty;
-    
-    CThumbAGFormatObserver* iFormatObserver;
+   
+    CTMFormatObserver* iFormatObserver;
    
     TBool iFormatting;
     TBool iSessionDied;
@@ -291,6 +315,19 @@ private:
     
 	//Flag is MPX harvesting or MTP synchronisation in progress
     TBool iMPXHarvesting;
+    //inactivity polling timer
+    CPeriodic* iInactivityTimer;
+    //overall status of device
+    TBool iIdle;
+    
+    CTMActivityManager* iActivityManager;
+    
+	//Observer foreground generation 
+    CTMRPropertyObserver* iForegroundGenerationObserver;
+    
+	//Previously notified amount of items in processing queues (add/modify)
+    TInt iPreviousItemsLeft;
+    TBool iPreviousDaemonProcessing; 
 };
 
 #endif // THUMBAGPROCESSOR_H

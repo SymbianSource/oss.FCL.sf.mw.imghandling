@@ -32,6 +32,7 @@
 #include "thumbnailmanagerconstants.h" // TThumbnailServerRequestId
 #include "thumbnailstore.h"     // TThumbnailPersistentSize
 #include "tmshutdownobserver.h"
+#include "tmformatobserver.h"
 
 // Needed for creating server thread.
 const TUint KDefaultHeapSize = 160 * 1024;
@@ -44,7 +45,6 @@ class MIHLScaler;
 class CThumbnailServerSession;
 class CThumbnailDiskUnmountObserver;
 class CThumbnailMemoryCardObserver;
-class CThumbnailFormatObserver;
 
 /**
  * Helper function to destroy all objects which are referred to
@@ -75,7 +75,8 @@ template <class K, class V> void ResetAndDestroyHashMap( RHashMap<K, V* > &
  */
 NONSHARABLE_CLASS( CThumbnailServer ): public CPolicyServer,
                                        public MMdESessionObserver,
-                                       public MTMShutdownObserver
+                                       public MTMShutdownObserver,
+                                       public MTMFormatObserver
     {
 public:
 
@@ -135,6 +136,9 @@ public:
     // from MTMShutdownObserver
     void ShutdownNotification();
 
+    //From MTMFormatObserver
+    void FormatNotification(TBool aFormat);    
+    
     /**
      * Adds bitmap to bitmap pool. Server assumes ownership of the bitmap and
      * implements reference counting to know when it is safe to delete
@@ -144,9 +148,10 @@ public:
      * @since S60 v5.0
      * @param aSession Server side session which owns the bitmap.
      * @param aBitmap Bitmap to be added to pool.
+     * @param aRequestId Session specific thumbnail request ID.
      */
     void AddBitmapToPoolL( CThumbnailServerSession* aSession, CFbsBitmap*
-        aBitmap );
+        aBitmap, TThumbnailServerRequestId aRequestId );
 
     /**
      * Store thumbnail.
@@ -162,7 +167,8 @@ public:
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap, const TSize&
         aOriginalSize, const TBool aCropped, const TThumbnailSize aThumbnailSize,
-        const TThumbnailId aThumbnailId, const TBool aThumbFromPath = ETrue,
+        const TInt64 aModified,
+        const TBool aThumbFromPath = ETrue,
         const TBool aCheckExist = ETrue);
 
     /**
@@ -183,18 +189,6 @@ public:
     void FetchThumbnailL( const TDesC& aPath, CFbsBitmap* & aThumbnail, 
              TDesC8* & aData, const TThumbnailSize aThumbnailSize, TSize &aOriginalSize );
     
-    /**
-     * Fetch thumbnail image.
-     *
-     * @since S60 v5.0
-     * @param aThumbnailId ID of the media object whose thumbnail is to be
-     *              retrieved.
-     * @param aThumbnail Pointer to get the fetched thumbnail bitmap.
-     *                   Caller assumes ownership.
-     */    
-    void FetchThumbnailL( TThumbnailId aThumbnailId, CFbsBitmap* &
-        aThumbnail, TDesC8* & aData, TThumbnailSize aThumbnailSize, TSize &aOriginalSize );
-
     /**
      * Delete thumbnails.
      *
@@ -320,9 +314,10 @@ public:
      * @since S60 v5.0
      * @param aPath Path associated to missing thumbnails
      * @param aMissingSizes Returns a list of thumbnail sizes not yet create related to the path
+	 * @param aCheckGridSizeOnly check only is Grid size missing
      */
-    void GetMissingSizesAndIDsL( const TDesC& aPath, TInt aSourceType, RArray <
-        TThumbnailPersistentSize > & aMissingSizes, TBool& aMissingIDs);
+    void GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RArray <
+        TThumbnailPersistentSize > & aMissingSizes, TBool aCheckGridSizeOnly);
 
     /**
      * Fileserver
@@ -370,13 +365,12 @@ public:
      * Update thumbnails in database
      *
      * @since S60 v5.0
-     * @param aItemId       TThumbnailId
      * @param aPath         (New) path for the Thumbnail
      * @param aOrientation  Thumbnail orientation
      * @param aModified     Last modified
      * @param TBool         EFalse, if new thumbs need to be created
      */  
-    TBool UpdateThumbnailsL( const TThumbnailId aItemId, const TDesC& aPath,
+    TBool UpdateThumbnailsL( const TDesC& aPath,
                              const TInt aOrientation, const TInt64 aModified );
     
     /** 
@@ -432,15 +426,6 @@ public:
      * @return CThumbnailStore object
      */
     CThumbnailStore* StoreForPathL( const TDesC& aPath );  
-    
-    /**
-     * Update ID in database
-     *
-     * @since S60 v5.0
-     * @param aItemId Id of item whose thumbnails are to be updated.
-     * @param aNewPath Path property of the object to be updated.
-     */  
-    void UpdateIDL( const TDesC& aPath, const TThumbnailId aNewId );
     
     /**
      * Close Removable Stores
@@ -526,7 +511,12 @@ private:
      */
     void OpenStoresL();
     
- 
+    /**
+     * Callback for reconnect timer
+     *
+     * @since S60 v5.0
+     */
+    static TInt ReconnectCallBack(TAny* aAny);
 
 private:
 
@@ -572,6 +562,12 @@ public:
          * Not own.
          */
         CFbsBitmap* iBitmap;
+        
+        /**
+         * Request Id 
+         */
+        TThumbnailRequestId iRequestId;        
+        
         };
 
 private:
@@ -650,7 +646,7 @@ private:
     
     CThumbnailMemoryCardObserver* iMMCObserver;
     
-    CThumbnailFormatObserver* iFormatObserver;
+    CTMFormatObserver* iFormatObserver;
 
     /**
      * Databases for each drive, identified by drive (EDriveC, etc).
@@ -671,6 +667,9 @@ private:
     RArray < TThumbnailPersistentSize > iPersistentSizes;
     
     TBool iFormatting;
+    
+    // reconnect timer
+    CPeriodic* iReconnect;
     
 #ifdef _DEBUG
     TUint32 iPlaceholderCounter;

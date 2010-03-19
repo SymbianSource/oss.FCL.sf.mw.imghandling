@@ -56,7 +56,7 @@ public:
         CThumbnailServer& aServer, const TDesC& aFilename, CFbsBitmap* aBitmap,
         const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
         TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
-        const TThumbnailSize aThumbnailSize, const TThumbnailId aThumbnailId,
+        const TThumbnailSize aThumbnailSize, const TInt64 aModified,
         const TBool aBitmapToPool, const TBool aEXIF);
 
     /**
@@ -126,7 +126,7 @@ private:
         aServer, const TDesC& aFilename, CFbsBitmap* aBitmap, const TSize&
         aOriginalSize, const TSize& aTargetSize, TBool aCrop, TDisplayMode
         aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
-        const TThumbnailSize aThumbnailSize, const TThumbnailId aThumbnailId,
+        const TThumbnailSize aThumbnailSize, const TInt64 aModified,
         const TBool aBitmapToPool, const TBool aEXIF);
 
     /**
@@ -195,9 +195,14 @@ private:
     TSize iOriginalSize;
 
     /**
-     * Target size of the thumbnail.
+     * Target size of scaled thubnail (not real of preview)
      */
     TSize iTargetSize;
+    
+    /**
+     * Target size of the thumbnail.
+     */
+    TSize iTargetSizeTN;
 
     /**
      * Incidates if cropping is enabled.
@@ -252,9 +257,9 @@ private:
     TThumbnailSize iThumbnailSize;
     
 	 /**
-     * MDS ID of requested Thumbnail
+     * timestamp
      */
-    TThumbnailId iThumbnailId;
+    TInt64 iModified;
     
 	/**
      * Add bitmap to server's pool.

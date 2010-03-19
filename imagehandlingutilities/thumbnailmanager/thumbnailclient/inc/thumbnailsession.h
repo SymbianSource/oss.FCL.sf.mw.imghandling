@@ -155,15 +155,6 @@ public:
     TInt ChangePriority( TThumbnailRequestId aRequestId, TInt aNewPriority );
 
     /**
-     * Create thumbnails.
-     *
-     * @since S60 v5.0
-     * @param aPath Path to media object whose thumbnails should be created.
-     * @return Error code.
-     */
-    TInt CreateThumbnails( const RFile64& aFile, TDisplayMode aDisplayMode );
-
-    /**
      * Delete thumbnails.
      *
      * @since S60 v5.0

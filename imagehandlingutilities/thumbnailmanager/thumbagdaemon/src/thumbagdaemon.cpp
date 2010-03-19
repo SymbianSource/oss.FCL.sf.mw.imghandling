@@ -62,7 +62,8 @@ CThumbAGDaemon* CThumbAGDaemon::NewL()
 // ---------------------------------------------------------------------------
 //
 CThumbAGDaemon::CThumbAGDaemon()
- 	: CServer2( CActive::EPriorityStandard, CServer2::EUnsharableSessions )
+ 	: CServer2( CActive::EPriorityStandard, CServer2::EUnsharableSessions ), iShutdownObserver(NULL), 
+ 	       iMDSShutdownObserver(NULL), iMdESession(NULL), iProcessor(NULL)
  	{
  	// No implementation required
  	}
@@ -82,34 +83,74 @@ void CThumbAGDaemon::ConstructL()
     iModCounter = 0;
     iDelCounter = 0;
 #endif
-	
+    
+    InitializeL();
+    
+    iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
+    	
+	TN_DEBUG1( "CThumbAGDaemon::ConstructL() - end" );
+	}
+
+// ---------------------------------------------------------------------------
+// ~CThumbAGDaemon
+// ---------------------------------------------------------------------------
+//
+void CThumbAGDaemon::InitializeL()
+    {
+    TN_DEBUG1( "CThumbAGDaemon::InitializeL() - begin" );
+    
     if (DaemonEnabledL())
         {
-        TN_DEBUG1( "CThumbAGDaemon::ConstructL() - create observers" );
+        TN_DEBUG1( "CThumbAGDaemon::InitializeL() - create observers" );
         
-    	// create shutdown observer
+        // create shutdown observer
+        if(iMDSShutdownObserver)
+            {
+            delete iMDSShutdownObserver;
+            iMDSShutdownObserver = NULL;
+            }     
         iMDSShutdownObserver = CTMShutdownObserver::NewL( *this, KMdSPSShutdown, KMdSShutdown, EFalse );
-    	iShutdownObserver = CTMShutdownObserver::NewL( *this, KTAGDPSNotification, KShutdown, ETrue );  
-    	iShutdown = EFalse;
-    	
-        // create processor
-        iProcessor = NULL;
-        iProcessor = CThumbAGProcessor::NewL();	
-    	
-        TN_DEBUG1( "CThumbAGDaemon::ConstructL() - connect to MDS" );
+
+        if(iShutdownObserver)
+            {
+            delete iShutdownObserver;
+            iShutdownObserver = NULL;
+            }
+        iShutdownObserver = CTMShutdownObserver::NewL( *this, KTAGDPSNotification, KShutdown, ETrue );  
+        iShutdown = EFalse;
         
-    	// connect to MDS
-    	iMdESession = NULL;
-    	iMdESession = CMdESession::NewL( *this );
+        // create processor
+        if(iProcessor)
+            {
+            delete iProcessor;
+            iProcessor = NULL; 
+            }
+        
+        iProcessor = CThumbAGProcessor::NewL(); 
+        
+        TN_DEBUG1( "CThumbAGDaemon::InitializeL() - connect to MDS" );
+        
+        if(iMdESession)
+            {
+            TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+            TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+            TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+            TRAP_IGNORE( iMdESession->RemoveObjectPresentObserverL( * this  ));
+        
+            // connect to MDS
+            delete iMdESession;
+            iMdESession = NULL;
+            }
+
+        iMdESession = CMdESession::NewL( *this );
         }
     else
         {
         // no error here, but need to shutdown daemon neatly
         User::Leave(KErrNone);
         }
-	
-	TN_DEBUG1( "CThumbAGDaemon::ConstructL() - end" );
-	}
+        TN_DEBUG1( "CThumbAGDaemon::InitializeL() - end" );
+    }
 
 // ---------------------------------------------------------------------------
 // ~CThumbAGDaemon
@@ -124,6 +165,13 @@ CThumbAGDaemon::~CThumbAGDaemon()
     delete iMDSShutdownObserver;
     delete iShutdownObserver;
     
+    if(iReconnect)
+        {
+        iReconnect->Cancel();
+        delete iReconnect;
+        iReconnect = NULL;
+        }
+    
     if (iProcessor)
         {
         delete iProcessor;
@@ -132,10 +180,16 @@ CThumbAGDaemon::~CThumbAGDaemon()
     
     if (iMdESession)
         {
-        // 3 observers
+        // 2 observers
         TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
-        TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
-        TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+//modify        TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+        
+#ifdef MDS_URI_OBSERVER
+        // remove observer with uri
+        TRAP_IGNORE( iMdESession->RemoveObjectObserverWithUriL( *this ) );
+#endif
+        
+        //present observer
         TRAP_IGNORE(iMdESession->RemoveObjectPresentObserverL( * this  ));
         
         delete iMdESession;
@@ -203,7 +257,6 @@ void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aErr
     if (aError == KErrNone)
         {
         iProcessor->SetMdESession(iMdESession);
-        TRAP_IGNORE(iProcessor->QueryForPlaceholdersL());
         
         TRAPD( err, AddObserversL() );
         if (err != KErrNone)
@@ -223,11 +276,54 @@ void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aErr
 //
 void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
+    TN_DEBUG2( "CThumbAGDaemon::HandleSessionError == %d", aError );
     if (aError != KErrNone)
         {
-        TN_DEBUG2( "CThumbAGDaemon::HandleSessionError == %d", aError );
+        // kill processor right away, because it also has MdESession
+        if(iProcessor)
+            {
+            delete iProcessor;
+            iProcessor = NULL; 
+            }
+    
+        if (!iShutdown)
+            {
+            if (!iReconnect->IsActive())
+                {
+                iReconnect->Start( KMdEReconnect, KMdEReconnect, 
+                                   TCallBack(ReconnectCallBack, this));
+                
+                TN_DEBUG1( "CThumbAGDaemon::HandleSessionError() - reconnect timer started" );
+                }
+            }
+
         }   
     }
+
+#ifdef MDS_URI_OBSERVER
+// -----------------------------------------------------------------------------
+// CThumbAGDaemon::HandleObjectNotification
+// -----------------------------------------------------------------------------
+//
+
+void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& aSession, 
+        TObserverNotificationType aType,
+        const RArray<TItemId>& aObjectIdArray,
+        const RPointerArray<HBufC>& aObjectUriArray)
+    {
+    TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - begin" );
+    
+    if(aType == ENotifyRemove)
+        {
+        TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - removed");
+        TInt err(0);
+        TRAP(err, iProcessor->AddToQueueL(aType, aObjectIdArray, aObjectUriArray, EFalse));
+        __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGDaemon::HandleUriObjectNotification()"), err));
+        err = KErrNone;
+        }
+    TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - end" );
+    }
+#endif
 
 // -----------------------------------------------------------------------------
 // CThumbAGDaemon::HandleObjectNotification
@@ -249,17 +345,17 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
     if (aType == ENotifyAdd)
         {
         TN_DEBUG2( "CThumbAGDaemon::HandleObjectNotification() - ENotifyAdd %d", aObjectIdArray.Count() );
-        iAddCounter = iAddCounter + aObjectIdArray.Count();
+        iAddCounter = aObjectIdArray.Count();
         }
     else if (aType == ENotifyModify)
         {
         TN_DEBUG2( "CThumbAGDaemon::HandleObjectNotification() - ENotifyModify %d", aObjectIdArray.Count() );
-        iModCounter = iModCounter + aObjectIdArray.Count();
+        iModCounter = aObjectIdArray.Count();
         }
     else if (aType == ENotifyRemove)
         {
         TN_DEBUG2( "CThumbAGDaemon::HandleObjectNotification() - ENotifyRemove %d", aObjectIdArray.Count() );
-        iDelCounter = iDelCounter + aObjectIdArray.Count();
+        iDelCounter = aObjectIdArray.Count();
         }
 #endif
     
@@ -271,11 +367,13 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
         // If delete event, remove IDs from Modify and Add queues
         if ( aType == ENotifyRemove )
             {
-            iProcessor->RemoveFromQueues( aObjectIdArray );
+            iProcessor->RemoveFromQueues( aObjectIdArray, EFalse);
             }
         
         // Add event to processing queue by type and enable force run
-        TRAPD(err, iProcessor->AddToQueueL(aType, aObjectIdArray, EFalse));
+        
+        RPointerArray<HBufC> dummyArray;
+        TRAPD(err, iProcessor->AddToQueueL(aType, aObjectIdArray, dummyArray, EFalse));
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - error adding to queue" );
@@ -287,8 +385,12 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
         }
     
 #ifdef _DEBUG
-    TN_DEBUG6( "CThumbAGDaemon::IN-COUNTERS---------- Type: %d Amount: %d, Add = %d Modify = %d Delete = %d", 
-               aType, aObjectIdArray.Count(), iAddCounter, iModCounter, iDelCounter );
+    TN_DEBUG4( "CThumbAGDaemon::IN-COUNTERS---------- Add = %d Modify = %d Delete = %d", 
+               iAddCounter, iModCounter, iDelCounter );
+    iModCounter = 0;
+    iDelCounter = 0;
+    iAddCounter = 0;
+    
 #endif
 
     TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - end" );
@@ -314,48 +416,50 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
     //tread present objects as added
     if(aPresent)
         {
-        TRAP_IGNORE( iProcessor->QueryForPlaceholdersL());
         if ( aObjectIdArray.Count() > 0) 
-           {
-		   // do not force run of these items
-           TRAP(err, iProcessor->AddToQueueL(ENotifyModify, aObjectIdArray, ETrue));
+            {
+		    // do not force run of these items
+            RPointerArray<HBufC> dummyArray;
+            TRAP(err, iProcessor->AddToQueueL(ENotifyAdd, aObjectIdArray, dummyArray, ETrue));
            
-           TN_DEBUG2( "CThumbAGDaemon::HandleObjectPresentNotification() - ENotifyAdd %d", aObjectIdArray.Count() );
+            TN_DEBUG2( "CThumbAGDaemon::HandleObjectPresentNotification() - ENotifyAdd %d", aObjectIdArray.Count() );     
            
-           
-#ifdef _DEBUG
-           iAddCounter = iAddCounter + aObjectIdArray.Count();
+           #ifdef _DEBUG
+           iAddCounter = aObjectIdArray.Count();
            if (err != KErrNone)
                {
                TN_DEBUG1( "CThumbAGDaemon::HandleObjectPresentNotification() - error adding to queue" );
                }
-#endif
+           #endif
            }
         }
     else
         {
         TN_DEBUG1( "CThumbAGDaemon::HandleObjectPresentNotification() - handle not present" );
-        TRAP_IGNORE( iProcessor->QueryForPlaceholdersL() );
-#ifdef _DEBUG    
-        if( iModCounter < aObjectIdArray.Count() )
+
+        #ifdef _DEBUG    
+        if( iAddCounter < aObjectIdArray.Count() )
             {
-            iModCounter = 0;
+            iAddCounter = 0;
             }
         else
             {
-            iModCounter = iModCounter - aObjectIdArray.Count();
+            iDelCounter = aObjectIdArray.Count();
             }
-#endif
+        #endif
            
         if ( aObjectIdArray.Count() > 0) 
-           {
-           iProcessor->RemoveFromQueues( aObjectIdArray, ETrue );
-           }
+            {
+            iProcessor->RemoveFromQueues( aObjectIdArray, ETrue );
+            }
         }
     
     #ifdef _DEBUG
-    TN_DEBUG5( "CThumbAGDaemon::IN-COUNTERS---------- Amount: %d, Add = %d Modify = %d Delete = %d", 
-               aObjectIdArray.Count(), iAddCounter, iModCounter, iDelCounter );
+    TN_DEBUG4( "CThumbAGDaemon::IN-COUNTERS---------- Add = %d Modify = %d Delete = %d", 
+               iAddCounter, iModCounter, iDelCounter );
+    iModCounter = 0;
+    iDelCounter = 0;
+    iAddCounter = 0;
     #endif
     
     TN_DEBUG1( "CThumbAGDaemon::HandleObjectPresentNotification() - end" );
@@ -404,12 +508,14 @@ void CThumbAGDaemon::AddObserversL()
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
-    
-    // modify observer
-    iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+
+   // modify observer
+   //iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
  
-    // remove observer
-    iMdESession->AddObjectObserverL( *this, NULL, ENotifyRemove );
+#ifdef MDS_URI_OBSERVER
+    // remove observer with uri
+    iMdESession->AddObjectObserverWithUriL( *this, NULL, ENotifyRemove );
+#endif
     
     // object present observer
     iMdESession->AddObjectPresentObserverL( *this );
@@ -433,6 +539,26 @@ TBool CThumbAGDaemon::DaemonEnabledL()
     delete rep;
     TN_DEBUG3( "CThumbAGDaemon::DaemonEnabledL() - val == %d, ret == %d", val, ret );
     return val;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbAGDaemon::ReconnectCallBack()
+// ---------------------------------------------------------------------------
+//
+TInt CThumbAGDaemon::ReconnectCallBack(TAny* aAny)
+    {
+    TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - reinitialize");
+    
+    CThumbAGDaemon* self = static_cast<CThumbAGDaemon*>( aAny );
+    
+    self->iReconnect->Cancel();
+    
+    // reconnect to MDS
+    TRAP_IGNORE( self->InitializeL() );
+    
+    TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - done");
+    
+    return KErrNone;
     }
 
 // ---------------------------------------------------------------------------

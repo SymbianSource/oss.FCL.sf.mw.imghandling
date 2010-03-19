@@ -627,7 +627,6 @@ TInt CThumbnailManagerTest::CheckThumbnailL( CStifItemParser& aItem )
 TInt CThumbnailManagerTest::CheckThumbnailCenrepL( CStifItemParser& aItem )
     {
     TInt err = KErrNone;
-    TBool full = EFalse;
     
     TInt sizeType;
     TInt displaymode = 0;
@@ -635,12 +634,6 @@ TInt CThumbnailManagerTest::CheckThumbnailCenrepL( CStifItemParser& aItem )
     User::LeaveIfError( aItem.GetNextInt( displaymode ));
     
     TThumbnailSize size = (TThumbnailSize)sizeType;
-    if (size == EImageFullScreenThumbnailSize ||
-        size == EVideoFullScreenThumbnailSize ||
-        size == EAudioFullScreenThumbnailSize)
-        {
-        full = ETrue;
-        }
     
     if ( iThumbnail )
         {
@@ -669,10 +662,6 @@ TInt CThumbnailManagerTest::CheckThumbnailCenrepL( CStifItemParser& aItem )
              thumbSize.iWidth <= width && thumbSize.iHeight <= height)
             {
             iLog->Log( _L( "CheckThumbnailCenrepL - ok" ));
-            }
-        else if (full && (thumbSize.iWidth <= width && thumbSize.iHeight <= height))
-            {
-            iLog->Log( _L( "CheckThumbnailCenrepL - fullscreen ok, not upscaled" ));
             }
         else
             {

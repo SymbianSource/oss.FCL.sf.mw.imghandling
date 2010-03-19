@@ -16,12 +16,22 @@
 */
 
 
-#ifndef CTHUMBNAILFORMATOBSERVER_H
-#define CTHUMBNAILFORMATOBSERVER_H
+#ifndef CTMFORMATOBSERVER_H
+#define CTMFORMATOBSERVER_H
 
 #include <babackup.h>
 #include "f32file.h"
-#include "thumbnailserver.h" 
+
+
+/**
+ * Observer interface
+ */
+class MTMFormatObserver
+    {
+public:
+
+    virtual void FormatNotification( TBool aFormat ) = 0;
+    };
 
 /**
  *  File System monitor class to monitor for format events
@@ -29,8 +39,8 @@
  *  @lib thumbnailsserver.exe
  *  @since S60 3.0
  */
-NONSHARABLE_CLASS( CThumbnailFormatObserver ) : public CBase,
-                                             public MBackupOperationObserver
+class CTMFormatObserver: public CBase,
+                         public MBackupOperationObserver
     {
 
 public:
@@ -39,18 +49,18 @@ public:
     * Two-phase constructor
     * @param aObserver observer to the monitor
     */
-    static CThumbnailFormatObserver* NewL( CThumbnailServer* aServer );
+    static CTMFormatObserver* NewL( MTMFormatObserver& aObserver );
 
     /**
     * Two-phase constructor
     * @param aObserver observer to the monitor
     */
-    static CThumbnailFormatObserver* NewLC( CThumbnailServer* aServer );
+    static CTMFormatObserver* NewLC( MTMFormatObserver& aObserver );
 
     /**
     * Destructor
     */
-    virtual ~CThumbnailFormatObserver();
+    virtual ~CTMFormatObserver();
 
 public: // New functions
 
@@ -75,7 +85,7 @@ private:
     *  C++ constructor
     *  aObserver observer to this event
     */
-    CThumbnailFormatObserver ( CThumbnailServer* aServer );
+    CTMFormatObserver ( MTMFormatObserver& aObserver );
 
     /*
     * Second phased constructor
@@ -84,11 +94,11 @@ private:
 
 private: // data
 
-    CThumbnailServer* iServer;    
+    // not own
+    MTMFormatObserver& iObserver; 
     
     CBaBackupSessionWrapper* iBackupSession;
-
     
     };
 
-#endif // CTHUMBNAILFORMATOBSERVER_H
+#endif // CTMFORMATOBSERVER_H

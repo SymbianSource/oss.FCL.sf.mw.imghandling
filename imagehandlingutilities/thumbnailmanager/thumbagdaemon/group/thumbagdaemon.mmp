@@ -36,18 +36,25 @@ VENDORID                VID_DEFAULT
 
 EPOCPROCESSPRIORITY 	background
 
+//MACRO MDS_URI_OBSERVER
+MACRO TWO_PHASED_TN_GENERATION
+
 SOURCEPATH              ../src
 SOURCE                  thumbagdaemon.cpp
-SOURCE					thumbagprocessor.cpp
-SOURCE					../../thumbnailserver/src/tmshutdownobserver.cpp 
-SOURCE					thumbagformatobserver.cpp
+SOURCE			thumbagprocessor.cpp
+
+SOURCEPATH 		../../tmcommon/src
+SOURCE			tmactivitymanager.cpp 
+SOURCE			tmshutdownobserver.cpp 
+SOURCE			tmformatobserver.cpp 
+SOURCE			tmsrproptertyobserver.cpp
 
 // Default system include paths for middleware layer modules.
 MW_LAYER_SYSTEMINCLUDE
 
 USERINCLUDE             ../inc
 USERINCLUDE             ../../inc
-USERINCLUDE             ../../thumbnailserver/inc
+USERINCLUDE             ../../tmcommon/inc
 
 LIBRARY                 euser.lib
 LIBRARY         	mdeclient.lib
@@ -55,7 +62,8 @@ LIBRARY           	thumbnailmanager.lib
 LIBRARY                 centralrepository.lib
 LIBRARY 		harvesterclient.lib
 LIBRARY			bafl.lib 
-LIBRARY			mpxcollectionhelper.lib mpxcollectionutility.lib mpxcommon.lib
+LIBRARY			mpxcollectionhelper.lib mpxcollectionutility.lib mpxcommon.lib 
+LIBRARY 		hwrmlightclient.lib
 
 DEBUGLIBRARY            flogger.lib
 

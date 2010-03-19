@@ -41,14 +41,14 @@ CThumbnailScaleTask* CThumbnailScaleTask::NewL( CThumbnailTaskProcessor&
     aProcessor, CThumbnailServer& aServer, const TDesC& aFilename, CFbsBitmap*
     aBitmap, const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
     TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
-    const TThumbnailSize aThumbnailSize, const TThumbnailId aThumbnailId,
+    const TThumbnailSize aThumbnailSize, const TInt64 aModified,
     TBool aBitmapToPool, const TBool aEXIF)
     {
     // We take ownership of aBitmap
     CleanupStack::PushL( aBitmap );
     CThumbnailScaleTask* self = new( ELeave )CThumbnailScaleTask( aProcessor,
         aServer, aFilename, aBitmap, aOriginalSize, aTargetSize, aCrop,
-        aDisplayMode, aPriority, aTargetUri, aThumbnailSize, aThumbnailId,
+        aDisplayMode, aPriority, aTargetUri, aThumbnailSize, aModified,
         aBitmapToPool, aEXIF);
     CleanupStack::Pop( aBitmap );
     CleanupStack::PushL( self );
@@ -67,12 +67,12 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
     CThumbnailServer& aServer, const TDesC& aFilename, CFbsBitmap* aBitmap,
     const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
     TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
-    const TThumbnailSize aThumbnailSize, const TThumbnailId aThumbnailId,
+    const TThumbnailSize aThumbnailSize, const TInt64 aModified,
     TBool aBitmapToPool, const TBool aEXIF):
     CThumbnailTask( aProcessor, aPriority ), iServer( aServer ), iOwnBitmap( aBitmap ),
-    iOriginalSize( aOriginalSize ), iTargetSize( aTargetSize ), iCrop( aCrop ),
+    iOriginalSize( aOriginalSize ), iTargetSize(aTargetSize), iTargetSizeTN( aTargetSize ), iCrop( aCrop ),
     iDisplayMode( aDisplayMode ), iFilename( aFilename ), iTargetUri( aTargetUri ),
-    iThumbnailSize(aThumbnailSize), iThumbnailId(aThumbnailId),
+    iThumbnailSize(aThumbnailSize), iModified(aModified),
     iBitmapToPool(aBitmapToPool), iEXIF(aEXIF)
     {
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::CThumbnailScaleTask()", this );
@@ -86,7 +86,7 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
 //
 void CThumbnailScaleTask::ConstructL()
     {
-    iServer.AddBitmapToPoolL( NULL, iOwnBitmap );
+    iServer.AddBitmapToPoolL( iRequestId.iSession, iOwnBitmap, iRequestId );
 
     // Successfully added bitmap to pool, we are no longer responsible for
     // deleting it directly.
@@ -326,16 +326,14 @@ void CThumbnailScaleTask::CalculateCropRectangle()
 //
 void CThumbnailScaleTask::StoreAndCompleteL()
     {
-    TN_DEBUG5( "CThumbnailScaleTask(0x%08x)::StoreAndCompleteL() iFilename=%S, iBitmap=0x%08x, iScaledBitmap=0x%08x)", 
-               this, &iFilename, iBitmap, iScaledBitmap );
+    TN_DEBUG6( "CThumbnailScaleTask(0x%08x)::StoreAndCompleteL() iFilename=%S, iThumbnailSize=%d, iBitmap=0x%08x, iScaledBitmap=0x%08x)", 
+               this, &iFilename, iThumbnailSize, iBitmap, iScaledBitmap );
 		 
     // do not store TN if quality is too low eg. orignal size of image is smaller than requested size
     // (do not store upscaled images)
-    if ( iTargetSize.iWidth >= iOriginalSize.iWidth && 
-         iTargetSize.iHeight >= iOriginalSize.iHeight && iEXIF)
+    if ( (iTargetSizeTN.iWidth > iOriginalSize.iWidth || iTargetSizeTN.iHeight > iOriginalSize.iHeight) && iEXIF)
         {
         TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() too low quality");
-        //don't store preview image
         iDoStore = EFalse;
         }
     
@@ -348,34 +346,35 @@ void CThumbnailScaleTask::StoreAndCompleteL()
             if (iFilename != KNullDesC && iFilename.CompareF(iTargetUri) == 0)
                 {
                 // filename and target URI match, so thumb created from associated path
-                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iThumbnailId, ETrue );
+                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iModified, ETrue );
                 }
             else
                 {
                 // thumb not created from associated path
-                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iThumbnailId, EFalse, EFalse );
+                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iModified, EFalse, EFalse );
                 }  
             }
         else if (iFilename != KNullDesC)
             {
-            iServer.StoreThumbnailL( iFilename, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iThumbnailId, ETrue );
+            iServer.StoreThumbnailL( iFilename, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iModified, ETrue );
             }
         }    
     
-    if ( iMessage.Handle() )
+    if ( ClientThreadAlive() )
         {
         TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap handle to params");
         
-    	TThumbnailRequestParams& params = iParamsBuf();
-		iMessage.ReadL( 0, iParamsBuf );
-		params.iBitmapHandle = iScaledBitmap->Handle();
-	   
+        TThumbnailRequestParams& params = iParamsBuf();
+        iMessage.ReadL( 0, iParamsBuf );
+                    
         // if need to add scaled bitmap to pool
         if (iBitmapToPool)
             {
             TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap to pool");
             
-            iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap );
+            params.iBitmapHandle = iScaledBitmap->Handle();
+            
+            iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap, iRequestId );
             iScaledBitmapHandle = params.iBitmapHandle;
             }    
 		

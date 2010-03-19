@@ -20,10 +20,10 @@
 //INCLUDE FILES
 #include <e32base.h>
 #include <imageconversion.h>
-#include <exifread.h>
+#include <ExifRead.h>
 #include <e32math.h>
 
-#include <iclextjpegapi.h>
+#include <IclExtJpegApi.h>
 #include "thumbnailimagedecoder.h"
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"
@@ -338,7 +338,7 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
     // If the image is in jpeg format, try to get thumbnail from EXIF data (if EOptimizeForQuality not set)
     if ( IsJpeg() && !( aFlags == CThumbnailManager::EOptimizeForQuality ))
         {
-        TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() crete exif decoder" );
+        TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() create exif decoder" );
         TRAPD( err, CreateExifDecoderL( aFlags ));
         thumbFound = ( err == KErrNone );
         iEXIF = ETrue;
@@ -347,7 +347,7 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
     if ( !thumbFound )
         {
         iEXIF = EFalse;
-        TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() crete normal decoder" );
+        TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() create normal decoder" );
         
         delete iDecoder;
         iDecoder = NULL;
@@ -362,12 +362,12 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
         if ( aFlags == CThumbnailManager::EOptimizeForQuality )
             {
             options = ( CImageDecoder::TOptions )( CImageDecoder
-                ::EOptionNoDither );
+                ::EOptionNoDither | CImageDecoder::EOptionAlwaysThread );
             }
         else
             {
-            options = ( CImageDecoder::TOptions )( CImageDecoder
-                ::EOptionNoDither | CImageDecoder::EPreferFastDecode );
+            options  = ( CImageDecoder::TOptions )( CImageDecoder
+                ::EOptionNoDither | CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
             }
 
         if ( IsSvg())
@@ -407,11 +407,15 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
                 
                 if ( decErr != KErrNone )
                     {                        
+                    TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - CImageDecoder error %d", decErr );
+                    LeaveIfCorruptL(decErr);
+                    
                     // don't force any mime type
                     TRAPD( decErr, iDecoder = CImageDecoder::DataNewL( iFs, *iBuffer, options ) );
+                    
                     if ( decErr != KErrNone )
                         {                        
-                        TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() - error 2" );
+                        TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - CImageDecoder no mime error %d", decErr );
                         
                         User::Leave( decErr );
                         }
@@ -422,7 +426,6 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
             }
         else
             {
-            
             if ( !iBuffer )
                 {
                 TRAPD( decErr, iDecoder = CExtJpegDecoder::FileNewL(
@@ -430,12 +433,24 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
                 
                 if ( decErr != KErrNone )
                     {
+                    TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - HW CExtJpegDecoder failed %d", decErr);
+                    LeaveIfCorruptL(decErr);
+                    
                     TRAP( decErr, iDecoder = CExtJpegDecoder::FileNewL(
                             CExtJpegDecoder::ESwImplementation, iFs, fullName, options) );
                     
                     if ( decErr != KErrNone )
                         {
-                        iDecoder = CImageDecoder::FileNewL( iFile, ContentAccess::EPeek, options );
+                        TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - SW CExtJpegDecoder failed %d", decErr);
+                        LeaveIfCorruptL(decErr);
+                        
+                        TRAP( decErr, iDecoder = CImageDecoder::FileNewL( iFile, ContentAccess::EPeek, options ));
+                        
+                        if( decErr != KErrNone)
+                            {
+                            TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - CImageDecoder failed %d", decErr);
+                            User::Leave( decErr );
+                            }
                         
                         TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() - CImageDecoder created" );
                         }
@@ -456,21 +471,28 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
                 
                 if ( decErr != KErrNone )
                     {
+                    TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - HW CExtJpegDecoder failed %d", decErr);
+                    LeaveIfCorruptL(decErr);
+                    
                     TRAP( decErr, iDecoder = CExtJpegDecoder::DataNewL(
                             CExtJpegDecoder::ESwImplementation, iFs, *iBuffer, options ));
                     
                     if ( decErr != KErrNone )
-                        {                        
+                        {                       
+                        TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - SW CExtJpegDecoder failed %d", decErr);
+                        LeaveIfCorruptL(decErr);
                         TRAPD( decErr, iDecoder = CImageDecoder::DataNewL( iFs, *iBuffer, iMimeType.Des8(), options) );
                         
                         if ( decErr != KErrNone )
                             {                        
+                            TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - CImageDecoder failed %d", decErr);
+                            LeaveIfCorruptL(decErr);
                             // don't force any mime type
                             TRAPD( decErr, iDecoder = CImageDecoder::DataNewL( iFs, *iBuffer, options ) );
+
                             if ( decErr != KErrNone )
                                 {                                
-                                TN_DEBUG1( "CThumbnailImageDecoder::CreateDecoderL() - error 3" );
-                                
+                                TN_DEBUG2( "CThumbnailImageDecoder::CreateDecoderL() - CImageDecoder no mime failed %d", decErr);
                                 User::Leave( decErr );
                                 }
                             }
@@ -540,12 +562,12 @@ void CThumbnailImageDecoder::CreateExifDecoderL( CThumbnailManager
     CImageDecoder::TOptions options;
     if ( aFlags == CThumbnailManager::EOptimizeForQuality )
         {
-        options = ( CImageDecoder::TOptions )( CImageDecoder::EOptionNoDither );
+        options = ( CImageDecoder::TOptions )( CImageDecoder::EOptionNoDither | CImageDecoder::EOptionAlwaysThread );
         }
     else
         {
         options = ( CImageDecoder::TOptions )( CImageDecoder::EOptionNoDither |
-            CImageDecoder::EPreferFastDecode );
+            CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
         }
 
     TRAPD( err, iDecoder = CExtJpegDecoder::DataNewL( iFs, * iExifThumbImage,
@@ -586,6 +608,20 @@ void CThumbnailImageDecoder::CreateExifDecoderL( CThumbnailManager
 const TSize& CThumbnailImageDecoder::OriginalSize()const
     {
     return iOriginalSize;
+    }
+
+// -----------------------------------------------------------------------------
+// CThumbnailImageDecoder::LeaveIfCorruptL()
+// Leave is image is corrupted
+// -----------------------------------------------------------------------------
+//
+void CThumbnailImageDecoder::LeaveIfCorruptL(const TInt aError )
+    {
+    //no sense to try other codecs if image is corrupted
+    if( aError == KErrCorrupt || aError == KErrUnderflow)
+        {
+        User::Leave( aError );
+        }
     }
 
 //End of file

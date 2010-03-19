@@ -15,15 +15,15 @@
 *
 */
 
-#ifndef _TNMGETIMEI_H_
-#define _TNMGETIMEI_H_
+#ifndef TMGETIMEI_H
+#define TMGETIMEI_H
 
 #include <e32base.h>
 #include <etel3rdparty.h>
 
 #include "thumbnailmanagerconstants.h"
 
-class CTnmgetimei: public CActive
+class CTMGetImei: public CActive
     {
     private:
         CTelephony *iTelephony;
@@ -31,9 +31,9 @@ class CTnmgetimei: public CActive
         TBuf<KImeiBufferSize> iImei;
         CActiveSchedulerWait iAsw;
     public:
-        virtual ~CTnmgetimei();
-        static CTnmgetimei* NewL();
-        static CTnmgetimei* NewLC();
+        virtual ~CTMGetImei();
+        static CTMGetImei* NewL();
+        static CTMGetImei* NewLC();
         TBuf<KImeiBufferSize> GetIMEI();
 
         void DoCancel();
@@ -41,11 +41,10 @@ class CTnmgetimei: public CActive
         void RunL();
 
     private:
-        CTnmgetimei(): CActive(EPriorityStandard), iTelephony(NULL)
+        CTMGetImei(): CActive(EPriorityStandard), iTelephony(NULL)
         {}
         void ConstructL();
-
     };
 
-#endif //_TNMGETIMEI_H_
+#endif //TNMGETIMEI_H
 

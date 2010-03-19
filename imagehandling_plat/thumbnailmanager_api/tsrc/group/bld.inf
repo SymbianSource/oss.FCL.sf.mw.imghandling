@@ -43,6 +43,5 @@ PRJ_TESTEXPORTS
 ../data/mmc/ThumbnailManagerTest/WIDE_800x400.gif /epoc32/winscw/c/data/ThumbnailManagerTest/WIDE_800x400.gif
 ../data/mmc/ThumbnailManagerTest/TestMBM.mbm /epoc32/winscw/c/data/ThumbnailManagerTest/TestMBM.mbm
 ../data/mmc/ThumbnailManagerTest/mp3.mp3 /epoc32/winscw/c/data/ThumbnailManagerTest/mp3.mp3
-../data/mmc/ThumbnailManagerTest/camera.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/camera.jpg
 
 //  End of File

@@ -51,6 +51,8 @@ CThumbnailTask::~CThumbnailTask()
     {
     Cancel();
     CancelMessage();
+    
+    iClientThread.Close();
     }
 
 
@@ -222,6 +224,51 @@ void CThumbnailTask::CancelMessage()
         {
         iMessage.Complete( KErrCancel );
         ResetMessageData();
+        }
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailTask::ClientThreadAlive()
+// Checks if client thread is still alive and RMessage2 handle valid.
+// ---------------------------------------------------------------------------
+//
+TBool CThumbnailTask::ClientThreadAlive(const TBool aGetThread)
+    {
+    if ( iMessage.Handle())
+        {
+        if (aGetThread)
+            {
+            // get client thread
+            TInt err = iMessage.Client( iClientThread );
+            if (err != KErrNone)
+                {
+                TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - client thread not found", this);
+            
+                ResetMessageData();
+                
+                return EFalse;
+                }
+            }
+    
+        // check if client thread alive
+        TExitType exitType = iClientThread.ExitType();
+        if( exitType != EExitPending )
+            {
+            TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - client thread died", this);
+        
+            ResetMessageData();
+            
+            return EFalse;
+            }
+        else
+            {
+            // all OK
+            return ETrue;
+            }
+        }
+    else
+        {
+        return EFalse;
         }
     }
 

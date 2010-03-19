@@ -1,13 +1,14 @@
 <?xml version="1.0"?>
-<!DOCTYPE SystemDefinition SYSTEM "sysdef_1_4_0.dtd" [
+<!DOCTYPE SystemDefinition SYSTEM "sysdef_1_5_1.dtd" [
   <!ENTITY layer_real_source_path "sf/mw/imghandling" >
 ]>
 
-<SystemDefinition name="imghandling" schema="1.4.0">
+<SystemDefinition name="imghandling" schema="1.5.1">
   <systemModel>
     <layer name="mw_layer">
       <module name="imghandling">
         <unit unitID="imm.imghandling" mrp="" bldFile="&layer_real_source_path;/group" name="imghandling" />
+        <unit unitID="imm.thumbnailmanagerqt" name="thumbnailmanagerqt" bldFile="&layer_real_source_path;/imagehandlingutilities/thumbnailmanager/thumbnailmanagerqt" proFile="thumbnailmanagerqt.pro" qmakeArgs="-r" mrp=""/>
       </module>
     </layer>
 

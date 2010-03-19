@@ -17,10 +17,10 @@
 
 
 #include <e32svr.h>
-#include <mihlscaler.h>
+#include <MIHLScaler.h>
 #include <driveinfo.h>
 #include <caf/data.h>
-#include <oma2agent.h>
+#include <Oma2Agent.h>
 #include <bautils.h>  
 #include <mdesession.h>
 
@@ -35,8 +35,7 @@
 #include "thumbnailpanic.h"
 #include "thumbnailcenrep.h"
 #include "thumbnailmemorycardobserver.h"
-#include "tnmgetimei.h"
-#include "thumbnailformatobserver.h"
+#include "tmgetimei.h"
 
 
 _LIT8( KThumbnailMimeWildCard, "*" );
@@ -55,7 +54,7 @@ const TChar KThumbnailMimeTypeSeparatorChar = ' ';
 // ----------------------------------------------------------------------------------------
 // Total number of ranges
 // ----------------------------------------------------------------------------------------
-const TUint KThumbnailServerRangeCount = 17;
+const TUint KThumbnailServerRangeCount = 16;
  
 // ----------------------------------------------------------------------------------------
 // Definition of the ranges
@@ -67,7 +66,6 @@ const TInt KThumbnailServerRanges[KThumbnailServerRangeCount] =
     EReleaseBitmap,
     ECancelRequest,
     EChangePriority,
-    ECreateThumbnails,
     EDeleteThumbnails,
     EGetMimeTypeBufferSize,
     EGetMimeTypeList,
@@ -91,7 +89,6 @@ const TUint8 KThumbnailServerElementsIndex[KThumbnailServerRangeCount] =
     CPolicyServer::ECustomCheck,    // EReleaseBitmap
     CPolicyServer::ECustomCheck,    // ECancelRequest
     CPolicyServer::ECustomCheck,    // EChangePriority
-    CPolicyServer::ECustomCheck,    // ECreateThumbnails
     CPolicyServer::ECustomCheck,    // EDeleteThumbnails
     CPolicyServer::ECustomCheck,    // EGetMimeTypeBufferSize
     CPolicyServer::ECustomCheck,    // EGetMimeTypeList
@@ -140,7 +137,6 @@ CPolicyServer::TCustomResult CThumbnailServer::CustomSecurityCheckL(
         case EReleaseBitmap:
         case ECancelRequest:
         case EChangePriority:
-        case ECreateThumbnails:
         case EDeleteThumbnails:
         case EGetMimeTypeBufferSize:
         case EGetMimeTypeList:
@@ -234,10 +230,10 @@ void CThumbnailServer::ConstructL()
     REComSession::ListImplementationsL( TUid::Uid( THUMBNAIL_PROVIDER_IF_UID ),
         iPluginInfoArray );
     
-    CTnmgetimei * imeigetter = CTnmgetimei::NewLC();
+    CTMGetImei * imeiGetter = CTMGetImei::NewLC();
    
-    iImei = imeigetter->GetIMEI();
-    CleanupStack::PopAndDestroy(imeigetter);
+    iImei = imeiGetter->GetIMEI();
+    CleanupStack::PopAndDestroy(imeiGetter);
     
     iFs.CreatePrivatePath(EDriveC);
     iFs.SetSessionToPrivate(EDriveC);
@@ -248,13 +244,15 @@ void CThumbnailServer::ConstructL()
             
     iMMCObserver = CThumbnailMemoryCardObserver::NewL( this, iFs );
     
-    iFormatObserver = CThumbnailFormatObserver::NewL( this );
+    iFormatObserver = CTMFormatObserver::NewL( *this );
     
     iFormatting = EFalse;
     
-    OpenStoresL();
+    //OpenStoresL();
     
     AddUnmountObserversL();
+    
+    iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
     }
 
 
@@ -271,9 +269,17 @@ CThumbnailServer::~CThumbnailServer()
     delete iShutdownObserver;
     delete iProcessor;
     
+    if(iReconnect)
+        {
+        iReconnect->Cancel();
+        delete iReconnect;
+        iReconnect = NULL;
+        }
+    
     if (iMdESession)
         {
         delete iMdESession;
+        iMdESession = NULL;
         }
 
     ResetAndDestroyHashMap < TInt, CThumbnailStore > ( iStores );
@@ -319,10 +325,17 @@ void CThumbnailServer::HandleSessionOpened( CMdESession& /* aSession */, TInt /*
 //
 void CThumbnailServer::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
-    if (aError != KErrNone)
+    TN_DEBUG2( "CThumbnailServer::HandleSessionError == %d", aError );
+    if (aError != KErrNone && !iShutdown)
         {
-        TN_DEBUG2( "CThumbnailServer::HandleSessionError == %d", aError );
-        }   
+        if (!iReconnect->IsActive())
+            {
+            iReconnect->Start( KMdEReconnect, KMdEReconnect, 
+                               TCallBack(ReconnectCallBack, this));
+            
+            TN_DEBUG1( "CThumbnailServer::HandleSessionError() - reconnect timer started" );
+            }
+        } 
     }
 
 // -----------------------------------------------------------------------------
@@ -398,6 +411,33 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
     iSessionCount--;
     
     iProcessor->RemoveTasks(aSession);
+    
+    TN_DEBUG2( "CThumbnailServer::DropSession() aSession = 0x%08x", aSession );        
+    
+    // clean-up bitmap pool
+    
+    THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
+
+    // const pointer to a non-const object
+    const TThumbnailBitmapRef* ref = bpiter.NextValue();
+
+    while ( ref )
+        {
+        
+        TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
+        
+        if ( ref->iSession == aSession )
+            {            
+            delete ref->iBitmap;            
+            bpiter.RemoveCurrent();
+                        
+            TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", 
+                                iBitmapPool.Count());
+            }
+        ref = bpiter.NextValue();
+        
+        }
+
     if ( iSessionCount <= 0 )
         {
         // rename thread
@@ -432,7 +472,7 @@ void CThumbnailServer::ShutdownNotification()
 // -----------------------------------------------------------------------------
 //
 void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
-    CFbsBitmap* aBitmap )
+    CFbsBitmap* aBitmap, TThumbnailServerRequestId aRequestId )
     {
     if( !aBitmap )
         {
@@ -444,6 +484,8 @@ void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
 
     TThumbnailBitmapRef* ptr = iBitmapPool.Find( aBitmap->Handle());
 
+    TN_DEBUG2( "CThumbnailServer::AddBitmapToPoolL() - id = %d", aRequestId.iRequestId );
+    
     if ( ptr )
         {
         ptr->iRefCount++;
@@ -453,7 +495,9 @@ void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
         TThumbnailBitmapRef ref;
         ref.iBitmap = aBitmap;
         ref.iSession = aSession;
-        ref.iRefCount = 1; // magic: first reference
+        ref.iRefCount = 1; // magic: first reference        
+        ref.iRequestId = aRequestId.iRequestId;               
+        
         iBitmapPool.InsertL( aBitmap->Handle(), ref );
         }
     
@@ -469,7 +513,7 @@ void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
 //
 void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     const TSize& aOriginalSize, const TBool aCropped, const TThumbnailSize aThumbnailSize,
-    const TThumbnailId aThumbnailId, const TBool aThumbFromPath, const TBool aCheckExist )
+    const TInt64 aModified, const TBool aThumbFromPath, const TBool aCheckExist )
     {
     TN_DEBUG6( 
         "CThumbnailServer::StoreBitmapL(aPath=%S, aBitmap=0x%08x, aOriginalSize=%dx%d, aCropped=%d)", &aPath, aBitmap, aOriginalSize.iWidth, aOriginalSize.iHeight, aCropped );
@@ -480,12 +524,12 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     if (!aCheckExist)
         {
         StoreForPathL( aPath )->StoreThumbnailL( aPath, aBitmap, aOriginalSize,
-                       aCropped, aThumbnailSize, aThumbnailId, aThumbFromPath );
+                       aCropped, aThumbnailSize, aModified, aThumbFromPath );
         }    
     else if(BaflUtils::FileExists( iFs, aPath))
         {
         StoreForPathL( aPath )->StoreThumbnailL( aPath, aBitmap, aOriginalSize,
-                       aCropped, aThumbnailSize, aThumbnailId, aThumbFromPath );
+                       aCropped, aThumbnailSize, aModified, aThumbFromPath );
         }
     else
         {
@@ -528,6 +572,7 @@ void CThumbnailServer::DeleteBitmapFromPool( TInt aHandle )
             delete ptr->iBitmap;
             ptr->iBitmap = NULL;
             iBitmapPool.Remove( aHandle );
+            TN_DEBUG2( "CThumbnailServer::DeleteBitmapFromPool -- items left %d", iBitmapPool.Count() );
             }
         else
             {
@@ -538,6 +583,7 @@ void CThumbnailServer::DeleteBitmapFromPool( TInt aHandle )
         }
     else
         {
+        //__ASSERT_DEBUG(( EFalse ), ThumbnailPanic( EThumbnailBitmapNotReleased ));
         TN_DEBUG2( "CThumbnailServer::DeleteBitmapFromPool(%d) -- not found!",
             aHandle );
         }
@@ -554,41 +600,6 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     
     StoreForPathL( aPath )->DeleteThumbnailsL( aPath );
     }
-
-
-// -----------------------------------------------------------------------------
-// Delete thumbnails by Id
-// -----------------------------------------------------------------------------
-//
-void CThumbnailServer::DeleteThumbnailsByIdL( const TThumbnailId aItemId )
-    {
-    TN_DEBUG2( "CThumbnailServer::DeleteThumbnailsByIdL(%d)", aItemId);
-    
-#ifdef _DEBUG
-    TTime aStart, aStop;
-    aStart.UniversalTime();
-#endif
-    
-    // no path available, can be any store    
-    THashMapIter<TInt, CThumbnailStore*> iter( iStores );
-    CThumbnailStore* const *store = iter.NextValue();
-
-    while ( store )
-        {
-        TInt err = KErrNone;   
-        TRAP(err, ((CThumbnailStore*)(*store))->DeleteThumbnailsL(aItemId) );
-        if (err == KErrNone)
-            {
-#ifdef _DEBUG
-    aStop.UniversalTime();
-    TN_DEBUG2( "CThumbnailStore::DeleteThumbnailsByIdL() took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-#endif
-            return;
-            }
-        store = iter.NextValue();
-        }    
-    }
-
 
 // -----------------------------------------------------------------------------
 // CThumbnailServer::ResolveMimeTypeL()
@@ -741,7 +752,35 @@ void CThumbnailServer::QueueTaskL( CThumbnailTask* aTask )
 //
 TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
     {
-    return iProcessor->RemoveTask( aRequestId );
+    
+    TInt error = iProcessor->RemoveTask( aRequestId );
+        
+    // clean-up bitmap pool        
+        
+    THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
+
+    // const pointer to a non-const object
+    const TThumbnailBitmapRef* ref = bpiter.NextValue();
+
+    while ( ref )
+        {
+        
+        TN_DEBUG2( "CThumbnailServer::DequeTask() - ref->iRequestId = %d", ref->iRequestId );
+
+        if ( ref->iSession == aRequestId.iSession && 
+             ref->iRequestId == aRequestId.iRequestId )
+            {            
+            delete ref->iBitmap;            
+            bpiter.RemoveCurrent();                        
+                        
+            TN_DEBUG2( "CThumbnailServer::DequeTask() - deleted bitmap, left=%d", 
+                                iBitmapPool.Count());
+            }
+        ref = bpiter.NextValue();
+        
+        }
+
+    return error;
     }
 
 
@@ -849,60 +888,6 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
     return res;
     }
 
-
-// -----------------------------------------------------------------------------
-// CThumbnailServer::FetchThumbnailL()
-// -----------------------------------------------------------------------------
-//
-void CThumbnailServer::FetchThumbnailL( TThumbnailId aThumbnailId, CFbsBitmap* &
-    aThumbnail, TDesC8* & aData, TThumbnailSize aThumbnailSize, TSize &aOriginalSize )
-    {
-    TN_DEBUG3( "CThumbnailServer::FetchThumbnailL(aThumbnailId=%d aThumbnailSize=%d)", aThumbnailId, aThumbnailSize );
-
-#ifdef _DEBUG
-    TTime aStart, aStop;
-    aStart.UniversalTime();
-    TInt roundCount = 1;
-#endif
-    
-    THashMapIter<TInt, CThumbnailStore*> storeIter(iStores);
-    
-    TN_DEBUG1( "CThumbnailServer::FetchThumbnailL() store iteration - begin");
-    for (CThumbnailStore* const* pStore = storeIter.NextValue();
-        pStore && aThumbnail == NULL ;
-        pStore = storeIter.NextValue())
-        {
-        TN_DEBUG2( "CThumbnailServer::FetchThumbnailL() store iteration - round == %d ", roundCount++);
-        CThumbnailStore* const store = (CThumbnailStore*)(*pStore);
-        
-        TRAP_IGNORE( store->FetchThumbnailL( aThumbnailId, aThumbnail, aData, aThumbnailSize, aOriginalSize ));
-        
-        if ( aThumbnail || aData)
-            { // thumbnail found from DB
-            TN_DEBUG1( "CThumbnailServer::FetchThumbnailL() found" );
-            break;
-            }
-/*
-#ifdef _DEBUG
-    aStop.UniversalTime();
-    TN_DEBUG3( "CThumbnailServer::FetchThumbnailL() iteration round %d took %d ms", roundCount, (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-#endif 
-*/
-        }
-
-#ifdef _DEBUG
-    aStop.UniversalTime();
-    TN_DEBUG2( "CThumbnailServer::FetchThumbnailL() took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-#endif 
-    
-    if ( !aThumbnail && !aData)
-        { // thumbnail not found from DB
-        TN_DEBUG1( "CThumbnailServer::FetchThumbnailL() not found" );
-        User::Leave( KErrNotFound );
-        }  
-    }
-
-
 // -----------------------------------------------------------------------------
 // Get the thumbnail store instance, which is responsible for the drive
 // identified by given path
@@ -963,9 +948,6 @@ void CThumbnailServer::OpenStoresL()
                 // ignore errors
                 TRAP_IGNORE( StoreForDriveL( i ));
                 
-                // start also placeholder task
-                //AddPlaceholderTaskL(i);
-                
                 driveCountInt--;
                 }
             }            
@@ -999,10 +981,10 @@ RArray < TThumbnailPersistentSize > CThumbnailServer::PersistentSizesL()
     return iPersistentSizes;
     }
 
-void CThumbnailServer::GetMissingSizesAndIDsL( const TDesC& aPath, TInt aSourceType, RArray <
-    TThumbnailPersistentSize > & aMissingSizes, TBool& aMissingIDs )
+void CThumbnailServer::GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RArray <
+    TThumbnailPersistentSize > & aMissingSizes, TBool aCheckGridSizeOnly  )
     {
-    StoreForPathL( aPath )->GetMissingSizesAndIDsL( aPath, aSourceType, aMissingSizes, aMissingIDs );
+    StoreForPathL( aPath )->GetMissingSizesL( aPath, aSourceType, aMissingSizes, aCheckGridSizeOnly );
     }
 
 // ---------------------------------------------------------------------------
@@ -1081,8 +1063,7 @@ void CThumbnailServer::MemoryCardStatusChangedL()
         if (!err && !err_drive && driveInfo.iDriveAtt& KDriveAttRemovable)
             {
             // ignore errors
-            TRAP_IGNORE( StoreForDriveL( drive ));
-                    
+            //TRAP_IGNORE( StoreForDriveL( drive ));
             }
         
         //dismount -- if removable drive, close store
@@ -1147,7 +1128,7 @@ void CThumbnailServer::GetMimeTypeList( TDes& aBuffer )const
 // Updates thumbnails by given Id.
 // -----------------------------------------------------------------------------
 //
-TBool CThumbnailServer::UpdateThumbnailsL( const TThumbnailId aItemId, const TDesC& aPath,
+TBool CThumbnailServer::UpdateThumbnailsL( const TDesC& aPath,
                                            const TInt /*aOrientation*/, const TInt64 aModified )
     {
     TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL()");
@@ -1155,94 +1136,55 @@ TBool CThumbnailServer::UpdateThumbnailsL( const TThumbnailId aItemId, const TDe
     // 1. check path change
     // 2. check orientation change
     // 3. check timestamp change
-    TBool pathChanged = EFalse;
+
     TBool orientationChanged = EFalse;
     TBool modifiedChanged = EFalse;
     
-    CThumbnailStore* newstore = StoreForPathL( aPath );
-    TInt err(KErrNone);
-
-    // no path available, can be any store    
-    THashMapIter<TInt, CThumbnailStore*> iter( iStores );
-    CThumbnailStore* const *store = iter.NextValue();
-
-    while ( store )
-         {     
-        err = KErrNone;   
+    CThumbnailStore* store = StoreForPathL( aPath );
+   
+    // placeholder for orientation check
+    orientationChanged = EFalse;
+    
+    if (orientationChanged)
+        {
+        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - orientation updated");
         
-        TRAP(err, ((CThumbnailStore*)(*store))->FindStoreL( aItemId ) );
-         
-         // no need to move thumbs to different store
-         if (err == KErrNone && *store == newstore)
+        // orientation updated, no need to check further
+        return ETrue;
+        }
+    else
+        {
+        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - exist");
+        
+        TBool exists = store->CheckModifiedByPathL(aPath, aModified, modifiedChanged);
+       
+        if(!exists)
             {
-            pathChanged = ((CThumbnailStore*)(*store))->UpdateStoreL(aItemId, aPath);
-            
-            if (pathChanged)
-                {
-                TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - path updated");
-                
-                // path updated, no need to check further
-                return ETrue;
-                }
-            else
-                {
-                // placeholder for orientation check
-                orientationChanged = EFalse;
-                
-                if (orientationChanged)
-                    {
-                    TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - orientation updated");
-                    
-                    // orientation updated, no need to check further
-                    return ETrue;
-                    }
-                else
-                    {
-                    TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified ?");
-                    modifiedChanged = ((CThumbnailStore*)(*store))->CheckModifiedL(aItemId, aModified);
-                    
-                    if (modifiedChanged)
-                        {
-                        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified YES");
-                        
-                        // delete old thumbs
-                        ((CThumbnailStore*)(*store))->DeleteThumbnailsL(aItemId);
-                        
-                        // need to create new thumbs
-                        return EFalse;
-                        }
-                    else
-                        {
-                        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified NO");
-                        
-                        // not modified
-                        return ETrue;
-                        }
-                    }
-                }
-            
-            }                 
-         // move to new store
-         else if (err == KErrNone && *store != newstore)
+            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - exists NO");
+            //not found, needs to be generated
+            return EFalse;
+            }
+        
+        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified ?");
+        
+        if (modifiedChanged)
             {
-            RArray < TThumbnailDatabaseData* >* thumbnails = NULL;
-            thumbnails = new (ELeave) RArray < TThumbnailDatabaseData* >;
-            CleanupClosePushL( *thumbnails );
-            ((CThumbnailStore*)(*store))->FetchThumbnailsL(aItemId, *thumbnails);
-            newstore->StoreThumbnailsL(aPath, *thumbnails);
-            ((CThumbnailStore*)(*store))->DeleteThumbnailsL(aItemId);
-            CleanupStack::PopAndDestroy( thumbnails);
-            delete thumbnails;
-            thumbnails = NULL;
+            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified YES");
             
-            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - moved to different store");
+            // delete old thumbs
+            store->DeleteThumbnailsL(aPath, ETrue);
             
-            // no need to check further
+            // need to create new thumbs
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified NO");
+            
+            // not modified
             return ETrue;
             }
-         
-         store = iter.NextValue();
-         } 
+        }
+  
     
     TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - no thumbs found, create new");
     
@@ -1513,23 +1455,9 @@ TInt E32Main()
     }
 
 // -----------------------------------------------------------------------------
-// Updates ID for thumbnails with given Path
-// -----------------------------------------------------------------------------
-//
-void CThumbnailServer::UpdateIDL( const TDesC& aPath, const TThumbnailId aNewId )
-    {
-    TN_DEBUG3( "CThumbnailServer::UpdateIDL() aPath = %S aId = %d", &aPath, aNewId);
-    
-    CThumbnailStore* store = StoreForPathL( aPath );
-    User::LeaveIfNull( store );
-    store->UpdateStoreL( aPath, aNewId );
-    }
-
-// -----------------------------------------------------------------------------
 // Closes stores for removable drives
 // -----------------------------------------------------------------------------
 //
-
 void CThumbnailServer::CloseRemovableDrivesL()
     {
     TDriveList driveList;
@@ -1564,7 +1492,6 @@ void CThumbnailServer::CloseRemovableDrivesL()
 // Open Stores for removable drives
 // -----------------------------------------------------------------------------
 //
-
 void CThumbnailServer::OpenRemovableDrivesL()
     {
     TDriveList driveList;
@@ -1598,9 +1525,53 @@ void CThumbnailServer::OpenRemovableDrivesL()
 // Is formatting ongoing
 // -----------------------------------------------------------------------------
 //
-
 TBool CThumbnailServer::IsFormatting()
     {
     return iFormatting;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailServer::FormatNotification
+// Handles a format operation
+// ---------------------------------------------------------------------------
+//
+void CThumbnailServer::FormatNotification( TBool aFormat )
+    {
+    TN_DEBUG2( "CThumbnailServer::FormatNotification(%d)", aFormat );
+    
+    if(aFormat)
+        {
+        TRAP_IGNORE( CloseRemovableDrivesL() );
+        }
+    else 
+        {
+        TRAP_IGNORE( OpenRemovableDrivesL() );
+        }
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailServer::ReconnectCallBack()
+// ---------------------------------------------------------------------------
+//
+TInt CThumbnailServer::ReconnectCallBack(TAny* aAny)
+    {
+    TN_DEBUG1( "CThumbnailServer::ReconnectCallBack() - reconnect");
+    
+    CThumbnailServer* self = static_cast<CThumbnailServer*>( aAny );
+    
+    self->iReconnect->Cancel();
+    
+    if (self->iMdESession)
+        {
+        delete self->iMdESession;
+        self->iMdESession = NULL;
+        }
+    
+    // reconnect to MDS
+    TRAP_IGNORE( self->iMdESession = CMdESession::NewL( *self ) );
+    
+    TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - done");
+    
+    return KErrNone;
     }
 

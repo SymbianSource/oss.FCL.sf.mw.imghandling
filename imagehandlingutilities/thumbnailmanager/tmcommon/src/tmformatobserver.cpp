@@ -15,7 +15,7 @@
 *
 */
 
-#include "thumbagformatobserver.h"
+#include "tmformatobserver.h"
 #include "thumbnaillog.h"
  
 #include <e32base.h>
@@ -24,11 +24,10 @@
 
 // ======== MEMBER FUNCTIONS ========
 
-CThumbAGFormatObserver::CThumbAGFormatObserver ( CThumbAGProcessor* aProcessor): 
-     iProcessor( aProcessor )
+CTMFormatObserver::CTMFormatObserver ( MTMFormatObserver& aObserver ): 
+    iObserver( aObserver )
     {
-    TN_DEBUG1( "CThumbAGFormatObserver::CThumbAGFormatObserver()");
-    
+    TN_DEBUG1( "CTMFormatObserver::CTMFormatObserver()");
     }
     
     
@@ -36,15 +35,12 @@ CThumbAGFormatObserver::CThumbAGFormatObserver ( CThumbAGProcessor* aProcessor):
 // Second Phase Constructor
 // ---------------------------------------------------------------------------
 //
-void CThumbAGFormatObserver::ConstructL()
+void CTMFormatObserver::ConstructL()
     {
-    TN_DEBUG1("CThumbAGFormatObserver::ConstructL in");
+    TN_DEBUG1("CTMFormatObserver::ConstructL");
 
     iBackupSession = CBaBackupSessionWrapper::NewL();
     iBackupSession->RegisterBackupOperationObserverL( *this );
-
-
-    TN_DEBUG1("CThumbAGFormatObserver::ConstructL out");
     }
 
 
@@ -52,9 +48,9 @@ void CThumbAGFormatObserver::ConstructL()
 // Two-Phased Constructor
 // ---------------------------------------------------------------------------
 //
-CThumbAGFormatObserver* CThumbAGFormatObserver::NewL(CThumbAGProcessor* aProcessor )
+CTMFormatObserver* CTMFormatObserver::NewL( MTMFormatObserver& aObserver )
     {
-    CThumbAGFormatObserver* self = CThumbAGFormatObserver::NewLC( aProcessor );
+    CTMFormatObserver* self = CTMFormatObserver::NewLC( aObserver );
     CleanupStack::Pop( self );
     return self;
     }
@@ -64,9 +60,9 @@ CThumbAGFormatObserver* CThumbAGFormatObserver::NewL(CThumbAGProcessor* aProcess
 // Two-Phased Constructor
 // ---------------------------------------------------------------------------
 //
-CThumbAGFormatObserver* CThumbAGFormatObserver::NewLC( CThumbAGProcessor* aProcessor )
+CTMFormatObserver* CTMFormatObserver::NewLC( MTMFormatObserver& aObserver )
     {
-    CThumbAGFormatObserver* self = new( ELeave ) CThumbAGFormatObserver( aProcessor );
+    CTMFormatObserver* self = new( ELeave ) CTMFormatObserver( aObserver );
     CleanupStack::PushL( self );
     self->ConstructL();
     return self;
@@ -77,13 +73,13 @@ CThumbAGFormatObserver* CThumbAGFormatObserver::NewLC( CThumbAGProcessor* aProce
 // destructor
 // ---------------------------------------------------------------------------
 //
-CThumbAGFormatObserver::~CThumbAGFormatObserver()
+CTMFormatObserver::~CTMFormatObserver()
     {
-
     if( iBackupSession )
         {
         iBackupSession->DeRegisterBackupOperationObserver( *this );
         }
+    
     delete iBackupSession;
     }
 
@@ -91,16 +87,15 @@ CThumbAGFormatObserver::~CThumbAGFormatObserver()
 // Checks the current status
 // ---------------------------------------------------------------------------
 //
-void CThumbAGFormatObserver::PollStatus()
-    {
-    
-    TN_DEBUG1("CThumbAGFormatObserver::PollStatus()");
+void CTMFormatObserver::PollStatus()
+    { 
+    TN_DEBUG1("CTMFormatObserver::PollStatus()");
     
     TBool formatting = iBackupSession->IsBackupOperationRunning();
     
     if( formatting )
         {     
-        iProcessor->SetFormat(ETrue);   
+        iObserver.FormatNotification(ETrue); 
         }
     }
 
@@ -109,21 +104,18 @@ void CThumbAGFormatObserver::PollStatus()
 // Handles a format operation
 // ---------------------------------------------------------------------------
 //
-void CThumbAGFormatObserver::HandleBackupOperationEventL(
+void CTMFormatObserver::HandleBackupOperationEventL(
                   const TBackupOperationAttributes& aBackupOperationAttributes)
     {
-    TN_DEBUG1("CThumbAGFormatObserver::HandleBackupOperationEventL in");
+    TN_DEBUG1("CTMFormatObserver::HandleBackupOperationEventL");
 
     if( aBackupOperationAttributes.iOperation == EStart )
         {
-        iProcessor->SetFormat(ETrue);
+        iObserver.FormatNotification(ETrue);
         }
-    else  // TOperationType::EEnd or TOperationType::EAbort
+    else // TOperationType::EEnd or TOperationType::EAbort
         {
-        iProcessor->SetFormat(EFalse);
+        iObserver.FormatNotification(EFalse);
         }
-
-    TN_DEBUG1("CThumbAGObserver::HandleBackupOperationEventL out");
     }
-
 

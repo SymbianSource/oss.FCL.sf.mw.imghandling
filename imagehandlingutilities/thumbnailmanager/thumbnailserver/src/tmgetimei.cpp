@@ -16,56 +16,54 @@
 */
 
 
-#include "tnmgetimei.h"
+#include "tmgetimei.h"
 #include "thumbnailmanagerconstants.h"
 
-CTnmgetimei* CTnmgetimei::NewL()
+CTMGetImei* CTMGetImei::NewL()
     {
-    CTnmgetimei *self = CTnmgetimei::NewLC();
+    CTMGetImei *self = CTMGetImei::NewLC();
     CleanupStack::Pop();
     return self;
     }
 
-CTnmgetimei* CTnmgetimei::NewLC()
+CTMGetImei* CTMGetImei::NewLC()
     {
-    CTnmgetimei *self = new (ELeave) CTnmgetimei();
+    CTMGetImei *self = new (ELeave) CTMGetImei();
     CleanupStack::PushL(self);
     self->ConstructL();
     return self;
     }
 
-void CTnmgetimei::ConstructL()
+void CTMGetImei::ConstructL()
    {
    iTelephony = CTelephony::NewL();
    CActiveScheduler::Add(this);
    }
 
-CTnmgetimei::~CTnmgetimei()
+CTMGetImei::~CTMGetImei()
     {
     Cancel();
 
     delete iTelephony;
     }
 
-TBuf<KImeiBufferSize> CTnmgetimei::GetIMEI()
-    {   
-    
+TBuf<KImeiBufferSize> CTMGetImei::GetIMEI()
+    {    
     CTelephony::TPhoneIdV1Pckg phoneIdPckg( iV1 );  
     
     iTelephony->GetPhoneId( iStatus, phoneIdPckg );
     SetActive();
     iAsw.Start();
     Deque();
-    return iImei;
-        
+    return iImei;       
     }
 
-void CTnmgetimei::DoCancel()
+void CTMGetImei::DoCancel()
     {
     iTelephony->CancelAsync(CTelephony::EGetPhoneIdCancel);
     }
    
-void CTnmgetimei::RunL()
+void CTMGetImei::RunL()
     {
     if(iStatus == KErrNone)
         {

@@ -177,6 +177,14 @@ public:
      * @since S60 v5.0
      */
     virtual void Continue();
+    
+    /**
+     * Checks if client thread is still alive and RMessage2 handle valid.
+     *
+     * @since S60 v5.0
+     * @param aGetThread Need to get thread first.
+     */
+    TBool ClientThreadAlive(const TBool aGetThread = ETrue);    
 
 protected:
     // data
@@ -205,6 +213,8 @@ protected:
      * Message.
      */
     RMessage2 iMessage;
+    
+    RThread iClientThread;
 };
 
 #endif // THUMBNAILTASK_H

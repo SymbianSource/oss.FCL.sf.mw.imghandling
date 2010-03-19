@@ -49,19 +49,24 @@ SOURCE                  thumbnailprovider.cpp
 SOURCE                  thumbnaildiskunmountobserver.cpp
 SOURCE                  thumbnailcenrep.cpp 
 SOURCE                  thumbnailmemorycardobserver.cpp 
-SOURCE			        tmshutdownobserver.cpp 
-SOURCE 			        thumbnaildecodetask.cpp
+SOURCE		        thumbnaildecodetask.cpp
 #ifdef RD_MDS_2_5
-SOURCE					thumbnailmdsquerytask.cpp
+SOURCE			thumbnailmdsquerytask.cpp
 #endif // RD_MDS_2_5
-SOURCE					tnmgetimei.cc
-SOURCE					thumbnailformatobserver.cpp
+SOURCE			tmgetimei.cpp 
+
+SOURCEPATH		../../tmcommon/src
+SOURCE			tmshutdownobserver.cpp
+SOURCE			tmformatobserver.cpp
+SOURCE			tmactivitymanager.cpp
+
 
 // Default system include paths for middleware layer modules.
 MW_LAYER_SYSTEMINCLUDE
 
 USERINCLUDE             ../inc
 USERINCLUDE             ../../inc
+USERINCLUDE             ../../tmcommon/inc
 
 LIBRARY                 fbscli.lib
 LIBRARY                 euser.lib
@@ -74,16 +79,17 @@ LIBRARY                 estor.lib
 LIBRARY                 ihl.lib
 LIBRARY                 centralrepository.lib
 LIBRARY                 platformenv.lib
-LIBRARY					imageconversion.lib 
-LIBRARY         		caf.lib
-LIBRARY         		cafutils.lib
-LIBRARY         		mdeclient.lib
-LIBRARY					etel3rdparty.lib
-LIBRARY					bafl.lib
-LIBRARY					bitgdi.lib
+LIBRARY			imageconversion.lib 
+LIBRARY       		caf.lib
+LIBRARY         	cafutils.lib
+LIBRARY         	mdeclient.lib
+LIBRARY			etel3rdparty.lib
+LIBRARY			bafl.lib
+LIBRARY			bitgdi.lib
+LIBRARY 		hwrmlightclient.lib
 
 DEBUGLIBRARY            flogger.lib
 
 PAGED
 BYTEPAIRCOMPRESSTARGET
-EPOCPROCESSPRIORITY foreground
+EPOCPROCESSPRIORITY background
