@@ -441,6 +441,9 @@ private:
     CPeriodic* iTimer;
     TInt iStartError;
     
+    // request already canceled by client
+    TBool iCanceled;
+    
 #ifdef _DEBUG
     TTime iStartExecTime;
 #endif

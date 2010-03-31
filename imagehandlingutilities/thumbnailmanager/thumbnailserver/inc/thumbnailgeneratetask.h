@@ -212,14 +212,6 @@ private:
     TSize iOriginalSize;
 
     /**
-     * Refers to a bitmap in the bitmap pool owned by server. Must be deleted
-     * using CThumbnailServer::DeleteBitmapFromPool() to make reference
-     * counting work.
-     * Not own.
-     */
-    CFbsBitmap* iBitmap;
-
-    /**
      * Thumbnail provider implementation.
      * Not own.
      */
@@ -239,6 +231,8 @@ private:
      * Target rect rotated (portrait image)
      */
     TBool iPortrait;
+    
+    TInt iBitmapHandle;
 };
 
 #endif // THUMBNAILGENERATETASK_H

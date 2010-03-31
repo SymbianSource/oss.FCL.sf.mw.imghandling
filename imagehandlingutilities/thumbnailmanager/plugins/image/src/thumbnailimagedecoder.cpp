@@ -166,7 +166,6 @@ void CThumbnailImageDecoder::DecodeL( const TDisplayMode aDisplayMode, const CTh
     //Size in both x and y dimension must be non-zero, positive value
     TSize loadSize( iOriginalSize) ;
     
-    
     if(iOriginalSize.iHeight < iSize.iHeight || iOriginalSize.iWidth < iSize.iWidth )
         {
         loadSize = iOriginalSize;
@@ -225,7 +224,13 @@ void CThumbnailImageDecoder::DecodeL( const TDisplayMode aDisplayMode, const CTh
             "CThumbnailImageDecoder::DecodeL() - loadSize = (%d,%d) reduction = 1/%d ", loadSize.iWidth, loadSize.iHeight, reductionFactor );
         }
 
-    User::LeaveIfError( iBitmap->Create( loadSize, aDisplayMode ));
+    TInt err = iBitmap->Create( loadSize, aDisplayMode );
+    if (err != KErrNone)
+        {
+        delete iBitmap;
+        iBitmap = NULL;
+        User::Leave(err);
+        }
 
     iDecoder->Convert( &iStatus, * iBitmap );
     while ( iStatus == KErrUnderflow )

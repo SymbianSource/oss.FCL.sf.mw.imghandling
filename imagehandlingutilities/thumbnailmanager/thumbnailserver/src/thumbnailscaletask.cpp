@@ -97,7 +97,6 @@ void CThumbnailScaleTask::ConstructL()
     iBitmapInPool = ETrue;
     
     iScaledBitmap = NULL;
-    iScaledBitmapHandle = 0;
     }
 
 
@@ -116,14 +115,6 @@ CThumbnailScaleTask::~CThumbnailScaleTask()
         
         // Original bitmap is owned by server, decrease reference count
         iServer.DeleteBitmapFromPool( iBitmap->Handle());
-        }
-
-    if ( iScaledBitmapHandle )
-        {
-        TN_DEBUG1("CThumbnailScaleTask()::~CThumbnailScaleTask() delete scaled bitmap from pool");
-        
-        // Scaled bitmap is owned by server, decrease reference count
-        iServer.DeleteBitmapFromPool( iScaledBitmapHandle );
         }
 
     // Scaled bitmap is owned by us, delete now
@@ -369,46 +360,38 @@ void CThumbnailScaleTask::StoreAndCompleteL()
     
     if ( ClientThreadAlive() )
         {
-        TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap handle to params");
-        
         TThumbnailRequestParams& params = iParamsBuf();
         iMessage.ReadL( 0, iParamsBuf );
                     
         // if need to add scaled bitmap to pool
         if (iBitmapToPool)
             {
-            TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap to pool");
+            TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap handle to params");
             
             params.iBitmapHandle = iScaledBitmap->Handle();
-            
-            iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap, iRequestId );
-            iScaledBitmapHandle = params.iBitmapHandle;
             }    
 		
 	    if( params.iQualityPreference == CThumbnailManager::EOptimizeForQualityWithPreview
 	        && iEXIF && !iDoStore)
 	        {
+            TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() EThumbnailPreviewThumbnail");
+	    
 		    // this is upscaled preview image
 	        params.iControlFlags = EThumbnailPreviewThumbnail;
-	        TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() EThumbnailPreviewThumbnail");
 	        }
-
-        // Server owns the bitmap now. If the code below leaves, we will
-        // release the bitmap reference in destructor using iScaledBitmapHandle.
-        if (iBitmapToPool)
-           {
-           iScaledBitmap = NULL;
-           }
 	    
         TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() write params to message");
         
 	    // pass bitmap handle to client
 	    iMessage.WriteL( 0, iParamsBuf );
 	    
-	    // Successfully completed the message. The client will send
-	    // EReleaseBitmap message later to delete the bitmap from pool.
-	    // CThumbnailScaleTask is no longer responsible for that.
-	    iScaledBitmapHandle = 0;
+        if (iBitmapToPool)
+            {
+            TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap to pool");
+        
+            iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap, iRequestId );
+            iScaledBitmap = NULL; // Server owns the bitmap now
+            }
         }
     
     TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() - end");

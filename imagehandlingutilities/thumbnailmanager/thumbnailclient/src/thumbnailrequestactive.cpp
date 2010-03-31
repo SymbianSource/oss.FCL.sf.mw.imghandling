@@ -86,7 +86,7 @@ CThumbnailRequestActive::CThumbnailRequestActive( RFs& aFs, RThumbnailSession&
     TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue ):
     CActive( aPriority ), iSession( aThumbnailSession ), iParamsPckg( iParams ),
     iObserver( aObserver ), iFs( aFs ), iBitmapHandle( 0 ), iRequestId( aId ), 
-    iRequestQueue( aQueue )
+    iRequestQueue( aQueue ), iCanceled( EFalse )
     {
     CActiveScheduler::Add( this );
     TN_DEBUG2( "CThumbnaiRequestActive::CThumbnailRequestActive() AO's priority = %d", Priority());
@@ -163,6 +163,7 @@ void CThumbnailRequestActive::StartL()
         case EReqGetThumbnailHandleLater:
             {
             // open file handle
+            iFile.Close();
             User::LeaveIfError( iFile.Open( iFs, iTargetUri, EFileShareReadersOrWriters ) );  
             
             TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iTargetUri );
@@ -219,9 +220,12 @@ void CThumbnailRequestActive::RunL()
     
     iTimer->Cancel();
     
-    if (iRequestType == EReqDeleteThumbnails)
+    if (iRequestType == EReqDeleteThumbnails || iCanceled)
         {
-        // no action for delete
+        iFile.Close();
+        iMyFileHandle.Close();
+    
+        // no action for delete or canceled request
         iRequestQueue->RequestComplete(this);
         
 #ifdef _DEBUG
@@ -239,8 +243,8 @@ void CThumbnailRequestActive::RunL()
         
         // We tried to get thumbnail using file path, but it was not found in
         // the database. We need to open the file now (on the client side) and
-        // use file handle.
-        
+        // use file handle.     
+        iFile.Close();
         TInt err = iFile.Open( iFs, iParams.iFileName, EFileShareReadersOrWriters );
         TN_DEBUG2( "CThumbnaiRequestActive::RunL() - file handle open err = %d", err );
         User::LeaveIfError( err );
@@ -273,6 +277,10 @@ void CThumbnailRequestActive::RunL()
 	    iObserver.ThumbnailReady( iStatus.Int(), *iCallbackThumbnail, iParams.iRequestId );
 	  
 	    ReleaseServerBitmap();
+	    
+	    iFile.Close();
+	    iMyFileHandle.Close();
+	    
 	    iRequestQueue->RequestComplete(this);
 	    
         #ifdef _DEBUG
@@ -295,6 +303,8 @@ void CThumbnailRequestActive::RunL()
         iProcessingPreview = EFalse;
       
         ReleaseServerBitmap();
+        
+        iFile.Close();
         
         //set flags so that EThumbnailGeneratePersistentSizesOnly is done aka check all missing sizes 
         iParams.iQualityPreference = CThumbnailManager::EOptimizeForQuality;
@@ -350,12 +360,17 @@ void CThumbnailRequestActive::RunL()
         if ( iProcessingPreview )
             {
             TN_DEBUG2( "CThumbnailRequestActive::RunL() - iObserver.ThumbnailPreviewReady %d", iParams.iRequestId );
-			//increase priority of 2nd round (both, AO and request itself)
+			
+            //increase priority of 2nd round (both, AO and request itself)
             this->SetPriority(this->Priority() + 1);
             iParams.iPriority++;
             iObserver.ThumbnailPreviewReady( *iCallbackThumbnail, iParams.iRequestId );
             iProcessingPreview = EFalse;
+            
             ReleaseServerBitmap();
+            
+            iFile.Close();
+            
             Get2ndPhaseThumbnailL();
             }
         else
@@ -364,6 +379,9 @@ void CThumbnailRequestActive::RunL()
             
             iObserver.ThumbnailReady( iStatus.Int(), * iCallbackThumbnail, iParams.iRequestId );
             ReleaseServerBitmap();    
+            
+            iFile.Close();
+            iMyFileHandle.Close();
             
             iRequestQueue->RequestComplete(this);
             
@@ -417,6 +435,7 @@ void CThumbnailRequestActive::DoCancel()
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+    iCanceled = ETrue;
     iSession.CancelRequest( iRequestId );
     ReleaseServerBitmap();
     }
@@ -478,6 +497,9 @@ void CThumbnailRequestActive::HandleError()
         }
     
     ReleaseServerBitmap();
+    
+    iFile.Close();
+    iMyFileHandle.Close();
     
     iRequestCompleted = ETrue;
     iRequestQueue->RequestComplete(this);

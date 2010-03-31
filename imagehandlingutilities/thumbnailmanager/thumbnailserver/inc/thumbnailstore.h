@@ -297,14 +297,14 @@ public:
      *
      * @since S60 v5.0
      */  
-    TInt CheckImeiL();
+    TInt CheckImei();
     
     /**
      * Check version of db
      *
      * @since S60 v5.0
      */  
-    TInt CheckVersionL();
+    TInt CheckVersion();
     
     /**
      * Check mediaid of store
@@ -321,13 +321,6 @@ public:
     void AddVersionAndImeiL();
     
     /**
-     * Reset TNID column
-     *
-     * @since S60 v5.0
-     */  
-    TInt ResetThumbnailIDs();
-    
-    /**
      * Update IMEI to db
      *
      * @since S60 v5.0
@@ -340,7 +333,7 @@ public:
      * @since S60 v5.0
      */
     
-    TInt CheckRowIDsL();
+    TInt CheckRowIDs();
     
     /**
      * Check is disk full
@@ -388,8 +381,9 @@ private:
      * Open database
      *
      * @since S60 v5.0
+     * @param aNewDatabase Delete existing before creating new
      */
-    TInt OpenDatabaseL();
+    TInt OpenDatabaseL( TBool aNewDatabase = EFalse);
     
     /**
      * Open database
@@ -404,14 +398,25 @@ private:
      * @since S60 v5.0
      */
     void CreateTablesL();
+    void CreateTempTablesL();
     
     /**
      * Delete and create database
      *
      * @since S60 v5.0
+     * @param aDelete Delete old db
      */
-    void RecreateDatabaseL( const TBool aDelete);
+    void RecreateDatabaseL( const TBool aDelete );
 
+    /**
+     * Prepare, reset & close statements
+     *
+     * @since S60 v5.0
+     */
+    void PrepareStatementsL();    
+    static void ResetStatement( TAny* aStmt );
+    void CloseStatements();
+    
     /**
      * Stores thumbnail image.
      *
@@ -497,6 +502,13 @@ private:
     * @return ETrue, if finished.
     */
     TBool FileExistenceCheckL();
+    
+    /**
+    * Checks if thumbnail database is usable
+    *
+    * @return KErrNone, if no problems
+    */
+    TInt CheckDbState();
     
     /**
      * Strips drive letter from URI.
@@ -586,6 +598,34 @@ private:
     // check if thumb source files still exist
     TBool iCheckFilesExist;
     TInt64 iLastCheckedRowID;
+    
+    // store is in a state in which db can't be used
+    TBool iUnrecoverable;
+    
+    // prepared statements
+    RSqlStatement iStmt_KThumbnailSelectInfoByPath;
+    RSqlStatement iStmt_KThumbnailSelectTempInfoByPath;
+    RSqlStatement iStmt_KThumbnailInsertTempThumbnailInfo;
+    RSqlStatement iStmt_KThumbnailInsertTempThumbnailInfoData;
+    RSqlStatement iStmt_KThumbnailSelectModifiedByPath;
+    RSqlStatement iStmt_KThumbnailSelectTempModifiedByPath;
+    RSqlStatement iStmt_KThumbnailFindDuplicate;
+    RSqlStatement iStmt_KThumbnailTempFindDuplicate;
+    RSqlStatement iStmt_KThumbnailSqlFindDeleted;
+    RSqlStatement iStmt_KThumbnailSelectSizeByPath;
+    RSqlStatement iStmt_KThumbnailSelectTempSizeByPath;
+    RSqlStatement iStmt_KThumbnailSqlSelectRowIDInfoByPath;
+    RSqlStatement iStmt_KThumbnailSqlDeleteInfoByPath;
+    RSqlStatement iStmt_KThumbnailSqlDeleteInfoDataByPath;
+    RSqlStatement iStmt_KTempThumbnailSqlSelectRowIDInfoByPath;
+    RSqlStatement iStmt_KTempThumbnailSqlDeleteInfoByPath;
+    RSqlStatement iStmt_KTempThumbnailSqlDeleteInfoDataByPath;
+    RSqlStatement iStmt_KThumbnailSqlInsertDeleted;
+    RSqlStatement iStmt_KThumbnailSqlSelectMarked;
+    RSqlStatement iStmt_KThumbnailSqlDeleteInfoByRowID;
+    RSqlStatement iStmt_KThumbnailSqlDeleteInfoDataByRowID;
+    RSqlStatement iStmt_KThumbnailSelectAllPaths;
+
 };
 // End of File
 

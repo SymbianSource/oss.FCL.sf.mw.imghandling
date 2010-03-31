@@ -85,7 +85,7 @@ CThumbnailTask::TTaskState CThumbnailTask::State()const
 void CThumbnailTask::StartL()
     {
     TN_DEBUG3( "CThumbnailTask(0x%08x)::StartL() iState == %d ", this, iState );
-    __ASSERT_DEBUG(( iState != ERunning ), ThumbnailPanic( EAlreadyRunning ));
+    __ASSERT_DEBUG(( iState != ERunning ), ThumbnailPanic( EThumbnailAlreadyRunning ));
     iState = ERunning;
     }
 
@@ -174,10 +174,20 @@ void CThumbnailTask::ChangeTaskPriority( TInt aNewPriority )
 // ---------------------------------------------------------------------------
 //
 void CThumbnailTask::SetMessageData( const TThumbnailServerRequestId&
-    aRequestId, const RMessage2& aMessage )
+    aRequestId, const RMessage2& aMessage, const RThread& aClientThread )
     {
     iMessage = aMessage;
     iRequestId = aRequestId;
+    
+    if ( iMessage.Handle())
+        {
+        // copy client thread handle
+        iClientThread.Duplicate(aClientThread);
+        }
+    else
+        {
+        TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - message null", this);
+        }
     }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +232,11 @@ void CThumbnailTask::CancelMessage()
     {
     if ( iMessage.Handle())
         {
-        iMessage.Complete( KErrCancel );
+        if ( ClientThreadAlive() )
+            {
+            iMessage.Complete( KErrCancel );
+            }
+        
         ResetMessageData();
         }
     }
@@ -234,6 +248,8 @@ void CThumbnailTask::CancelMessage()
 //
 TBool CThumbnailTask::ClientThreadAlive(const TBool aGetThread)
     {
+    TN_DEBUG1( "CThumbnailTask::ClientThreadAlive()");
+    
     if ( iMessage.Handle())
         {
         if (aGetThread)

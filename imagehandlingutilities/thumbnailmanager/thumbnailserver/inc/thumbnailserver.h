@@ -213,7 +213,7 @@ public:
      * @param aFile File to be recognized.
      * @return MIME-type
      */
-    TDataType ResolveMimeTypeL( RFile& aFile );
+    TDataType ResolveMimeTypeL( RFile64& aFile );
 
     /**
      * Removes bitmap from bitmap pool. Reference count is decremented

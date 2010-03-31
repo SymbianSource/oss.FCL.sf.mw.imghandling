@@ -21,6 +21,10 @@
 #ifndef TMACTIVITYMANAGER_H
 #define TMACTIVITYMANAGER_H
 
+//5.0 and 9.2 behaves totally different way, 
+//! uncomment on 5.0 !
+#define MONITOR_LIGHTS
+
 
 class MTMActivityManagerObserver
 
@@ -30,8 +34,10 @@ public :
 };
 
 
-class CTMActivityManager : public CActive,
-                           public MHWRMLightObserver
+class CTMActivityManager : public CActive
+#ifdef MONITOR_LIGHTS   
+                           ,public MHWRMLightObserver
+#endif
 
 {
 public:
@@ -67,8 +73,10 @@ protected:
     void ConstructL();
     void NotifyObserver();
     
+#ifdef MONITOR_LIGHTS
 private: //From MHWRMLightObserver
     void LightStatusChanged(TInt aTarget, CHWRMLight::TLightStatus aStatus);
+#endif
     
 protected:
     enum TWatch { ENone = 0, EWaitingForInactivity, EWaitingForActivity };
@@ -79,11 +87,12 @@ protected:
     MTMActivityManagerObserver* iObserver; ///The observer of activity status
     TInt iTimeout; ///Current inactivity period
     
+#ifdef MONITOR_LIGHTS
     //Backlight control 
     CHWRMLight* iLight;
     //backlight status
     TBool iLights;
-
+#endif
     //previous status
     TInt iPreviousStatus;
     TBool iFirstRound;

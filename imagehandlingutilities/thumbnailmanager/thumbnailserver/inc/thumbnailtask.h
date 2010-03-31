@@ -99,9 +99,10 @@ public:
      * @since S60 v5.0
      * @param aRequestId Request ID.
      * @param aMessage Message.
+     * @param aClientThread Client thread.
      */
     virtual void SetMessageData( const TThumbnailServerRequestId& aRequestId,
-        const RMessage2& aMessage );
+        const RMessage2& aMessage, const RThread& aClientThread );
     
     /**
      * SetMessageData if message is not needed to complete
@@ -184,7 +185,12 @@ public:
      * @since S60 v5.0
      * @param aGetThread Need to get thread first.
      */
-    TBool ClientThreadAlive(const TBool aGetThread = ETrue);    
+    TBool ClientThreadAlive(const TBool aGetThread = EFalse);    
+    
+    inline RMessage2& GetMessageData()
+        {
+        return iMessage;
+        }
 
 protected:
     // data
@@ -214,6 +220,7 @@ protected:
      */
     RMessage2 iMessage;
     
+    // client thread from RMessage2
     RThread iClientThread;
 };
 

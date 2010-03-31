@@ -115,11 +115,6 @@ private:
      * Not own.
      */
     CThumbnailProvider* iProvider;
-    
-    /**
-     * If set, scaled bitmap must be released from pool.
-     */
-   TInt iBitmapHandle;
    
    /**
     * Temporary buffer for client/server parameters

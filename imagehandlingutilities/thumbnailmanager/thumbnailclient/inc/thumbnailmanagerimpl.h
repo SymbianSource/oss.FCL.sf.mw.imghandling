@@ -76,8 +76,7 @@ public:
      * @return                   Thumbnail request ID
      */
     TThumbnailRequestId GetThumbnailL( CThumbnailObjectSource& aObjectSource,
-        TAny* aClientData = NULL, const TInt aPriority = CActive::EPriorityIdle
-        );
+        TAny* aClientData = NULL, const TInt aPriority = CActive::EPriorityIdle );
     
     /**
      * Get a thumbnail for an object file. If a thumbnail already exists, it
@@ -101,7 +100,7 @@ public:
      * @return                   Thumbnail request ID
      */    
     TThumbnailRequestId GetThumbnailL( CThumbnailObjectSource& aObjectSource,
-    	TAny* aClientData, const TInt aPriority, TBool aGeneratePersistentSizesOnly);    
+    	TAny* aClientData, const TInt aPriority, TBool aGeneratePersistentSizesOnly );    
    
     /**
      * Get a persistent thumbnail for an object file. If a thumbnail already
@@ -179,7 +178,7 @@ public:
       */     
     TThumbnailRequestId SetThumbnailL( CThumbnailObjectSource& source,
         TAny* aClientData = NULL, 
-        TInt aPriority = CActive::EPriorityIdle);    
+        TInt aPriority = CActive::EPriorityIdle );    
     
     /**
      * Get the current display mode for thumbnail bitmaps.
@@ -307,8 +306,7 @@ public:
      * @return              Symbian OS error code or KErrNone if change was
      *                      successful.
      */
-    TInt ChangePriority( const TThumbnailRequestId aId, const TInt aNewPriority
-        );
+    TInt ChangePriority( const TThumbnailRequestId aId, const TInt aNewPriority );
 
     /**
      * Get a list of supported file formats for object files.
@@ -357,6 +355,15 @@ private:
      * @since S60 v5.0
      */
     void ConstructL();
+    
+    /**
+     * Check that given priority is in range of CActive::TPriority
+     *
+     * @since S60 v5.0
+     * @param aPriority Priority
+     * @return Valid priority.
+     */
+    TInt ValidatePriority( const TInt aPriority );
 
 
 private:

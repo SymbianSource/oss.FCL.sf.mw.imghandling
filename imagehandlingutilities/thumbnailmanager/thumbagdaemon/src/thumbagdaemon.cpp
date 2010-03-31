@@ -85,8 +85,6 @@ void CThumbAGDaemon::ConstructL()
 #endif
     
     InitializeL();
-    
-    iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
     	
 	TN_DEBUG1( "CThumbAGDaemon::ConstructL() - end" );
 	}
@@ -127,6 +125,12 @@ void CThumbAGDaemon::InitializeL()
             }
         
         iProcessor = CThumbAGProcessor::NewL(); 
+        
+        // MDS session reconnect timer
+        if (!iReconnect)
+            {
+            iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
+            }
         
         TN_DEBUG1( "CThumbAGDaemon::InitializeL() - connect to MDS" );
         
@@ -190,7 +194,7 @@ CThumbAGDaemon::~CThumbAGDaemon()
 #endif
         
         //present observer
-        TRAP_IGNORE(iMdESession->RemoveObjectPresentObserverL( * this  ));
+        TRAP_IGNORE( iMdESession->RemoveObjectPresentObserverL( *this ) );
         
         delete iMdESession;
         iMdESession = NULL;

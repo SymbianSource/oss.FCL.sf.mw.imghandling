@@ -84,8 +84,14 @@ void CThumbnailImageDecoderv2::DecodeL( )
         }
     
 	//set displaymode from global constants
-    User::LeaveIfError( iBitmap->Create( iDecoder->FrameInfo().iOverallSizeInPixels, iDecoder->FrameInfo().iFrameDisplayMode) );
-
+    TInt err = iBitmap->Create( iDecoder->FrameInfo().iOverallSizeInPixels, iDecoder->FrameInfo().iFrameDisplayMode);
+    if (err != KErrNone)
+        {
+        delete iBitmap;
+        iBitmap = NULL;
+        User::Leave(err);
+        }
+    
     iDecoder->Convert( &iStatus, * iBitmap );
     while ( iStatus == KErrUnderflow )
         {

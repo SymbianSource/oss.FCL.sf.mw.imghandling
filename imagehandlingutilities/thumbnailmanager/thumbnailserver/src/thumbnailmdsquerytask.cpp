@@ -101,7 +101,7 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
         else
             {
             TN_DEBUG1( "CThumbnailMDSQueryTask::HandleQueryCompleted() - Don't ever come here!" );
-            if (ClientThreadAlive(EFalse))
+            if (ClientThreadAlive())
                 {  
                 Complete( KErrNotFound );
                 ResetMessageData();
@@ -114,7 +114,7 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
         TN_DEBUG1( "CThumbnailMDSQueryTask::HandleQueryCompleted() - No results." );
         if(!iDelete)
             {
-            if (ClientThreadAlive(EFalse))
+            if (ClientThreadAlive())
                 {  
                 Complete( KErrNotFound );
                 ResetMessageData();
@@ -133,18 +133,18 @@ void CThumbnailMDSQueryTask::StartL()
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::StartL()", this );
 
     CThumbnailTask::StartL();
-
-    // get client thread
-    TInt err = iMessage.Client( iClientThread );
-    if (err != KErrNone)
-        {
-        TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - client thread not found", this);
     
+    if (iMessage.Handle())
+        {
+        // start query
+        iQuery->FindL();
+        }
+    else
+        {
+        // no point to continue
+        Complete( KErrCancel );
         ResetMessageData();
         }
-    
-    // start query
-    iQuery->FindL();
     }
 
 
@@ -198,7 +198,7 @@ void CThumbnailMDSQueryTask::QueryPathByIdL(TThumbnailId aId, TBool aDelete)
 //
 void CThumbnailMDSQueryTask::ReturnPath(const TDesC& aUri)
     {
-    if ( ClientThreadAlive(EFalse) )
+    if ( ClientThreadAlive() )
         {
         // add path to message
         TInt ret = iMessage.Read( 0, iRequestParams );      

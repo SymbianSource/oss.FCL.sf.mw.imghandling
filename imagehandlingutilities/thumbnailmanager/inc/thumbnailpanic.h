@@ -30,8 +30,8 @@ enum TThumbnailPanicCode
     EThumbnailNullPointer = 0, EThumbnailBadSize = 1, EThumbnailBadBitmapHandle
         = 2, EThumbnailBadPath = 3, EThumbnailUnknownMessage = 4,
         EThumbnailMessageNotCompleted = 5, EThumbnailBitmapNotReleased = 6,
-        EThumbnailEmptyDescriptor = 7, EThumbnailWrongId = 8, EAlreadyRunning =
-        10
+        EThumbnailEmptyDescriptor = 7, EThumbnailWrongId = 8, EThumbnailAlreadyRunning =
+        9, EThumbnailDatabaseUnrecoverable = 10
     };
 
 /**

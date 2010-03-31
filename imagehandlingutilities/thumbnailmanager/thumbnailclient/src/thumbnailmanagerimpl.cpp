@@ -109,28 +109,28 @@ void CThumbnailManagerImpl::ConstructL()
     User::LeaveIfError( iFs.ShareProtected());
 
     if ( !RFbsSession::GetSession() )
+        {
+        // We need to connect to Fbs (first user in this thread)
+        // Maintain a reference count in TLS
+        User::LeaveIfError( iFbsSession.Connect()); 
+        Dll::SetTls( (TAny*)1 ); 
+        TN_DEBUG2( "CThumbnailManagerImpl::ConstructL() - update sessionCount == %d to TLS", 1 );
+        }
+    else
+        {
+        TInt sessionCount = (TInt)Dll::Tls(); 
+        if( sessionCount++ > 0 )
             {
-            // We need to connect to Fbs (first user in this thread)
-            // Maintain a reference count in TLS
-            User::LeaveIfError( iFbsSession.Connect()); 
-            Dll::SetTls( (TAny*)1 ); 
-		    TN_DEBUG2( "CThumbnailManagerImpl::ConstructL() - update sessionCount == %d to TLS", 1 );
-            }
+            // Increase the reference count in TLS
+            Dll::SetTls( (TAny*)sessionCount );
+            TN_DEBUG2( "CThumbnailManagerImpl::ConstructL() - update sessionCount == %d to TLS", sessionCount );
+            } 
         else
             {
-            TInt sessionCount = (TInt)Dll::Tls(); 
-            if( sessionCount++ > 0 )
-                {
-                // Increase the reference count in TLS
-                Dll::SetTls( (TAny*)sessionCount );
-			    TN_DEBUG2( "CThumbnailManagerImpl::ConstructL() - update sessionCount == %d to TLS", sessionCount );
-                } 
-            else
-                {
-                // Fbs connection was available in the beginning, no need to
-                // increase the reference count
-                }
+            // Fbs connection was available in the beginning, no need to
+            // increase the reference count
             }
+        }
     
     // request processor
     iRequestQueue = CThumbnailRequestQueue::NewL();
@@ -151,26 +151,28 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL(
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+    TInt priority = ValidatePriority(aPriority);
+    
     CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
-        ( iFs, iSession, iObserver, iRequestId, aPriority, iRequestQueue );
+        ( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
     
     if(aObjectSource.Id() > 0)
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, aPriority, aClientData, aGeneratePersistentSizesOnly,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
             KNullDesC, iThumbnailSize);
         }
     else if ( aObjectSource.Uri().Length())
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, aPriority, aClientData, aGeneratePersistentSizesOnly,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
             KNullDesC, iThumbnailSize );
         }
     else
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, aPriority, aClientData, aGeneratePersistentSizesOnly,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
             KNullDesC, iThumbnailSize );
         }
     
@@ -210,12 +212,14 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL( const TThumbnailId
 
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+    TInt priority = ValidatePriority(aPriority);
+    
     CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
-        ( iFs, iSession, iObserver, iRequestId, aPriority, iRequestQueue );
+        ( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
     
     getThumbnailActive->GetThumbnailL( KNullDesC, aThumbnailId, iFlags,
-                       iQualityPreference, iSize, iDisplayMode, aPriority, aClientData,
+                       iQualityPreference, iSize, iDisplayMode, priority, aClientData,
                        EFalse, KNullDesC, iThumbnailSize );
     
     iRequestQueue->AddRequestL( getThumbnailActive );
@@ -242,20 +246,22 @@ TThumbnailRequestId CThumbnailManagerImpl::ImportThumbnailL(
 
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+    TInt priority = ValidatePriority(aPriority);
+    
     CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
-        ( iFs, iSession, iObserver, iRequestId, aPriority, iRequestQueue );
+        ( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
 
     if ( aObjectSource.Uri().Length())
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, aPriority, aClientData,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData,
             EFalse, aTargetUri, iThumbnailSize );
         }
     else
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), 
-            iFlags, iQualityPreference, iSize, iDisplayMode, aPriority, aClientData,
+            iFlags, iQualityPreference, iSize, iDisplayMode, priority, aClientData,
             EFalse, aTargetUri, iThumbnailSize );
         }
     
@@ -281,8 +287,10 @@ TThumbnailRequestId CThumbnailManagerImpl::SetThumbnailL( CThumbnailObjectSource
 
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+    TInt priority = ValidatePriority(aPriority);
+    
     CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
-        ( iFs, iSession, iObserver, iRequestId, aPriority, iRequestQueue );
+        ( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
     
     if ( aObjectSource.Uri().Length() &&
@@ -291,7 +299,7 @@ TThumbnailRequestId CThumbnailManagerImpl::SetThumbnailL( CThumbnailObjectSource
         {
         getThumbnailActive->SetThumbnailL( aObjectSource.GetBufferOwnership(), aObjectSource.Id(),
             aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode,
-            aPriority, aClientData, EFalse, aObjectSource.Uri(), iThumbnailSize);
+            priority, aClientData, EFalse, aObjectSource.Uri(), iThumbnailSize);
         }
     
     iRequestQueue->AddRequestL( getThumbnailActive );
@@ -318,8 +326,10 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 
 		__ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+		TInt priority = ValidatePriority(aPriority);
+		
 		CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
-			( iFs, iSession, iObserver, iRequestId, aPriority, iRequestQueue );
+			( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
 		
 		CleanupStack::PushL( getThumbnailActive );
 		
@@ -328,14 +338,14 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 			// from bitmap
 			getThumbnailActive->SetThumbnailL( aObjectSource.GetBitmapOwnership(),
 						 aObjectSource.Id(), KBmpMime, iFlags, iQualityPreference,
-						 iSize, iDisplayMode, aPriority, NULL, ETrue,
+						 iSize, iDisplayMode, priority, NULL, ETrue,
 						 aObjectSource.Uri(), EUnknownThumbnailSize);
 			}
 		else if( !aObjectSource.Buffer() )
 			{        
 			getThumbnailActive->GetThumbnailL( aObjectSource.Id(), 
 						 aObjectSource.Uri(), iFlags, iQualityPreference, iSize,
-						 iDisplayMode, aPriority, NULL, ETrue, aObjectSource.Uri(), 
+						 iDisplayMode, priority, NULL, ETrue, aObjectSource.Uri(), 
 						 EUnknownThumbnailSize);      
 			}
 		else
@@ -343,7 +353,7 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 			// from buffer
 			getThumbnailActive->SetThumbnailL( aObjectSource.GetBufferOwnership(),
 						 aObjectSource.Id(), aObjectSource.MimeType(), iFlags,
-						 iQualityPreference, iSize, iDisplayMode, aPriority, NULL,
+						 iQualityPreference, iSize, iDisplayMode, priority, NULL,
 						 ETrue, aObjectSource.Uri(), EUnknownThumbnailSize);
 			}
 		
@@ -563,9 +573,11 @@ TInt CThumbnailManagerImpl::ChangePriority( const TThumbnailRequestId aId,
     {
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
+    TInt priority = ValidatePriority(aNewPriority);
+    
     TN_DEBUG2( "CThumbnailManagerImpl::ChangePriority() - request ID: %d", aId );
     
-    return iRequestQueue->ChangePriority(aId, aNewPriority);
+    return iRequestQueue->ChangePriority(aId, priority);
     }
 
 // ---------------------------------------------------------------------------
@@ -605,17 +617,42 @@ void CThumbnailManagerImpl::UpdateThumbnailsL( const TThumbnailId aItemId, const
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
+    TInt priority = ValidatePriority(aPriority);
+    
     CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
-        ( iFs, iSession, iObserver, iRequestId, aPriority, iRequestQueue );
+        ( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
     
     getThumbnailActive->UpdateThumbnailsL( aPath, aItemId, iFlags, iQualityPreference,
-            iDisplayMode, aPriority, aOrientation, aModified );
+            iDisplayMode, priority, aOrientation, aModified );
     
     iRequestQueue->AddRequestL( getThumbnailActive );
     CleanupStack::Pop( getThumbnailActive );
     
     iRequestQueue->Process();
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailManagerImpl::ValidatePriority()
+// Check that given priority is in range of CActive::TPriority 
+// ---------------------------------------------------------------------------
+//
+TInt CThumbnailManagerImpl::ValidatePriority( const TInt aPriority )
+    {
+    if (aPriority < CActive::EPriorityIdle)
+        {
+        TN_DEBUG2( "CThumbnailManagerImpl::ValidatePriority() - priority %d too low for CActive", aPriority );
+        return CActive::EPriorityIdle;
+        }
+    else if (aPriority > CActive::EPriorityHigh)
+        {
+        TN_DEBUG2( "CThumbnailManagerImpl::ValidatePriority() - priority %d too high for CActive", aPriority );
+        return CActive::EPriorityHigh;
+        }
+    else
+        {
+        return aPriority;
+        }
     }
 
 // End of file

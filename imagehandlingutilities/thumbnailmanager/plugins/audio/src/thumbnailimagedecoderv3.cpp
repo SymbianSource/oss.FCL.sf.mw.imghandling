@@ -132,8 +132,14 @@ void CThumbnailImageDecoderv3::DecodeL( const TDisplayMode aDisplayMode )
             "EFullyScaleable not set for image - loadSize=(%d,%d) reduction=1/%d ", loadSize.iWidth, loadSize.iHeight, reductionFactor );
         }
 
-    User::LeaveIfError( iBitmap->Create( loadSize, aDisplayMode ));
-
+    TInt err = iBitmap->Create( loadSize, aDisplayMode );
+    if (err != KErrNone)
+        {
+        delete iBitmap;
+        iBitmap = NULL;
+        User::Leave(err);
+        }
+    
     iDecoder->Convert( &iStatus, * iBitmap );
     while ( iStatus == KErrUnderflow )
         {

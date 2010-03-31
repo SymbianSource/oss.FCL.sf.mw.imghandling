@@ -221,7 +221,6 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
                 TThumbnailRequestId id = task->RequestId().iRequestId;
                 
                 // Task is already running, canceled first
-                task->ResetMessageData();
                 task->Cancel();
                 delete task;
                 iTasks.Remove( i );
@@ -273,7 +272,6 @@ void CThumbnailTaskProcessor::RemoveAllTasks()
             TThumbnailRequestId id = task->RequestId().iRequestId;
             
             // Task is already running, canceled first
-            task->ResetMessageData();
             task->Cancel();
             delete task;
             iTasks.Remove( i );
@@ -325,6 +323,7 @@ void CThumbnailTaskProcessor::RunL()
     iActiveTask = NULL;
     TInt priority( KMinTInt );
     TInt taskPriority;
+    TBool processingDaemonTasksOnly(ETrue);
     
 #ifdef _DEBUG
     TN_DEBUG2( "CThumbnailTaskProcessor::TASKPROCESSOR-COUNTER---------- in, Tasks = %d", iTasks.Count() );
@@ -351,6 +350,15 @@ void CThumbnailTaskProcessor::RunL()
                     iActiveTask = task;
                     }
                 }
+            
+            if ( processingDaemonTasksOnly && task->GetMessageData().Handle())
+                {
+                    if(task->GetMessageData().Identity() != KDaemonUid )
+                        {
+                        TN_DEBUG1( "CThumbnailTaskProcessor::RunL() processingDaemonTasksOnly = EFalse" );
+                        processingDaemonTasksOnly = EFalse; 
+                        }
+                }
             }
         }
 
@@ -364,7 +372,7 @@ void CThumbnailTaskProcessor::RunL()
 #endif
 
 	//update PS value for Daemon
-    if( iTasks.Count() > 0 && iIdle)
+    if( iTasks.Count() > 0 && iIdle && !processingDaemonTasksOnly)
         {
         //set not idle
         if(iTimerActive)

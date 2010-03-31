@@ -95,10 +95,10 @@ void CThumbAGProcessor::ConstructL()
     UpdatePSValues(ETrue);
 
     if(iForegroundGenerationObserver)
-      {
-      delete iForegroundGenerationObserver;
-      iForegroundGenerationObserver = NULL;
-      }
+        {
+        delete iForegroundGenerationObserver;
+        iForegroundGenerationObserver = NULL;
+        }
     
     RProperty::Define(KTAGDPSNotification, KMPXHarvesting, RProperty::EInt);
     
@@ -503,7 +503,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                     iPlaceholderQueue.Remove( itemIndex );
                     }
                 
-                if(iAddQueue.Find( aIDArray[i]) == KErrNotFound && i2ndRoundGenerateQueue.Find( aIDArray[i]))
+                if(iAddQueue.Find( aIDArray[i]) == KErrNotFound && i2ndRoundGenerateQueue.Find( aIDArray[i]) == KErrNotFound )
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to add queue");
                     iAddQueue.Append( aIDArray[i]);
@@ -988,10 +988,10 @@ void CThumbAGProcessor::RunL()
             
             if(ret != KErrNone || !serveIdle )
                 {
-                    //start inactivity timer and retry on after callback
-                    TN_DEBUG1( "void CThumbAGProcessor::RunL() server not idle");
-                    StartTimeout();
-                    return;
+            	//start inactivity timer and retry on after callback
+            	TN_DEBUG1( "void CThumbAGProcessor::RunL() server not idle");
+                StartTimeout();
+                return;
                 }
             TN_DEBUG1( "void CThumbAGProcessor::RunL() device and server idle, process");
             }
@@ -1497,11 +1497,26 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
 			    {
 			    SetForceRun( EFalse );
 		        }
-			 
-            continue;
             }
-    
-        /*if( aRemoveFromDelete )
+            
+        itemIndex = iQueryQueue.Find( aIDArray[i] );
+                     
+        if(itemIndex >= 0)
+            {
+            iQueryQueue.Remove(itemIndex);
+            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iQueryQueue" );
+            }
+        
+        itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
+                      
+        if(itemIndex >= 0)
+        	{
+            iPlaceholderQueue.Remove(itemIndex);
+            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iPlaceholderQueue" );
+            }
+        
+        /*
+        if( aRemoveFromDelete )
             {
             itemIndex = iRemoveQueue.Find( aIDArray[i] );
              
@@ -1754,6 +1769,21 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
         {
         daemonProcessing = ETrue;
         }
+    
+    //disable 2nd round generarion when there is items in 1st round queues
+    //or 2nd queue is empty 
+    if( !i2ndRoundGenerateQueue.Count() || itemsLeft )
+        {
+        i2ndRound = EFalse;
+        }
+    
+    //adjust items left to containing also items not yet processed but removed from queue under processing
+    if((iLastQueue == &iModifyQueue || iLastQueue == &iAddQueue) && !i2ndRound)
+        {
+        itemsLeft +=iQueryQueue.Count();
+        }
+    
+    TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() KItemsleft == %d", itemsLeft);
     
     if(aDefine)
         {
