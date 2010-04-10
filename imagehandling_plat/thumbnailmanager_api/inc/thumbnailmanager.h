@@ -416,19 +416,18 @@ public:
     virtual TInt ChangePriority( TThumbnailRequestId aId, TInt aNewPriority ) =
         0;
 
-    /**
-     * Get a list of supported file formats for object files.
-     * 
-     * The return value is a reference to a list that contains each
-     * supported MIME type. There may also be wildcards, such as "image/*".
-     * 
-     * The returned reference is valid until CThumbnailManager is
-     * destroyed or GetSupportedMimeTypesL() is called again.
-     *
-     * @since S60 v5.0
-     * @return A list of supported MIME types. May contain wildcards.
-     *         Ownership not transferred.
-     */
+    //! Get a list of supported file formats for object files.
+    //! 
+    //! The return value is a reference to a list that contains each
+    //! supported MIME type. There may also be wildcards, such as "image/*".
+    //! 
+    //! The returned reference is valid until CThumbnailManager is
+    //! destroyed or GetSupportedMimeTypesL() is called again.
+    //!
+    //! @since S60 v5.0
+    //! @return A list of supported MIME types. May contain wildcards.
+    //!         Ownership not transferred.
+    //!
     virtual const CDesCArray& GetSupportedMimeTypesL() = 0;
 
     /**
