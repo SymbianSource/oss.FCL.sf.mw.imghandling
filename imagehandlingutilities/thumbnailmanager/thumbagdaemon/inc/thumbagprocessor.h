@@ -243,6 +243,13 @@ private:
      */
     void UpdatePSValues(const TBool aDefine = EFalse);
        
+    /**
+     * Comparison function for logaritmic use of queue arrays
+     * 
+     * @since S60 v5.0
+     */
+    static TInt Compare(const TItemId& aLeft, const TItemId& aRight);
+        
 private:
     
     // not own

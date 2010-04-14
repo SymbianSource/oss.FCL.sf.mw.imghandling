@@ -254,6 +254,14 @@ private:
     void UpdateThumbnailsL( const RMessage2& aMessage );
     
     /**
+     * Rename thumbnails.
+     * 
+     * @since S60 v5.0
+     * @param aMessage Message.
+     */
+    void RenameThumbnailsL( const RMessage2& aMessage );
+    
+    /**
      * Checks if client thread is still alive and RMessage2 handle valid.
      *
      * @since S60 v5.0

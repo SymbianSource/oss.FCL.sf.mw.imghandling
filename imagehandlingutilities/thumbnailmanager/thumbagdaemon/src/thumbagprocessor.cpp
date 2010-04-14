@@ -201,11 +201,62 @@ CThumbAGProcessor::~CThumbAGProcessor()
 // CThumbAGProcessor::HandleQueryNewResults()
 // -----------------------------------------------------------------------------
 //
-void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& /*aQuery*/,
-                                               const TInt /*aFirstNewItemIndex*/,
-                                               const TInt /*aNewItemCount*/ )
+void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
+                                               const TInt aFirstNewItemIndex,
+                                               const TInt aNewItemCount )
     {
-    // No implementation required
+    // PH & AllItems query results are handled here
+    if (aNewItemCount > 0)
+        {
+        if(&aQuery == iQueryPlaceholders)
+            {
+            TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults - iQueryPlaceholders, %d new", aNewItemCount);
+            
+            for(TInt i = aFirstNewItemIndex; i < iQueryPlaceholders->Count(); i++)
+                {    
+                const CMdEObject* object = &iQueryPlaceholders->Result(i);
+              
+                if(!object)
+                    {
+                    continue;
+                    }
+              
+                if(!object->Placeholder())
+                    {
+                    TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults %d not placeholder", object->Id());
+                    continue;
+                    }
+               
+                // ignore if fails
+                iPlaceholderQueue.InsertInOrder(object->Id(), Compare);               
+                }  
+            }
+        else if(&aQuery == iQueryAllItems)
+            {
+            TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults - QueryAllItems, %d new", aNewItemCount);
+    
+            for(TInt i = aFirstNewItemIndex; i < iQueryAllItems->Count(); i++)
+                {    
+                const CMdEObject* object = &iQueryAllItems->Result(i);
+               
+                if(!object)
+                    {
+                    continue;
+                    }
+               
+                if (iAddQueue.FindInOrder(object->Id(), Compare) == KErrNotFound && 
+                    iModifyQueue.FindInOrder(object->Id(), Compare) == KErrNotFound )
+                    {
+                    // ignore if fails
+                    iAddQueue.InsertInOrder(object->Id(), Compare);
+                    }
+                }
+            }    
+        }
+    else
+        {
+        TN_DEBUG1( "CThumbAGProcessor::HandleQueryNewResults - error, no new items");
+        }
     }
 
 // -----------------------------------------------------------------------------
@@ -221,67 +272,28 @@ void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aErr
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - iQueryPlaceholders completed");
         
         iPlaceholderQueue.Reset();
-        // if no errors in query
-        if (aError == KErrNone )
+        
+        //free query
+        delete iQueryPlaceholders;
+        iQueryPlaceholders = NULL;
+       
+        if(iDoQueryAllItems)
             {
-            for(TInt i = 0; i < iQueryPlaceholders->Count(); i++)
-               {    
-               const CMdEObject* object = &iQueryPlaceholders->Result(i);
-              
-               if(!object)
-                   {
-                   continue;
-                   }
-              
-               if(!object->Placeholder())
-                   {
-                   TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted %d not placeholder", object->Id());
-                   continue;
-                   }
-              
-               /*if (iPlaceholderQueue.Find( object->Id() ) == KErrNotFound)
-                   {
-                   TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted %d added to placeholder queue", object->Id());*/
-                   TRAP_IGNORE( iPlaceholderQueue.AppendL( object->Id() )); 
-                 //}
-               }
-           }
-           delete iQueryPlaceholders;
-           iQueryPlaceholders = NULL;
-           
-           if(iDoQueryAllItems)
-               {
-               iDoQueryAllItems = EFalse;
-               TRAP_IGNORE(QueryAllItemsL());
-               }
+            iDoQueryAllItems = EFalse;
+            TRAP_IGNORE(QueryAllItemsL());
+            }
         }
     else if(&aQuery == iQueryAllItems)
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - QueryAllItems completed");
-        // if no errors in query
-        if (aError == KErrNone )
-            {
-            for(TInt i = 0; i < iQueryAllItems->Count(); i++)
-                {    
-                const CMdEObject* object = &iQueryAllItems->Result(i);
-               
-                if(!object)
-                    {
-                    continue;
-                    }
-               
-                if (iAddQueue.Find( object->Id() ) == KErrNotFound && iModifyQueue.Find( object->Id()) == KErrNotFound  )
-                    {
-                    TRAP_IGNORE( iAddQueue.AppendL( object->Id() ));
-                    }
-                }
+
 #ifdef _DEBUG
 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount: %d, Add",iQueryAllItems->Count());
 #endif
-            }
-            //free query
-            delete iQueryAllItems;
-            iQueryAllItems = NULL;
+       
+        //free query
+        delete iQueryAllItems;
+        iQueryAllItems = NULL;
         }
     else if(&aQuery == iQuery )
         {
@@ -302,7 +314,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() some result items missing");
                 
-                RArray<TItemId> iQueryQueueDelta;
+                RArray<TItemId> queryQueueDelta;
                 
                 TInt itemIndex(KErrNotFound);
                 
@@ -324,23 +336,26 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                      if(!found)
                          {
                          TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing from results item %d", iQueryQueue[queryItem] );
-                         iQueryQueueDelta.Append( iQueryQueue[queryItem] );
+                         
+                         // ignore if fails
+                         queryQueueDelta.InsertInOrder(iQueryQueue[queryItem], Compare);
                          }
                      }
                  
-                 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing items total count %d", iQueryQueueDelta.Count()); 
+                 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing items total count %d", queryQueueDelta.Count()); 
                  //cleanup from previous queue it item is not found from MDS
-                 while(iQueryQueueDelta.Count())
+                 while(queryQueueDelta.Count())
                      {
-                     itemIndex = iLastQueue->Find(iQueryQueueDelta[0]);
+                     itemIndex = iLastQueue->FindInOrder(queryQueueDelta[0], Compare);
+                     
                      if(itemIndex >= 0)
                          {
                          TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove items %d", iQueryQueue[0]);
                          iLastQueue->Remove( itemIndex );
                          }
-                     iQueryQueueDelta.Remove(0);
+                     queryQueueDelta.Remove(0);
                      }
-                 iQueryQueueDelta.Close();
+                 queryQueueDelta.Close();
                 }
             
             // no results, reset query
@@ -359,7 +374,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             //cleanup current queue
             while(iQueryQueue.Count())
                 {
-                itemIndex = iLastQueue->Find(iQueryQueue[0]);
+                itemIndex = iLastQueue->FindInOrder(iQueryQueue[0], Compare);
                 if(itemIndex >= 0)
                     {
                     iLastQueue->Remove( itemIndex );
@@ -479,9 +494,10 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         for (int i=0; i<aIDArray.Count(); i++)
             {
             // do not to append to Add queue if exist already in Add or 2nd Add queue (just processed)     
-            if (iAddQueue.Find( aIDArray[i] ) == KErrNotFound && i2ndRoundGenerateQueue.Find( aIDArray[i] ) == KErrNotFound)
+            if (iAddQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound && 
+                i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound)
                 {
-                iAddQueue.AppendL(aIDArray[i]);
+                User::LeaveIfError(iAddQueue.InsertInOrder(aIDArray[i], Compare));    
                 }
             }
         }
@@ -490,12 +506,11 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyModify" );
         
         if(iPHHarvesting)
-            {
-        
+            {        
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - PH  harvesting active, treat like add" );
             for (int i=0; i<aIDArray.Count(); i++)
                 {
-                TInt itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
+                TInt itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare);
                                 
                 if (itemIndex >= 0)
                     {
@@ -503,10 +518,11 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                     iPlaceholderQueue.Remove( itemIndex );
                     }
                 
-                if(iAddQueue.Find( aIDArray[i]) == KErrNotFound && i2ndRoundGenerateQueue.Find( aIDArray[i]) == KErrNotFound )
+                if(iAddQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound && 
+                   i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound)
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to add queue");
-                    iAddQueue.Append( aIDArray[i]);
+                    User::LeaveIfError(iAddQueue.InsertInOrder(aIDArray[i], Compare));
                     }
                 }
             }
@@ -518,7 +534,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
             
             for (int i=0; i<aIDArray.Count(); i++)
                 {
-                itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
+                itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare);
                 
                 if (itemIndex >= 0)
                     {
@@ -528,7 +544,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                 else
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - real modify");
-                    itemIndex = iAddQueue.Find( aIDArray[i] );
+                    itemIndex = iAddQueue.FindInOrder(aIDArray[i], Compare);
                                     
                     if (itemIndex >= 0)
                         {
@@ -536,9 +552,8 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                         iAddQueue.Remove( itemIndex );
                         }
 					else
-						{
-						
-						itemIndex = i2ndRoundGenerateQueue.Find( aIDArray[i] );
+						{						
+						itemIndex = i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare);
                                     
 	                    if (itemIndex >= 0)
 	                        {
@@ -548,7 +563,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
 					}
                     
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to modify queue");
-                    iModifyQueue.AppendL(aIDArray[i]);
+                    User::LeaveIfError(iModifyQueue.InsertInOrder(aIDArray[i], Compare));
                     
                     SetForceRun( ETrue );
                     } 
@@ -562,14 +577,14 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
             for (int i=0; i<aIDArray.Count(); i++)
                 {
                 // can be removed from Add queue
-                TInt itemIndex = iAddQueue.Find( aIDArray[i] );
+                TInt itemIndex = iAddQueue.FindInOrder(aIDArray[i], Compare);
                 if(itemIndex >= 0)
                     {
                     iAddQueue.Remove(itemIndex);
                     }
     
                 // ..and Modify Queue
-                itemIndex = iModifyQueue.Find( aIDArray[i] );
+                itemIndex = iModifyQueue.FindInOrder(aIDArray[i], Compare);
                 if(itemIndex >= 0)
                     {
                     iModifyQueue.Remove(itemIndex);
@@ -657,9 +672,10 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             if(iLastQueue == &iAddQueue || iLastQueue == &iModifyQueue)
                 {
                 TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 1st round add/modify, append to 2nd round queue", aObject->Id() );
-                if(i2ndRoundGenerateQueue.Find(aObject->Id()) == KErrNotFound)
+                if(i2ndRoundGenerateQueue.FindInOrder(aObject->Id(), Compare) == KErrNotFound)
                     {
-                    i2ndRoundGenerateQueue.Append( aObject->Id() );
+                    // ignore if fails
+                    i2ndRoundGenerateQueue.InsertInOrder(aObject->Id(), Compare);
                     }
                 }
             
@@ -730,11 +746,11 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     TInt maxCount = aIDArray.Count();
         
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill begin aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
-    
+      
     for(TInt i=0;i < KMaxQueryItems && i < maxCount; i++)
         {
         TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", aIDArray[i] );
-        iQueryQueue.Append( aIDArray[i] );
+        iQueryQueue.InsertInOrder(aIDArray[i], Compare);
         }
     
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill end aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
@@ -836,7 +852,7 @@ void CThumbAGProcessor::QueryPlaceholdersL()
     audioPHObjectCondition.SetPlaceholderOnly( ETrue );
     audioPHObjectCondition.SetNotPresent( ETrue );
     
-    iQueryPlaceholders->FindL();  
+    iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryItems2);   
    
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - end" );
     }
@@ -1009,7 +1025,7 @@ void CThumbAGProcessor::RunL()
             const CMdEObject* object = &iQuery->Result( iProcessingCount-1 );
             iProcessingCount--;
             
-            TInt itemIndex = iLastQueue->Find( object->Id());
+            TInt itemIndex = iLastQueue->FindInOrder(object->Id(), Compare);
             if(itemIndex >= 0)
                 {
                 iLastQueue->Remove(itemIndex);
@@ -1019,7 +1035,7 @@ void CThumbAGProcessor::RunL()
             if ( object )
                 {
                 //remove item from queryQueue when request is issued 
-                itemIndex = iQueryQueue.Find( object->Id());
+                itemIndex = iQueryQueue.FindInOrder(object->Id(), Compare);
                 if(itemIndex >= 0)
                     {
                     iQueryQueue.Remove(itemIndex);
@@ -1044,9 +1060,10 @@ void CThumbAGProcessor::RunL()
                 {
                 if(iLastQueue)
                     {
-                    if(iLastQueue->Find( iQueryQueue[0]) == KErrNotFound)
+                    if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
                         {
-                        iLastQueue->Append(iQueryQueue[0]);
+                        //ignore if fails
+                        iLastQueue->InsertInOrder(iQueryQueue[0], Compare);
                         }
                     }
                 iQueryQueue.Remove(0);
@@ -1087,9 +1104,10 @@ void CThumbAGProcessor::RunL()
                 {
                 if(iLastQueue)
                     {
-                    if(iLastQueue->Find( iQueryQueue[0]) == KErrNotFound)
+                    if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
                         {
-                        iLastQueue->Append(iQueryQueue[0]);
+                        //ignore if fails
+                        iLastQueue->InsertInOrder(iQueryQueue[0], Compare);
                         }
                     }
                 iQueryQueue.Remove(0);
@@ -1349,13 +1367,6 @@ void CThumbAGProcessor::ActivateAO()
         return;
         }
         
-    if( !IsActive() )
-        {
-        SetActive();
-        TRequestStatus* statusPtr = &iStatus;
-        User::RequestComplete( statusPtr, KErrNone );
-        }
-    
     //check if forced run needs to continue
     if (iModifyQueue.Count())
         {
@@ -1365,6 +1376,14 @@ void CThumbAGProcessor::ActivateAO()
         {
         iModify = EFalse;
         SetForceRun( EFalse );
+        }
+    
+    if( !IsActive() && ((!iActive && !iQueryActive) || iForceRun ))
+        {
+        TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - Activated");
+        SetActive();
+        TRequestStatus* statusPtr = &iStatus;
+        User::RequestComplete( statusPtr, KErrNone );
         }
 
     UpdatePSValues();
@@ -1462,32 +1481,28 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
         {
         TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() - %d", aIDArray[i]);
 
-        itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
-                         
+        itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare);                        
         if(itemIndex >= 0)
             {
             iPlaceholderQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iPlaceholderQueue" );
             }
                 
-        itemIndex = iAddQueue.Find( aIDArray[i] );
-        
+        itemIndex = iAddQueue.FindInOrder(aIDArray[i], Compare);       
         if(itemIndex >= 0)
             {
             iAddQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iAddQueue" );
             }
 
-        itemIndex = i2ndRoundGenerateQueue.Find( aIDArray[i] );
-                
+        itemIndex = i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare);               
         if(itemIndex >= 0)
             {
             i2ndRoundGenerateQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - i2ndRoundGenerateQueue" );
             }
         
-        itemIndex = iModifyQueue.Find( aIDArray[i] );
-         
+        itemIndex = iModifyQueue.FindInOrder(aIDArray[i], Compare);       
         if(itemIndex >= 0)
             {
             iModifyQueue.Remove(itemIndex);
@@ -1499,34 +1514,19 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
 		        }
             }
             
-        itemIndex = iQueryQueue.Find( aIDArray[i] );
-                     
+        itemIndex = iQueryQueue.FindInOrder(aIDArray[i], Compare);                    
         if(itemIndex >= 0)
             {
             iQueryQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iQueryQueue" );
             }
-        
-        itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
-                      
+         
+        itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare); 
         if(itemIndex >= 0)
         	{
             iPlaceholderQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iPlaceholderQueue" );
             }
-        
-        /*
-        if( aRemoveFromDelete )
-            {
-            itemIndex = iRemoveQueue.Find( aIDArray[i] );
-             
-            if(itemIndex >= 0)
-                {
-                iRemoveQueue.Remove(itemIndex);
-                TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iRemoveQueue" );
-                continue;
-                }
-            }*/
         }
     
     TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - end" );
@@ -1593,7 +1593,7 @@ void CThumbAGProcessor::QueryAllItemsL()
     
     CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
     
-    iQueryAllItems->FindL();  
+    iQueryAllItems->FindL(KMaxTInt, KMaxQueryItems2);  
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - end" );
     }
@@ -1810,5 +1810,16 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
         RProperty::Set(KTAGDPSNotification, KItemsleft, itemsLeft );
         }
     }
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::Compare
+// Comparison function for logaritmic use of queue arrays
+// ---------------------------------------------------------------------------
+//
+TInt CThumbAGProcessor::Compare(const TItemId& aLeft, const TItemId& aRight)
+    {  
+    return (aLeft - aRight);
+    }
+
 
 // End of file

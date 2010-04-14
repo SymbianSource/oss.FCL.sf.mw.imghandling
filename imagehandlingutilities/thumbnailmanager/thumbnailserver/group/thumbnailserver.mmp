@@ -50,6 +50,7 @@ SOURCE                  thumbnaildiskunmountobserver.cpp
 SOURCE                  thumbnailcenrep.cpp 
 SOURCE                  thumbnailmemorycardobserver.cpp 
 SOURCE		        thumbnaildecodetask.cpp
+SOURCE                  thumbnailfetchedchecker.cpp
 #ifdef RD_MDS_2_5
 SOURCE			thumbnailmdsquerytask.cpp
 #endif // RD_MDS_2_5

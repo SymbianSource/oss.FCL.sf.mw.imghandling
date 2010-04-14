@@ -338,6 +338,18 @@ void RThumbnailSession::UpdateThumbnails( const TDesC& aPath, const TInt aOrient
             
     SendReceive( EUpdateThumbnails, args, aStatus );  
     }
+
+// ---------------------------------------------------------------------------
+// Rename thumbnails.
+// ---------------------------------------------------------------------------
+//
+void RThumbnailSession::RenameThumbnails( TThumbnailRequestParamsPckg& aParams, 
+                                          TRequestStatus& aStatus )
+    {
+    TIpcArgs args( &aParams, KCheckValue);
+            
+    SendReceive( ERenameThumbnails, args, aStatus ); 
+    }
     
 
 // End of file

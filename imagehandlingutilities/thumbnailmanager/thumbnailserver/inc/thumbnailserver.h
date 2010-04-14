@@ -45,6 +45,7 @@ class MIHLScaler;
 class CThumbnailServerSession;
 class CThumbnailDiskUnmountObserver;
 class CThumbnailMemoryCardObserver;
+class CThumbnailFetchedChecker;
 
 /**
  * Helper function to destroy all objects which are referred to
@@ -373,6 +374,15 @@ public:
     TBool UpdateThumbnailsL( const TDesC& aPath,
                              const TInt aOrientation, const TInt64 aModified );
     
+    /**
+     * Rename thumbnails.
+     *
+     * @since S60 v5.0
+     * @param aCurrentPath     Current path of the Thumbnail
+     * @param aNewPath         New path for the Thumbnail
+     */
+    void RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC& aNewPath );
+    
     /** 
      * Resolve mime type from file extension
      *
@@ -451,6 +461,7 @@ public:
     
     TBool IsFormatting();
   
+    inline CThumbnailFetchedChecker& FetchedChecker() const { return *iFetchedChecker; }
 protected: // Functions from base classes
 
     /**
@@ -674,6 +685,11 @@ private:
 #ifdef _DEBUG
     TUint32 iPlaceholderCounter;
 #endif
+    /**
+     * Fetched checker.
+     * Own.
+     */
+    CThumbnailFetchedChecker* iFetchedChecker;
 };
 
 #endif // THUMBNAILSERVER_H

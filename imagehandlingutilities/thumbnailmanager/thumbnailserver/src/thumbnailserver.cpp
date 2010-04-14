@@ -36,6 +36,7 @@
 #include "thumbnailcenrep.h"
 #include "thumbnailmemorycardobserver.h"
 #include "tmgetimei.h"
+#include "thumbnailfetchedchecker.h"
 
 
 _LIT8( KThumbnailMimeWildCard, "*" );
@@ -73,7 +74,7 @@ const TInt KThumbnailServerRanges[KThumbnailServerRangeCount] =
     ERequestThumbByBufferAsync,
     ERequestSetThumbnailByBuffer,
     EDeleteThumbnailsById,
-    EReserved1,
+    ERenameThumbnails,
     EUpdateThumbnails,
     ERequestSetThumbnailByBitmap,
     EThumbnailServerRequestCount,
@@ -96,7 +97,7 @@ const TUint8 KThumbnailServerElementsIndex[KThumbnailServerRangeCount] =
     CPolicyServer::ECustomCheck,    // ERequestThumbByBufferAsync
     CPolicyServer::ECustomCheck,    // ERequestSetThumbnailByBuffer
     CPolicyServer::ECustomCheck,    // EDeleteThumbnailsById
-    CPolicyServer::ECustomCheck,    
+    CPolicyServer::ECustomCheck,    // ERenameThumbnails
     CPolicyServer::ECustomCheck,    // EUpdateThumbnails
     CPolicyServer::ECustomCheck,    // ERequestSetThumbnailByBitmap
     CPolicyServer::ECustomCheck,    // EThumbnailServerRequestCount
@@ -142,7 +143,8 @@ CPolicyServer::TCustomResult CThumbnailServer::CustomSecurityCheckL(
         case EGetMimeTypeList:
         case ERequestSetThumbnailByBuffer:
         case EDeleteThumbnailsById:
-        case EUpdateThumbnails:   
+        case EUpdateThumbnails:
+        case ERenameThumbnails:    
         case ERequestSetThumbnailByBitmap:
             {
             if( aMsg.HasCapability( ECapabilityReadDeviceData ) && 
@@ -152,8 +154,6 @@ CPolicyServer::TCustomResult CThumbnailServer::CustomSecurityCheckL(
                 }
             break;
             }
-
-        case EReserved1:
         case EThumbnailServerRequestCount:
         default:
             {
@@ -254,6 +254,7 @@ void CThumbnailServer::ConstructL()
     //OpenStoresL();
     
     AddUnmountObserversL();
+    iFetchedChecker = CThumbnailFetchedChecker::NewL();
     }
 
 
@@ -267,6 +268,7 @@ CThumbnailServer::~CThumbnailServer()
 
     iShutdown = ETrue;
     
+    delete iFetchedChecker;
     delete iShutdownObserver;
     delete iProcessor;
     
@@ -536,6 +538,10 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
         {
         TN_DEBUG1( "CThumbnailServer::StoreThumbnailL() - file doesn't exists anymore, skip store!");
         }
+    if( iFetchedChecker )    
+        {
+        iFetchedChecker->SetFetchResult( aPath, KErrNone );
+        }
     }
 
 
@@ -547,8 +553,23 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     aThumbnail, TDesC8* & aData, const TThumbnailSize aThumbnailSize, TSize &aOriginalSize )
     {
     TN_DEBUG3( "CThumbnailServer::FetchThumbnailL(aPath=%S aThumbnailSize=%d)", &aPath, aThumbnailSize );
-
-    StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize);
+    if( iFetchedChecker )
+        {
+        TInt err( iFetchedChecker->LastFetchResult( aPath ) );
+        if ( err == KErrNone ) // To avoid useless sql gets that fails for sure
+            {
+            TRAP( err, StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize) );
+            if ( err != KErrNone )
+                {
+                iFetchedChecker->SetFetchResult( aPath, err );
+                }
+            }
+        User::LeaveIfError( err );
+        }
+    else
+        {
+        StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize);
+        }
     }
 
 
@@ -600,6 +621,10 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     TN_DEBUG2( "CThumbnailServer::DeleteThumbnailsL(%S)", &aPath);
     
     StoreForPathL( aPath )->DeleteThumbnailsL( aPath );
+    if( iFetchedChecker ) 
+        {
+        iFetchedChecker->SetFetchResult( aPath, KErrNone );
+        }
     }
 
 // -----------------------------------------------------------------------------
@@ -1190,6 +1215,17 @@ TBool CThumbnailServer::UpdateThumbnailsL( const TDesC& aPath,
     TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - no thumbs found, create new");
     
     return EFalse;
+    }
+
+// -----------------------------------------------------------------------------
+// Renames thumbnails.
+// -----------------------------------------------------------------------------
+//
+void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC& aNewPath )
+    {
+    TN_DEBUG2( "CThumbnailServer::RenameThumbnailsL(%S)", &aCurrentPath);
+    
+    StoreForPathL( aCurrentPath )->RenameThumbnailsL( aCurrentPath, aNewPath );
     }
 
 // -----------------------------------------------------------------------------

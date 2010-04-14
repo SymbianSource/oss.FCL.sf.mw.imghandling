@@ -186,7 +186,12 @@ void CThumbnailRequestActive::StartL()
                 iSession.DeleteThumbnails( iParams.iThumbnailId, iParamsPckg, iStatus );
                 }
             break;
-            } 
+            }
+        case EReqRenameThumbnails:
+            {
+            iSession.RenameThumbnails( iParamsPckg, iStatus );
+            break;
+            }  
         default:
             {
             break;
@@ -220,12 +225,15 @@ void CThumbnailRequestActive::RunL()
     
     iTimer->Cancel();
     
-    if (iRequestType == EReqDeleteThumbnails || iCanceled)
+    if (iRequestType == EReqDeleteThumbnails || iCanceled ||
+        iRequestType == EReqRenameThumbnails)
         {
+        TN_DEBUG1( "CThumbnailRequestActive::RunL() - rename/delete/canceled" );
+    
         iFile.Close();
         iMyFileHandle.Close();
     
-        // no action for delete or canceled request
+        // no action for delete/rename or canceled request
         iRequestQueue->RequestComplete(this);
         
 #ifdef _DEBUG
@@ -744,6 +752,22 @@ void CThumbnailRequestActive::DeleteThumbnails( const TDesC& aPath,
     iParams.iThumbnailId = aThumbnailId;
     
     iPath = aPath;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailRequestActive::RenameThumbnails()
+// Rename thumbnails.
+// ---------------------------------------------------------------------------
+//
+void CThumbnailRequestActive::RenameThumbnails( const TDesC& aCurrentPath, 
+        const TDesC& aNewPath, const TInt aPriority )
+    {
+    iRequestType = EReqRenameThumbnails;
+    
+    iParams.iRequestId = iRequestId;
+    iParams.iPriority = aPriority;
+    iParams.iFileName = aCurrentPath;
+    iParams.iTargetUri = aNewPath;
     }
 
 // ---------------------------------------------------------------------------

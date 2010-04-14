@@ -146,7 +146,7 @@ NONSHARABLE_CLASS(CThumbnailManagerTest): public CScriptBase,
         virtual TInt CheckDisplayModeL( CStifItemParser& aItem );
 
         virtual TInt DeleteThumbnails( CStifItemParser& aItem );
-        virtual TInt DeleteThumbnailsByIdL( CStifItemParser& aItem );
+        virtual TInt CreateThumbnailsByUrlL( CStifItemParser& aItem );
         
         virtual TInt CreateThumbnails( CStifItemParser& aItem );
         virtual TInt UpdatePathL( CStifItemParser& aItem );

@@ -94,6 +94,7 @@ _LIT8( KThumbnailCreateDeletedTableIndex, "CREATE INDEX idx4 ON ThumbnailDeleted
 _LIT( KThumbnailSqlParamData, ":Data" );
 _LIT( KThumbnailSqlParamFlags, ":Flags" );
 _LIT( KThumbnailSqlParamPath, ":Path" );
+_LIT( KThumbnailSqlParamNewPath, ":NewPath" );
 _LIT( KThumbnailSqlParamWidth, ":Width" );
 _LIT( KThumbnailSqlParamHeight, ":Height" );
 _LIT( KThumbnailSqlParamOriginalWidth, ":OrigWidth" );
@@ -198,6 +199,10 @@ _LIT8( KThumbnailSqlDeleteInfoDataByRowID, "DELETE FROM ThumbnailInfoData WHERE 
 _LIT8( KThumbnailSqlDeleteFromDeleted, "DELETE FROM ThumbnailDeleted "
         "WHERE NOT EXISTS (SELECT Path FROM ThumbnailInfo "
         "WHERE ThumbnailDeleted.Path = ThumbnailInfo.Path);" );
+
+// rename thumb
+_LIT8( KThumbnailRename, "UPDATE ThumbnailInfo SET Path = :NewPath WHERE Path = :Path;" );
+_LIT8( KThumbnailTempRename, "UPDATE TempThumbnailInfo SET Path = :NewPath WHERE Path = :Path;" );
 
 // reset blacklisted
 _LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Modified = 0 WHERE Flags & :Flag" );
