@@ -81,7 +81,7 @@ const TInt KAutoFlushTimeout = 65; //65 sec
 // minimum background generation idle time seconds
 const TInt KBackgroundGenerationIdle = 60;
 // minimum store maintenance idle time seconds
-const TInt KStoreMaintenanceIdle = 300; // 5 min
+const TInt KStoreMaintenanceIdle = 65; // 65 sec
 // interval for store maintenance rounds
 const TInt KStoreMaintenancePeriodic = 100000; //100 ms
 
@@ -91,7 +91,7 @@ const TInt KStoreMaintenanceDeleteLimit = 10;
 const TInt KStoreMaintenanceExistLimit = 50;
 
 // video decoder timeout
-const TInt KVideoDecoderTimeout = 5000000; // 5 seconds
+const TInt KVideoDecoderTimeout = 12000000; // 12 seconds
 
 const TDisplayMode KThumbnailDefaultDisplayMode = EColor64K;
 

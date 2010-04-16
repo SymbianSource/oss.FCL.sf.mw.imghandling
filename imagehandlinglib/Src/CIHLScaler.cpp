@@ -1237,7 +1237,7 @@ void CIHLScaler::InitCodePath(const TSize& aSrcSize, const TDisplayMode &aSrcMod
 		{
 		// TODO: optimize bilinear scaling
 		IHL_DEBUG("CIHLScaler::InitCodePath: slow bilinear");
-		ProcessingFunc = CIHLScaler::ProcessBilinear;
+		ProcessingFunc = &CIHLScaler::ProcessBilinear;
 		iScanlinesPerRound = KProcessPixelsPerStep / iProcessSize.iWidth;
 		}
 	else if(aSrcMode == EColor64K && aSrcMode==aDstMode && !iSrcBitmap->IsCompressedInRAM() && !iDstBitmap->IsCompressedInRAM())

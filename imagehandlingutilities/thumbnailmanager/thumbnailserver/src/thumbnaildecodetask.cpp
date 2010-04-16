@@ -143,28 +143,32 @@ void CThumbnailDecodeTask::ThumbnailProviderReady( const TInt aError,
       
     if ( ClientThreadAlive() )
        {
-       TRAP_IGNORE(iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap, iRequestId ));
-       const TSize bitmapSize = aBitmap->SizeInPixels();
-       iBitmapHandle = aBitmap->Handle();
-       aBitmap = NULL;
-       
-       // Complete message and pass bitmap handle to client
+       // pass bitmap handle to client
        TThumbnailRequestParams& params = iParamsBuf();
        TInt ret = iMessage.Read( 0, iParamsBuf );
        
        if(ret == KErrNone )
            {
-           params.iBitmapHandle = iBitmapHandle;
+           params.iBitmapHandle = aBitmap->Handle();
            ret = iMessage.Write( 0, iParamsBuf );
            }
        
-       Complete( ret );
-       ResetMessageData();
-
-       // Successfully completed the message. The client will send
-       // EReleaseBitmap message later to delete the bitmap from pool.
-       // CThumbnailScaleTask is no longer responsible for that.
-       iBitmapHandle = 0;
+       // add bitmap to pool
+       TRAPD(err, iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap, iRequestId ) );
+       if (err != KErrNone)
+           {
+           Complete( err );
+           delete aBitmap;
+           aBitmap = NULL;
+           }
+       else
+           {
+           aBitmap = NULL; // Server owns the bitmap now
+       
+           // Complete message
+           Complete( ret );
+           ResetMessageData();
+           }
        }
     else
         {

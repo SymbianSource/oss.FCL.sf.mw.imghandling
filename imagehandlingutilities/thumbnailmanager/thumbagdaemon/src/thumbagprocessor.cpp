@@ -95,10 +95,10 @@ void CThumbAGProcessor::ConstructL()
     UpdatePSValues(ETrue);
 
     if(iForegroundGenerationObserver)
-      {
-      delete iForegroundGenerationObserver;
-      iForegroundGenerationObserver = NULL;
-      }
+        {
+        delete iForegroundGenerationObserver;
+        iForegroundGenerationObserver = NULL;
+        }
     
     RProperty::Define(KTAGDPSNotification, KMPXHarvesting, RProperty::EInt);
     
@@ -143,9 +143,10 @@ CThumbAGProcessor::~CThumbAGProcessor()
     
     if (!iInit)
         {
-    /*
+#ifdef MDS_MODIFY_OBSERVER
         iHarvesterClient.RemoveHarvesterEventObserver(*this);
-        iHarvesterClient.Close();*/
+        iHarvesterClient.Close();
+#endif
         }
     
     if ( iCollectionUtility )
@@ -247,6 +248,12 @@ void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aErr
            }
            delete iQueryPlaceholders;
            iQueryPlaceholders = NULL;
+           
+           if(iDoQueryAllItems)
+               {
+               iDoQueryAllItems = EFalse;
+               TRAP_IGNORE(QueryAllItemsL());
+               }
         }
     else if(&aQuery == iQueryAllItems)
         {
@@ -291,6 +298,52 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             {
             iProcessingCount = iQuery->Count();
 			
+            if(iProcessingCount != iQueryQueue.Count())
+                {
+                TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() some result items missing");
+                
+                RArray<TItemId> iQueryQueueDelta;
+                
+                TInt itemIndex(KErrNotFound);
+                
+                //search delta items
+                 for(TInt queryItem =0; queryItem < iQueryQueue.Count();queryItem++)
+                     {
+                     TBool found(EFalse);
+                     for(TInt queryResult = 0; queryResult < iQuery->Count(); queryResult++)
+                        {    
+                        const CMdEObject* object = &iQuery->Result(queryResult);
+                        
+                        if( iQueryQueue[queryItem] == object->Id())
+                            {
+                            found = ETrue;
+                            break;
+                            }
+                        }
+                         
+                     if(!found)
+                         {
+                         TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing from results item %d", iQueryQueue[queryItem] );
+                         iQueryQueueDelta.Append( iQueryQueue[queryItem] );
+                         }
+                     }
+                 
+                 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing items total count %d", iQueryQueueDelta.Count()); 
+                 //cleanup from previous queue it item is not found from MDS
+                 while(iQueryQueueDelta.Count())
+                     {
+                     itemIndex = iLastQueue->Find(iQueryQueueDelta[0]);
+                     if(itemIndex >= 0)
+                         {
+                         TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove items %d", iQueryQueue[0]);
+                         iLastQueue->Remove( itemIndex );
+                         }
+                     iQueryQueueDelta.Remove(0);
+                     }
+                 iQueryQueueDelta.Close();
+                }
+            
+            // no results, reset query
             if( !iProcessingCount)
                 {
                 delete iQuery;
@@ -818,6 +871,8 @@ void CThumbAGProcessor::RunL()
         iPlaceholderQueue.Reset();
         
         TRAP_IGNORE(QueryPlaceholdersL());
+		//query all items after PH query
+        iDoQueryAllItems = ETrue;
         TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation 1 done" );
         ActivateAO();
         return;
@@ -829,9 +884,10 @@ void CThumbAGProcessor::RunL()
 		
         iInit2 = EFalse;
         TInt err(KErrNone);
-        /*
+        
+#ifdef  MDS_MODIFY_OBSERVER        
         TN_DEBUG1( "CThumbAGProcessor::RunL() do iHarvesterClient connect");
-        TInt err = iHarvesterClient.Connect();
+        err = iHarvesterClient.Connect();
         TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient connect err = %d", err);
         
         __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
@@ -842,7 +898,8 @@ void CThumbAGProcessor::RunL()
             err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypePlaceholder, KMaxTInt );
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
             __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
-            }*/
+            }
+#endif
  
         TN_DEBUG1( "CThumbAGProcessor::RunL() MMPXCollectionUtility");
         TRAP( err, iCollectionUtility = MMPXCollectionUtility::NewL( this, KMcModeIsolated ));
@@ -855,8 +912,6 @@ void CThumbAGProcessor::RunL()
             iActivityManager->Start();
             }
         
-        TRAP_IGNORE(QueryAllItemsL());
-		
         TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation 2 done" );
         return;
         }
@@ -908,7 +963,7 @@ void CThumbAGProcessor::RunL()
         }
 #endif
 	
-  	if( /*iForceRun || */iForegroundRun )
+  	if( iForceRun || iForegroundRun )
       	{
         TN_DEBUG1( "void CThumbAGProcessor::RunL() skip idle detection!");
       	CancelTimeout();
@@ -931,15 +986,12 @@ void CThumbAGProcessor::RunL()
             TInt serveIdle(KErrNotFound);
             TInt ret = RProperty::Get(KServerIdle, KIdle, serveIdle);
             
-            if(ret == KErrNone )
+            if(ret != KErrNone || !serveIdle )
                 {
-                if(!serveIdle)
-                    {
-                    //start inactivity timer and retry on after callback
-                    TN_DEBUG1( "void CThumbAGProcessor::RunL() server not idle");
-                    StartTimeout();
-                    return;
-                    }
+            	//start inactivity timer and retry on after callback
+            	TN_DEBUG1( "void CThumbAGProcessor::RunL() server not idle");
+                StartTimeout();
+                return;
                 }
             TN_DEBUG1( "void CThumbAGProcessor::RunL() device and server idle, process");
             }
@@ -1010,23 +1062,9 @@ void CThumbAGProcessor::RunL()
             TN_DEBUG1( "CThumbAGProcessor::RunL() - iQueryReady FINISH" );
             iQueryReady = EFalse;
             iQueryActive = EFalse;
-            iModify = EFalse;
+            }
             
-            //check if forced run needs to continue
-            if (iModifyQueue.Count())
-                {
-                SetForceRun( ETrue );
-                }
-            else
-                {
-                SetForceRun( EFalse );
-                }   
-            }
-        //keep going if processing Remove items or if Add item fails
-        else if( iModify || err )
-            {
-            ActivateAO();
-            }
+        ActivateAO();
         }
     //waiting for MDS query to complete
     else if( iQueryActive )
@@ -1317,6 +1355,17 @@ void CThumbAGProcessor::ActivateAO()
         TRequestStatus* statusPtr = &iStatus;
         User::RequestComplete( statusPtr, KErrNone );
         }
+    
+    //check if forced run needs to continue
+    if (iModifyQueue.Count())
+        {
+        SetForceRun( ETrue );
+        }
+    else
+        {
+        iModify = EFalse;
+        SetForceRun( EFalse );
+        }
 
     UpdatePSValues();
     }
@@ -1448,11 +1497,26 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
 			    {
 			    SetForceRun( EFalse );
 		        }
-			 
-            continue;
             }
-    
-        /*if( aRemoveFromDelete )
+            
+        itemIndex = iQueryQueue.Find( aIDArray[i] );
+                     
+        if(itemIndex >= 0)
+            {
+            iQueryQueue.Remove(itemIndex);
+            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iQueryQueue" );
+            }
+        
+        itemIndex = iPlaceholderQueue.Find( aIDArray[i] );
+                      
+        if(itemIndex >= 0)
+        	{
+            iPlaceholderQueue.Remove(itemIndex);
+            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iPlaceholderQueue" );
+            }
+        
+        /*
+        if( aRemoveFromDelete )
             {
             itemIndex = iRemoveQueue.Find( aIDArray[i] );
              
@@ -1477,10 +1541,7 @@ void CThumbAGProcessor::SetForceRun( const TBool aForceRun)
     TN_DEBUG2( "CThumbAGProcessor::SetForceRun(%d) - end", aForceRun ); 
 
     // enable forced run
-    if (aForceRun)
-        {
-        iForceRun = aForceRun;
-        }
+    iForceRun = aForceRun;
     }
 
 // ---------------------------------------------------------------------------
@@ -1550,18 +1611,18 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
         return;
         }
     
-    TN_DEBUG1( "CThumbAGProcessor::HandleCollectionMessage" );
-
     TMPXMessageId generalId( *aMessage->Value<TMPXMessageId>( KMPXMessageGeneralId ) );
+    
+    TN_DEBUG2( "CThumbAGProcessor::HandleCollectionMessage KMPXMessageGeneralId=%d", generalId);
 
 	//we are interestead of only general system events
     if ( generalId == KMPXMessageGeneral )
         {
         TInt event( *aMessage->Value<TInt>( KMPXMessageGeneralEvent ) );
+        TInt op( *aMessage->Value<TInt>( KMPXMessageGeneralType ) );
+        TN_DEBUG3( "CThumbAGProcessor::HandleCollectionMessage KMPXMessageGeneralEvent=%d", event, op);
         if ( event == TMPXCollectionMessage::EBroadcastEvent )
             {
-            TInt op( *aMessage->Value<TInt>( KMPXMessageGeneralType ) );
-               
             switch( op )
                 {
 			    //when MTP sync or music collection is started then pause processing
@@ -1707,6 +1768,13 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
     if(itemsLeft + i2ndRoundGenerateQueue.Count() + iRemoveQueue.Count() > 0 )
         {
         daemonProcessing = ETrue;
+        }
+    
+    //disable 2nd round generarion when there is items in 1st round queues
+    //or 2nd queue is empty 
+    if( !i2ndRoundGenerateQueue.Count() || itemsLeft )
+        {
+        i2ndRound = EFalse;
         }
     
     if(aDefine)

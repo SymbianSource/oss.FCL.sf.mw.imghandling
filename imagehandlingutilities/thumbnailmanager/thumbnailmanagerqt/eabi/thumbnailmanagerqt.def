@@ -18,4 +18,5 @@ EXPORTS
 	_ZNK16ThumbnailManager13thumbnailSizeEv @ 17 NONAME
 	_ZNK16ThumbnailManager17qualityPreferenceEv @ 18 NONAME
 	_ZNK16ThumbnailManager4modeEv @ 19 NONAME
+	_ZN16ThumbnailManager12setThumbnailERK6QImageRK7QStringPvi @ 20 NONAME
 

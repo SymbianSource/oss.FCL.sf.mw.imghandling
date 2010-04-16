@@ -86,7 +86,7 @@ CThumbnailRequestActive::CThumbnailRequestActive( RFs& aFs, RThumbnailSession&
     TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue ):
     CActive( aPriority ), iSession( aThumbnailSession ), iParamsPckg( iParams ),
     iObserver( aObserver ), iFs( aFs ), iBitmapHandle( 0 ), iRequestId( aId ), 
-    iRequestQueue( aQueue )
+    iRequestQueue( aQueue ), iCanceled( EFalse )
     {
     CActiveScheduler::Add( this );
     TN_DEBUG2( "CThumbnaiRequestActive::CThumbnailRequestActive() AO's priority = %d", Priority());
@@ -219,9 +219,9 @@ void CThumbnailRequestActive::RunL()
     
     iTimer->Cancel();
     
-    if (iRequestType == EReqDeleteThumbnails)
+    if (iRequestType == EReqDeleteThumbnails || iCanceled)
         {
-        // no action for delete
+        // no action for delete or canceled request
         iRequestQueue->RequestComplete(this);
         
 #ifdef _DEBUG
@@ -417,6 +417,7 @@ void CThumbnailRequestActive::DoCancel()
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
+    iCanceled = ETrue;
     iSession.CancelRequest( iRequestId );
     ReleaseServerBitmap();
     }

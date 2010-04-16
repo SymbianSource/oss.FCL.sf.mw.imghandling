@@ -162,6 +162,42 @@ int ThumbnailManagerPrivate::setThumbnail( const QPixmap& source, const QString&
     return result;
 }
 
+int ThumbnailManagerPrivate::setThumbnail( const QImage& source, const QString& fileName, 
+        void * clientData, int priority )
+{
+    int result( -1 );
+    RBuf file;
+    _LIT( mime, "image/png" );
+
+    if( !byteArray ){
+        byteArray = new QByteArray();
+    }
+    QBuffer buffer( byteArray );
+    buffer.open( QBuffer::ReadWrite );
+    QDataStream dataStream( &buffer );
+
+    dataStream << source;
+
+    int offset = ( dataStream.version() >= 5 ? 4 : 0 );
+    
+    TRAP_IGNORE( 
+        CleanupClosePushL( file );
+        file.CreateL( fileName.length() );
+        file.Copy( fileName.utf16(), fileName.length() );
+
+        HBufC* mimetype = HBufC::NewLC( 9 );
+        mimetype->Des() = mime();
+
+        TPtrC8* ptr = new TPtrC8( reinterpret_cast<const TUint8*>( byteArray->data() + offset ), byteArray->count() - offset );
+                
+        CThumbnailObjectSource* objSrc = CThumbnailObjectSource::NewLC( ptr, *mimetype, file );
+        result = iThumbnailManager->SetThumbnailL( *objSrc, clientData, priority );
+        CleanupStack::PopAndDestroy( 3, &file );
+    );
+    
+    return result;
+}
+
 void ThumbnailManagerPrivate::deleteThumbnails( const QString& fileName )
 {
     QString symbFileName( fileName );

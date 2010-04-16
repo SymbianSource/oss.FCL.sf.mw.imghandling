@@ -71,6 +71,7 @@ CThumbnailGenerateTask::CThumbnailGenerateTask( CThumbnailTaskProcessor&
     
     // scaled bitmaps to pool by default
     iScaledBitmapToPool = ETrue;
+    iBitmapHandle = 0;
     }
 
 
@@ -94,10 +95,10 @@ CThumbnailGenerateTask::~CThumbnailGenerateTask()
         delete iMissingSizes;
         }
 		
-    if ( iBitmap )
+    if ( iBitmapHandle )
         {
-        iServer.DeleteBitmapFromPool( iBitmap->Handle());
-        iBitmap = NULL;
+        iServer.DeleteBitmapFromPool( iBitmapHandle );
+        iBitmapHandle = 0;
         }
 		
     iProvider = NULL;
@@ -174,6 +175,8 @@ void CThumbnailGenerateTask::StartL()
     DoBlacklisting( providerErr, TSize(0,0) );
     
     User::LeaveIfError( providerErr );
+    
+    TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::StartL() end", this );
     }
 
 
@@ -317,8 +320,8 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
     CleanupStack::PushL( aBitmap );
     iServer.AddBitmapToPoolL( iRequestId.iSession, aBitmap, iRequestId );
 
-    // Keep pointer so we can delete bitmap from pool
-    iBitmap = aBitmap;
+    // Keep handle so we can delete bitmap from pool
+    iBitmapHandle = aBitmap->Handle();
     CleanupStack::Pop( aBitmap );
 
     // compTask is the scale task which returns the bitmap to the client
@@ -353,8 +356,9 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                 }
             
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
-                iBitmap, iOriginalSize, (*iMissingSizes)[ i ].iSize, (*iMissingSizes)[ i ].iCrop, iDisplayMode,
-                KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF );
+                aBitmap, iOriginalSize, (*iMissingSizes)[ i ].iSize, (*iMissingSizes)[ i ].iCrop, iDisplayMode,
+                KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF,
+                iRequestId);
             CleanupStack::PushL( scaleTask );
             
             TInt err1 = KErrNone;
@@ -388,7 +392,7 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             if( i == 0 )
                 {
                 // compTask is now responsible for completing the RMessage
-                scaleTask->SetMessageData( iRequestId, iMessage );
+                scaleTask->SetMessageData( iRequestId, iMessage, iClientThread );
                 ResetMessageData();
                 }
             }
@@ -401,17 +405,17 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                  iThumbnailSize == EVideoFullScreenThumbnailSize ||
                  iThumbnailSize == EAudioFullScreenThumbnailSize ||
                  iThumbnailSize == EImageFullScreenThumbnailSize )
-                      {
-                      TInt width = iSize.iWidth; 
-                      iSize.iWidth = iSize.iHeight;
-                      iSize.iHeight = width;
-                      }
+                {
+                TInt width = iSize.iWidth; 
+                iSize.iWidth = iSize.iHeight;
+                iSize.iHeight = width;
+                }
             }
         
         complTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
-            iBitmap, iOriginalSize, iSize, iFlags& CThumbnailManager
+            aBitmap, iOriginalSize, iSize, iFlags& CThumbnailManager
             ::ECropToAspectRatio, iDisplayMode, KMaxPriority, iTargetUri,
-            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF );
+            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF, iRequestId );
         CleanupStack::PushL( complTask );
         
         TInt err1 = KErrNone;
@@ -443,13 +447,14 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
         
         // compTask is now responsible for completing the RMessage and
         // returning the bitmap to the client
-        complTask->SetMessageData( iRequestId, iMessage );
+        complTask->SetMessageData( iRequestId, iMessage, iClientThread );
         ResetMessageData();
         }
 
     // Scale tasks now reference the bitmap in the pool
-    iServer.DeleteBitmapFromPool( iBitmap->Handle());
-    iBitmap = NULL;
+    iServer.DeleteBitmapFromPool( iBitmapHandle );
+    iBitmapHandle = 0;
+    aBitmap = NULL;
     }
 
 // ---------------------------------------------------------------------------
@@ -511,7 +516,8 @@ void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOr
             aError == KErrCorrupt ||
             aError == KErrCompletion ||
             aError == KErrUnderflow ||
-            aError == KErrNotReady)
+            aError == KErrNotReady || 
+            aError == KErrGeneral )
             {
         
         if(iMissingSizes)

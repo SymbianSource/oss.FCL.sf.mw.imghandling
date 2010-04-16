@@ -50,8 +50,10 @@ CTMActivityManager::CTMActivityManager(MTMActivityManagerObserver* aObserver, TI
 CTMActivityManager::~CTMActivityManager()
     {
     TN_DEBUG1( "CTMActivityManager::~CTMActivityManager()");
+#ifdef MONITOR_LIGHTS
     delete iLight;
     iLight = NULL;
+#endif
     Cancel();
     iTimer.Close();
     }
@@ -84,8 +86,10 @@ void CTMActivityManager::SetTimeout(TInt aTimeout)
 void CTMActivityManager::Reset()
     {
     TN_DEBUG1( "CTMActivityManager::Reset()");
+#ifdef MONITOR_LIGHTS
     delete iLight;
     iLight = NULL;
+#endif
     Cancel();
     Start();
     }
@@ -110,10 +114,12 @@ void CTMActivityManager::Start()
     
     iFirstRound = ETrue;
     
+#ifdef MONITOR_LIGHTS
     if(!iLight)
         {
         TRAP_IGNORE(iLight = CHWRMLight::NewL(this));
         }
+#endif
     
     if( !IsActive() )
         {
@@ -213,12 +219,20 @@ TInt CTMActivityManager::RunError(TInt aError)
 //
 TBool CTMActivityManager::IsInactive()
     {
+#ifdef MONITOR_LIGHTS
 #ifdef _DEBUG
 TN_DEBUG3( "CTMActivityManager::IsInactive()= %d, iLights = %d", User::InactivityTime().Int(), iLights);
 #endif
+#else
+TN_DEBUG2( "CTMActivityManager::IsInactive()= %d", User::InactivityTime().Int());
+#endif
 
     //if lights are off or inactivity timer is less that target the device is not idle
-    if( User::InactivityTime() >= TTimeIntervalSeconds(iTimeout) || !iLights )
+    if( User::InactivityTime() >= TTimeIntervalSeconds(iTimeout)
+#ifdef MONITOR_LIGHTS
+            || !iLights
+#endif
+            )
       {
       TN_DEBUG1( "CTMActivityManager::IsInactive() ETrue");
       return ETrue;
@@ -227,27 +241,32 @@ TN_DEBUG3( "CTMActivityManager::IsInactive()= %d, iLights = %d", User::Inactivit
     return EFalse;
     }
 
+#ifdef MONITOR_LIGHTS
 // -----------------------------------------------------------------------------
 // LightStatusChanged()
 // -----------------------------------------------------------------------------
 //
-void CTMActivityManager::LightStatusChanged(TInt /*aTarget*/, CHWRMLight::TLightStatus aStatus)
+void CTMActivityManager::LightStatusChanged(TInt aTarget, CHWRMLight::TLightStatus aStatus)
     {
-    TN_DEBUG2( "CTMActivityManager::LightStatusChanged() aStatus == %d", aStatus);
+    TN_DEBUG3( "CTMActivityManager::LightStatusChanged() aTarget = %d, aStatus == %d", aTarget, aStatus);
     
-     if( aStatus == CHWRMLight::ELightOff)
+    if(aTarget & CHWRMLight::EPrimaryDisplay)
         {
-        TN_DEBUG1( "CTMActivityManager::LightStatusChanged() -- OFF");
-        iLights = EFalse;
-        }
-    else
-        {
-        TN_DEBUG1( "CTMActivityManager::LightStatusChanged() -- ON");
-        iLights = ETrue;
-        }
+         if( aStatus == CHWRMLight::ELightOff )
+            {
+            TN_DEBUG1( "CTMActivityManager::LightStatusChanged() -- OFF");
+            iLights = EFalse;
+            }
+        else
+            {
+            TN_DEBUG1( "CTMActivityManager::LightStatusChanged() -- ON");
+            iLights = ETrue;
+            }
      
         NotifyObserver();
+        }
     }
+#endif
 
 // -----------------------------------------------------------------------------
 // NotifyObserver()

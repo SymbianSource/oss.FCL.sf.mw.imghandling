@@ -90,6 +90,7 @@ LIBRARY 		hwrmlightclient.lib
 
 DEBUGLIBRARY            flogger.lib
 
-PAGED
 BYTEPAIRCOMPRESSTARGET
 EPOCPROCESSPRIORITY background
+
+UNPAGED

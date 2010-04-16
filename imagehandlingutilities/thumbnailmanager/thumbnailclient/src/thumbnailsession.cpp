@@ -238,6 +238,8 @@ void RThumbnailSession::ReleaseBitmap( TInt aBitmapHandle )
     TInt err = Send( EReleaseBitmap, TIpcArgs( aBitmapHandle ));
     while ( err == KErrServerBusy )
         {
+        TN_DEBUG1( "RThumbnailSession::ReleaseBitmap() - server slots full");
+    
         err = Send( EReleaseBitmap, TIpcArgs( aBitmapHandle ));
         }
     }
@@ -249,10 +251,12 @@ void RThumbnailSession::ReleaseBitmap( TInt aBitmapHandle )
 //
 TInt RThumbnailSession::CancelRequest( TThumbnailRequestId aRequestId )
     {
-    TInt err = SendReceive( ECancelRequest, TIpcArgs( aRequestId ));
+    TInt err = Send( ECancelRequest, TIpcArgs( aRequestId ));
     while ( err == KErrServerBusy )
         {
-        err = SendReceive( ECancelRequest, TIpcArgs( aRequestId ));
+        TN_DEBUG1( "RThumbnailSession::CancelRequest() - server slots full");
+    
+        err = Send( ECancelRequest, TIpcArgs( aRequestId ));
         }
     return err;
     }
@@ -265,10 +269,12 @@ TInt RThumbnailSession::CancelRequest( TThumbnailRequestId aRequestId )
 TInt RThumbnailSession::ChangePriority( TThumbnailRequestId aRequestId, TInt
     aNewPriority )
     {
-    TInt err = SendReceive( EChangePriority, TIpcArgs( aRequestId, aNewPriority ));
+    TInt err = Send( EChangePriority, TIpcArgs( aRequestId, aNewPriority ));
     while ( err == KErrServerBusy )
         {
-        err = SendReceive( EChangePriority, TIpcArgs( aRequestId, aNewPriority ));
+        TN_DEBUG1( "RThumbnailSession::ChangePriority() - server slots full");
+    
+        err = Send( EChangePriority, TIpcArgs( aRequestId, aNewPriority ));
         }
     return err;
     }

@@ -42,6 +42,8 @@
 CThumbnailServerSession::CThumbnailServerSession(): CSession2()
     {
     iBitmapHandle = 0;
+    iBitmap = NULL;
+    iBuffer = NULL;
     }
 
 
@@ -160,15 +162,33 @@ void CThumbnailServerSession::CreateL()
 //
 void CThumbnailServerSession::ServiceL( const RMessage2& aMessage )
     {
-    __ASSERT_DEBUG( !iMessage.Handle(), ThumbnailPanic(
-        EThumbnailMessageNotCompleted ));
+    TN_DEBUG1( "CThumbnailServerSession::ServiceL() - begin" );
+    
+    __ASSERT_DEBUG( !iMessage.Handle(), ThumbnailPanic(EThumbnailMessageNotCompleted));
     if ( iMessage.Handle())
         {
         iMessage.Complete( KErrUnknown );
         iMessage = RMessage2();
         }
+    
     iMessage = aMessage;
 
+    if ( iMessage.Handle())
+        {
+        // get client thread
+        TInt err = iMessage.Client( iClientThread );
+        if (err != KErrNone)
+            {
+            TN_DEBUG1( "CThumbnailServerSession::ServiceL() - client thread not found");
+    
+            iMessage = RMessage2();
+            }       
+        }
+    else
+        {
+        TN_DEBUG1( "CThumbnailServerSession::ServiceL() - message null");
+        }
+    
     // clean up possible trash
     if (iBitmapHandle)
         {
@@ -183,20 +203,23 @@ void CThumbnailServerSession::ServiceL( const RMessage2& aMessage )
     
     TInt ret = KErrNone;
 
-    TRAPD( err, 
-        {
-        ret = DispatchMessageL( aMessage ); 
-        }
-     );
+    TRAPD( err, ret = DispatchMessageL( aMessage ) );
+    
+    // if message was not completed, or Leave occurred
     if ( iMessage.Handle())
         {
-        iMessage.Complete( ConvertSqlErrToE32Err( err != KErrNone ? err : ret ));
+        if ( ClientThreadAlive() )
+            {
+            iMessage.Complete( ConvertSqlErrToE32Err( err != KErrNone ? err : ret ));        
+            }
+        
         iMessage = RMessage2();
         }
-    else
-    	{
-    	return;
-    	}
+    
+    // close thread handle
+    iClientThread.Close();
+    
+    TN_DEBUG1( "CThumbnailServerSession::ServiceL() - end" );
     }
 
 
@@ -344,7 +367,7 @@ void CThumbnailServerSession::RequestThumbByIdAsyncL( const RMessage2&
         
         CleanupStack::PushL( task );
         task->QueryPathByIdL(params.iThumbnailId, EFalse);
-        task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ), iMessage );
+        task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ), iMessage, iClientThread );
         Server()->QueueTaskL( task );
         CleanupStack::Pop( task ); // owned by processor now
         
@@ -441,7 +464,7 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
                         ->Processor(), * Server(), iBuffer, params.iPriority, params.iDisplayMode );
             
             CleanupStack::PushL( task );
-            task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ), iMessage );
+            task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ), iMessage, iClientThread );
             Server()->QueueTaskL( task );
             CleanupStack::Pop( task ); // owned by processor now
             
@@ -518,7 +541,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	               ->Processor(), * Server(), iBuffer, params.iPriority, params.iDisplayMode );
 	        
 	        CleanupStack::PushL( task );
-	        task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ), iMessage );
+	        task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ), iMessage, iClientThread );
 	        Server()->QueueTaskL( task );
 	        CleanupStack::Pop( task ); // owned by processor now
 	        
@@ -626,7 +649,11 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
     CFbsBitmap* bitmap = new( ELeave )CFbsBitmap();
     CleanupStack::PushL( bitmap );
     User::LeaveIfError( bitmap->Duplicate( bitmapHandle ) );
+    
+    // use pool to prevent bitmap leak
+    // this bitmap is shared to several scale tasks, one of which can Leave
     Server()->AddBitmapToPoolL( reqId.iSession, bitmap, reqId );
+    
     CleanupStack::Pop( bitmap );
     iBitmapHandle = bitmap->Handle();
     
@@ -676,16 +703,18 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( Server()->Processor(),
                 *Server(), params.iTargetUri, bitmap, bitmapSize,
                 (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
-                KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse );
+                KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
+                reqId);
             CleanupStack::PushL( scaleTask );
             scaleTask->SetDoStore( ETrue );
             Server()->Processor().AddTaskL( scaleTask );
             CleanupStack::Pop( scaleTask );
             
-            if( i == count-1 )
+            // completion to first task, because task processor works like stack
+            if( i == 0 )
                 {
                 // scaleTask is now responsible for completing the RMessage
-                scaleTask->SetMessageData( reqId, iMessage );
+                scaleTask->SetMessageData( reqId, iMessage, iClientThread );
                 iMessage = RMessage2();
                 }
             }
@@ -704,6 +733,7 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
         missingSizes = NULL;
         }
     
+    // Scale tasks now reference the bitmap in the pool
     Server()->DeleteBitmapFromPool( iBitmapHandle );
     iBitmapHandle = 0;
     bitmap = NULL;
@@ -788,8 +818,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
     CleanupStack::Pop( aFile );
     
     CleanupStack::PushL( task );
-    task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ),
-        iMessage );
+    task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ),iMessage, iClientThread );
     Server()->QueueTaskL( task );
     CleanupStack::Pop( task ); // owned by processor now
     
@@ -896,8 +925,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
         }  
     
     CleanupStack::PushL( task );
-    task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ),
-        iMessage );
+    task->SetMessageData( TThumbnailServerRequestId( this, params.iRequestId ),iMessage, iClientThread );
     Server()->QueueTaskL( task );
     CleanupStack::Pop( task ); // owned by processor now
     
@@ -918,9 +946,12 @@ void CThumbnailServerSession::FetchThumbnailL()
     {
     TN_DEBUG1("CThumbnailServerSession::FetchThumbnailL()");
     __ASSERT_DEBUG( !iBitmap, ThumbnailPanic( EThumbnailBitmapNotReleased ));
+    __ASSERT_DEBUG( !iBuffer, ThumbnailPanic( EThumbnailBitmapNotReleased ));
 
     delete iBitmap;
     iBitmap = NULL;
+    delete iBuffer;
+    iBuffer = NULL;
 
     TThumbnailRequestParams& params = iRequestParams();
     
@@ -969,22 +1000,12 @@ void CThumbnailServerSession::ProcessBitmapL()
                                    EFalse, EFalse);
         }
     
-    if ( ClientThreadAlive(iMessage) )
+    if ( ClientThreadAlive() )
         {        
-        // No need to scale, return iBitmap directly
+        TN_DEBUG2("CThumbnailServerSession::ProcessBitmapL(), iBitmap handle= 0x%08x", iBitmap->Handle());
         
-        TThumbnailServerRequestId &reqId = (TThumbnailServerRequestId&)params.iRequestId;
-        // No need to scale, return iBitmap directly
-        Server()->AddBitmapToPoolL( this, iBitmap, reqId );
-                
-        CFbsBitmap* bitmap = iBitmap;
-        
-        TN_DEBUG2("CThumbnailServerSession::ProcessBitmapL(), iBitmap handle= 0x%08x", bitmap->Handle());
-        
-        iBitmap = NULL; // owned by server now
-        
-        params.iBitmapHandle = bitmap->Handle();
-        const TSize bitmapSize = bitmap->SizeInPixels();
+        params.iBitmapHandle = iBitmap->Handle();
+        const TSize bitmapSize = iBitmap->SizeInPixels();
         
         if ( params.iQualityPreference == CThumbnailManager
             ::EOptimizeForQualityWithPreview && bitmapSize.iWidth <
@@ -998,8 +1019,15 @@ void CThumbnailServerSession::ProcessBitmapL()
 
         iMessage.WriteL( 0, iRequestParams );
         
+        TN_DEBUG1("CThumbnailServerSession()::ProcessBitmapL() bitmap to pool");
+        
+        TThumbnailServerRequestId &reqId = (TThumbnailServerRequestId&)params.iRequestId;
+        Server()->AddBitmapToPoolL( this, iBitmap, reqId );
+        
         iMessage.Complete( KErrNone );
         iMessage = RMessage2();
+        
+        iBitmap = NULL; // owned by server now
         }            
     else
         {
@@ -1027,6 +1055,8 @@ void CThumbnailServerSession::ReleaseBitmap( const RMessage2& aMessage )
 //
 TInt CThumbnailServerSession::CancelRequest( const RMessage2& aMessage )
     {
+    TN_DEBUG1( "CThumbnailServerSession::CancelRequest()" );
+    
     const TThumbnailServerRequestId requestId( this, aMessage.Int0());
     const TInt err = Server()->DequeTask( requestId );
     TN_DEBUG4( 
@@ -1042,6 +1072,8 @@ TInt CThumbnailServerSession::CancelRequest( const RMessage2& aMessage )
 //
 TInt CThumbnailServerSession::ChangePriority( const RMessage2& aMessage )
     {
+    TN_DEBUG1( "CThumbnailServerSession::ChangePriority()" );
+    
     const TThumbnailServerRequestId requestId( this, aMessage.Int0());
     const TInt newPriority = aMessage.Int1();
 
@@ -1127,6 +1159,8 @@ void CThumbnailServerSession::GetMimeTypeBufferSizeL( const RMessage2& aMessage
 //
 void CThumbnailServerSession::GetMimeTypeListL( const RMessage2& aMessage )
     {
+    TN_DEBUG1( "CThumbnailServerSession::GetMimeTypeListL()" );
+    
     TInt len = aMessage.GetDesMaxLengthL( 0 );
     HBufC* buf = HBufC::NewLC( len );
     TPtr ptr = buf->Des();
@@ -1330,33 +1364,20 @@ TInt CThumbnailServerSession::ConvertSqlErrToE32Err( TInt aReason )
 // Checks if client thread is still alive and RMessage2 handle valid.
 // ---------------------------------------------------------------------------
 //
-TBool CThumbnailServerSession::ClientThreadAlive(RMessage2& aMessage)
+TBool CThumbnailServerSession::ClientThreadAlive()
     {
-    if ( aMessage.Handle())
+    TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive()");
+    
+    if ( iMessage.Handle())
         {
-        RThread clientThread;
-    
-        // get client thread
-        TInt err = aMessage.Client( clientThread );
-        if (err != KErrNone)
-            {
-            TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - client thread not found");
-        
-            aMessage = RMessage2();
-            
-            return EFalse;
-            }
-    
         // check if client thread alive
-        TExitType exitType = clientThread.ExitType();
-        
-        clientThread.Close();
+        TExitType exitType = iClientThread.ExitType();
         
         if( exitType != EExitPending )
             {
             TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - client thread died");
         
-            aMessage = RMessage2();
+            iMessage = RMessage2();
             
             return EFalse;
             }
@@ -1368,6 +1389,7 @@ TBool CThumbnailServerSession::ClientThreadAlive(RMessage2& aMessage)
         }
     else
         {
+        TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - message null");       
         return EFalse;
         }
     }

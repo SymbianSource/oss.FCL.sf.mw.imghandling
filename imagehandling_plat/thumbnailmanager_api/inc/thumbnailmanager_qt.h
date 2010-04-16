@@ -231,6 +231,24 @@ public:
             void * clientData = NULL, int priority = tnmWrapperPriorityIdle );
     
     /**
+     * Set a thumbnail for an object file generated from pixmap delivered.
+     * thumbnailReady() signal will be emited when the operation is complete. 
+     * 
+     * @param source             QImage from which the thumbnail will be created
+     * @param fileName           file name
+     * @param clientData         Pointer to arbitrary client data.
+     *                           This pointer is not used by the API for
+     *                           anything other than returning it in the
+     *                           ThumbnailReady callback.
+     * @param priority           Priority for this operation
+     * @return                   Thumbnail request ID or -1 if request failed. This can be used to
+     *                           cancel the request or change priority. 
+     *                           
+     */    
+    IMPORT_C int setThumbnail( const QImage& source, const QString& fileName,
+            void * clientData = NULL, int priority = tnmWrapperPriorityIdle );
+
+    /**
      * Delete all thumbnails for a given object. This is an asynchronous
      * operation, which always returns immediately.
      *

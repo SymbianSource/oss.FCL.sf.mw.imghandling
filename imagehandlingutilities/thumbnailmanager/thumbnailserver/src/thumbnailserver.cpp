@@ -219,6 +219,9 @@ void CThumbnailServer::ConstructL()
     iShutdownObserver = CTMShutdownObserver::NewL( *this, KTMPSNotification, KShutdown, ETrue );  
     iShutdown = EFalse;
     
+    // MDS session reconnect timer
+    iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
+    
     // connect to MDS
     iMdESession = CMdESession::NewL( *this );
     
@@ -251,8 +254,6 @@ void CThumbnailServer::ConstructL()
     //OpenStoresL();
     
     AddUnmountObserversL();
-    
-    iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
     }
 
 
@@ -484,7 +485,7 @@ void CThumbnailServer::AddBitmapToPoolL( CThumbnailServerSession* aSession,
 
     TThumbnailBitmapRef* ptr = iBitmapPool.Find( aBitmap->Handle());
 
-    TN_DEBUG2( "CThumbnailServer::AddBitmapToPoolL() - id = %d", aRequestId.iRequestId );
+    TN_DEBUG2( "CThumbnailServer::AddBitmapToPoolL() - req id = %d", aRequestId.iRequestId );
     
     if ( ptr )
         {
@@ -605,10 +606,10 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
 // CThumbnailServer::ResolveMimeTypeL()
 // -----------------------------------------------------------------------------
 //
-TDataType CThumbnailServer::ResolveMimeTypeL( RFile& aFile )
+TDataType CThumbnailServer::ResolveMimeTypeL( RFile64& aFile )
     {
     TN_DEBUG1( "CThumbnailStore::ResolveMimeTypeL()");
-    RFile tmp = aFile;
+    RFile64 tmp = aFile;
     
     // check if DRM
     ContentAccess::CData* data = ContentAccess::CData::NewLC( 

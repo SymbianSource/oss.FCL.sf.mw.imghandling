@@ -91,6 +91,12 @@ EXPORT_C int ThumbnailManager::setThumbnail( const QPixmap& source, const QStrin
     return d->setThumbnail( source, filename, clientData, priority );
 }
 
+EXPORT_C int ThumbnailManager::setThumbnail( const QImage& source, const QString& filename,
+        void * clientData , int priority )
+{
+    return d->setThumbnail( source, filename, clientData, priority );
+}
+
 EXPORT_C void ThumbnailManager::deleteThumbnails( const QString& fileName )
 {
     d->deleteThumbnails( fileName );

@@ -18,7 +18,7 @@
 #ifndef THUMBNAILMANAGER_P_QT_H
 #define THUMBNAILMANAGER_P_QT_H
 
-#include <qobject>
+#include <QObject>
 #include <thumbnailmanager.h>
 #include <thumbnailmanager_qt.h>
 #include <thumbnailmanagerobserver.h>
@@ -108,6 +108,13 @@ public:
      */    
     int setThumbnail( const QPixmap& source, const QString& fileName,
             void * clientData, int priority );
+    
+    /**
+     * Set a thumbnail for an object file generated from pixmap delivered.
+     * thumbnailReady() signal will be emited when the operation is complete.                           
+     */    
+    int setThumbnail( const QImage& source, const QString& fileName,
+            void * clientData, int priority );    
     
     /**
      * Delete all thumbnails for a given object. This is an asynchronous

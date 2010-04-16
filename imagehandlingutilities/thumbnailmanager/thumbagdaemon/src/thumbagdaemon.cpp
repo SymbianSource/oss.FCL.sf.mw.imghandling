@@ -85,8 +85,6 @@ void CThumbAGDaemon::ConstructL()
 #endif
     
     InitializeL();
-    
-    iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
     	
 	TN_DEBUG1( "CThumbAGDaemon::ConstructL() - end" );
 	}
@@ -127,6 +125,12 @@ void CThumbAGDaemon::InitializeL()
             }
         
         iProcessor = CThumbAGProcessor::NewL(); 
+        
+        // MDS session reconnect timer
+        if (!iReconnect)
+            {
+            iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
+            }
         
         TN_DEBUG1( "CThumbAGDaemon::InitializeL() - connect to MDS" );
         
@@ -190,7 +194,7 @@ CThumbAGDaemon::~CThumbAGDaemon()
 #endif
         
         //present observer
-        TRAP_IGNORE(iMdESession->RemoveObjectPresentObserverL( * this  ));
+        TRAP_IGNORE( iMdESession->RemoveObjectPresentObserverL( *this ) );
         
         delete iMdESession;
         iMdESession = NULL;
@@ -306,7 +310,7 @@ void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError 
 // -----------------------------------------------------------------------------
 //
 
-void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& aSession, 
+void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/, 
         TObserverNotificationType aType,
         const RArray<TItemId>& aObjectIdArray,
         const RPointerArray<HBufC>& aObjectUriArray)
@@ -510,7 +514,9 @@ void CThumbAGDaemon::AddObserversL()
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
    // modify observer
-   //iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+#ifdef MDS_MODIFY_OBSERVER
+   iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+#endif
  
 #ifdef MDS_URI_OBSERVER
     // remove observer with uri

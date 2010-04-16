@@ -257,9 +257,8 @@ private:
      * Checks if client thread is still alive and RMessage2 handle valid.
      *
      * @since S60 v5.0
-     * @param aMessage Message.
      */
-    TBool ClientThreadAlive(RMessage2& aMessage);    
+    TBool ClientThreadAlive();    
     
 private:
     // data
@@ -295,6 +294,9 @@ private:
     TDesC8* iBuffer;
     
     TInt iBitmapHandle;
+    
+    // client thread from RMessage2
+    RThread iClientThread;
 };
 
 #endif // THUMBNAILSERVERSESSION_H
