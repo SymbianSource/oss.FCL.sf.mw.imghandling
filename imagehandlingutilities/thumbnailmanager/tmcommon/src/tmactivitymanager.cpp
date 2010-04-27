@@ -66,6 +66,7 @@ void CTMActivityManager::ConstructL()
     {
     TN_DEBUG1( "CTMActivityManager::ConstructL()");
     iTimer.CreateLocal();
+    iWatch = ENone;
     }
 
 // ---------------------------------------------------------------------------
@@ -112,8 +113,6 @@ void CTMActivityManager::Start()
     {
     TN_DEBUG1( "CTMActivityManager::Start()");
     
-    iFirstRound = ETrue;
-    
 #ifdef MONITOR_LIGHTS
     if(!iLight)
         {
@@ -121,11 +120,16 @@ void CTMActivityManager::Start()
         }
 #endif
     
-    if( !IsActive() )
+    if ( iWatch == ENone )
         {
-        SetActive();
-        TRequestStatus* statusPtr = &iStatus;
-        User::RequestComplete( statusPtr, KErrNone );
+        iFirstRound = ETrue;
+        
+        if( !IsActive() )
+            {
+            SetActive();
+            TRequestStatus* statusPtr = &iStatus;
+            User::RequestComplete( statusPtr, KErrNone );
+            }
         }
     }
 
@@ -161,12 +165,12 @@ void CTMActivityManager::RunL()
                 TN_DEBUG1( "CTMActivityManager::RunL() inactive");
                 NotifyObserver();
 
-            if (!IsActive()) //observer might have called a Reset()
-                {
-                iTimer.Inactivity(iStatus,0);
-                iWatch = EWaitingForActivity;
+                if (!IsActive()) //observer might have called a Reset()
+                    {
+                    iTimer.Inactivity(iStatus,0);
+                    iWatch = EWaitingForActivity;
+                    }
                 }
-            }
             else
                 {
                 iTimer.Inactivity(iStatus,iTimeout);
@@ -174,8 +178,8 @@ void CTMActivityManager::RunL()
             }
         else if (iWatch == EWaitingForActivity)
             {
-                TN_DEBUG1( "CTMActivityManager::RunL() active");
-                NotifyObserver();
+            TN_DEBUG1( "CTMActivityManager::RunL() active");
+            NotifyObserver();
              
             if (!IsActive()) //observer might have called a Reset()
                 {

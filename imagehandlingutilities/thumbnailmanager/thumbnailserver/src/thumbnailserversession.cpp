@@ -652,9 +652,14 @@ void CThumbnailServerSession::RequestSetThumbnailByBufferL( const RMessage2& aMe
        {
        TInt sourceType = TThumbnailPersistentSize::EUnknownSourceType;
        TDataType mimetype;
-       Server()->MimeTypeFromFileExt( params.iTargetUri, mimetype );
-       sourceType = Server()->SourceTypeFromMimeType( mimetype );   
-       ModifyThumbnailSize(sourceType);
+       TInt ret = Server()->MimeTypeFromFileExt( params.iTargetUri, mimetype );
+	   
+       if( ret == KErrNone )
+           {
+           sourceType = Server()->SourceTypeFromMimeType( mimetype );   
+           ModifyThumbnailSize(sourceType);
+           }
+       User::LeaveIfError( ret );
        }
     
     TInt bufferSize = aMessage.Int2();

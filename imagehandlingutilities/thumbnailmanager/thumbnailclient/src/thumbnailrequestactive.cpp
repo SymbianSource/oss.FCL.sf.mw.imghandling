@@ -843,8 +843,16 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     
     CThumbnailRequestActive* self = static_cast<CThumbnailRequestActive*>( aAny );
     
-    self->Cancel();
     self->iTimer->Cancel();
+    
+    if (self->IsActive())
+        {
+        // hangs without this
+        TRequestStatus* statusPtr = &self->iStatus;
+        User::RequestComplete( statusPtr, KErrTimedOut );
+        }
+    
+    self->Cancel();
     
     if (self->iStartError != KErrNone)
         {
@@ -856,6 +864,8 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
         }
     
     self->HandleError();
+    
+    TN_DEBUG1( "CThumbnailRequestActive::TimerCallBack() - end");
     
     return KErrNone;
     }

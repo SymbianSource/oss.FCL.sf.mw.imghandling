@@ -31,7 +31,7 @@ enum TThumbnailPanicCode
         = 2, EThumbnailBadPath = 3, EThumbnailUnknownMessage = 4,
         EThumbnailMessageNotCompleted = 5, EThumbnailBitmapNotReleased = 6,
         EThumbnailEmptyDescriptor = 7, EThumbnailWrongId = 8, EThumbnailAlreadyRunning =
-        9, EThumbnailDatabaseUnrecoverable = 10
+        9, EThumbnailDatabaseUnrecoverable = 10, EThumbnailSQLTransaction = 11
     };
 
 /**

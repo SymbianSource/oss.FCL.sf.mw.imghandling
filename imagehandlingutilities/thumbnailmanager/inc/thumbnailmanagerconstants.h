@@ -51,12 +51,15 @@ const TInt KDaemonProcessing = 0x00000040;
 
 //insert to temp table first wo indexing and move data to main table as batch
 //actual batch size will vary and will be between min...max batch size values below
+
 //minimum batch size
 const TUint KMInBatchItems = 3;
 //maximum batch size
 const TUint KMaxBatchItems = 18;
 //Max allowed flush time
 const TUint KMaxFlushDelay = 3000; //ms
+// fixed batch size for MTP
+const TUint KMaxBatchItemsMTP = 60;
 
 //how many items daemon will query at once from MDS
 const TUint KMaxQueryItems = 100;

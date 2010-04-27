@@ -369,23 +369,8 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             }
         else
             {
-            TInt itemIndex(KErrNotFound);
-            
-            //cleanup current queue
-            while(iQueryQueue.Count())
-                {
-                itemIndex = iLastQueue->FindInOrder(iQueryQueue[0], Compare);
-                if(itemIndex >= 0)
-                    {
-                    iLastQueue->Remove( itemIndex );
-                    }
-                iQueryQueue.Remove(0);
-                }
-        
-            delete iQuery;
-            iQuery = NULL;
-            iProcessingCount = 0;
-            TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() Query FAILED!");   
+            DeleteAndCancelQuery();
+            TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() Query FAILED!"); 
             }
         }
     else
@@ -746,11 +731,12 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     TInt maxCount = aIDArray.Count();
         
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill begin aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
-      
-    for(TInt i=0;i < KMaxQueryItems && i < maxCount; i++)
+    
+    for(TInt i=0; i < KMaxQueryItems && i < maxCount; i++)
         {
-        TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", aIDArray[i] );
-        iQueryQueue.InsertInOrder(aIDArray[i], Compare);
+        TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", aIDArray[0] );
+        iQueryQueue.InsertInOrder(aIDArray[0], Compare);
+        aIDArray.Remove(0);
         }
     
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill end aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
@@ -911,7 +897,7 @@ void CThumbAGProcessor::RunL()
         if(  err == KErrNone )
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer");
-            err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypePlaceholder, KMaxTInt );
+            err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypeMMC | EHEObserverTypePlaceholder, KMaxTInt );
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
             __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
             }
@@ -983,14 +969,9 @@ void CThumbAGProcessor::RunL()
       	{
         TN_DEBUG1( "void CThumbAGProcessor::RunL() skip idle detection!");
       	CancelTimeout();
-     	 }
+     	}
   	else
 	    {
-        if(iActivityManager)
-            {
-            iIdle = iActivityManager->IsInactive();
-            }
-	    
         if( !iIdle || iHarvesting || iMPXHarvesting || iPeriodicTimer->IsActive() )
             {
             TN_DEBUG1( "void CThumbAGProcessor::RunL() device not idle");
@@ -1025,15 +1006,15 @@ void CThumbAGProcessor::RunL()
             const CMdEObject* object = &iQuery->Result( iProcessingCount-1 );
             iProcessingCount--;
             
-            TInt itemIndex = iLastQueue->FindInOrder(object->Id(), Compare);
-            if(itemIndex >= 0)
-                {
-                iLastQueue->Remove(itemIndex);
-                }
-				
-            // process one item at once
             if ( object )
                 {
+                TInt itemIndex = iLastQueue->FindInOrder(object->Id(), Compare);
+                if(itemIndex >= 0)
+                    {
+                    iLastQueue->Remove(itemIndex);
+                    }
+				
+                //process one item at once
                 //remove item from queryQueue when request is issued 
                 itemIndex = iQueryQueue.FindInOrder(object->Id(), Compare);
                 if(itemIndex >= 0)
@@ -1049,28 +1030,9 @@ void CThumbAGProcessor::RunL()
         //force is coming, but executing non-forced query complete-> cancel old
         else
             {
-            TN_DEBUG1( "CThumbAGProcessor::RunL() - deleting query 1" );
-            delete iQuery;
-            iQuery = NULL;
-            iQueryReady = EFalse;
-            iProcessingCount = 0;
-            
-            //move remainig IDs in query queue back to original queue
-            while(iQueryQueue.Count())
-                {
-                if(iLastQueue)
-                    {
-                    if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
-                        {
-                        //ignore if fails
-                        iLastQueue->InsertInOrder(iQueryQueue[0], Compare);
-                        }
-                    }
-                iQueryQueue.Remove(0);
-                }
-            iLastQueue = NULL;
-            ActivateAO();
-            return;    
+            DeleteAndCancelQuery();
+	        ActivateAO();
+            return;  
             }
         
         //is last query item
@@ -1088,32 +1050,7 @@ void CThumbAGProcessor::RunL()
         {
         if(iForceRun && !iModify)
             {
-            if(iQuery)
-                {
-                TN_DEBUG1( "CThumbAGProcessor::RunL() - deleting query 2" );
-                iQuery->Cancel();
-                delete iQuery;
-                iQuery = NULL;
-                }
-
-            iQueryReady = EFalse;
-            iQueryActive = EFalse;
-            
-            //move remainig IDs in query queue back to original queue
-            while(iQueryQueue.Count())
-                {
-                if(iLastQueue)
-                    {
-                    if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
-                        {
-                        //ignore if fails
-                        iLastQueue->InsertInOrder(iQueryQueue[0], Compare);
-                        }
-                    }
-                iQueryQueue.Remove(0);
-                }
-            iLastQueue = NULL;
-            
+            DeleteAndCancelQuery();
             ActivateAO();
             }
         else  
@@ -1183,6 +1120,44 @@ void CThumbAGProcessor::RunL()
         }
         
     TN_DEBUG1( "CThumbAGProcessor::RunL() - end" );
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::DeleteAndCancelQuery()
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::DeleteAndCancelQuery()
+    {
+    TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() in" );
+    
+    if(iQuery)
+        {
+        TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() - deleting query" );
+        iQuery->Cancel();
+        delete iQuery;
+        iQuery = NULL;
+        }
+    
+    iQueryReady = EFalse;
+    iQueryActive = EFalse;
+    iProcessingCount = 0;
+    
+    //move remainig IDs in query queue back to original queue
+    while(iQueryQueue.Count())
+        {
+        if(iLastQueue)
+            {
+            if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
+                {
+                //ignore if fails
+                iLastQueue->InsertInOrder(iQueryQueue[0], Compare);
+                }
+            }
+        iQueryQueue.Remove(0);
+        }
+    iLastQueue = NULL;
+    
+    TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() out" );
     }
 
 // ---------------------------------------------------------------------------
@@ -1286,8 +1261,48 @@ void CThumbAGProcessor::HarvestingUpdated(
                 }
             }
         }
+    //MMC harvesting
+    else if( aHEObserverType == EHEObserverTypeMMC)
+        {
+        switch(aHarvesterEventState)
+            {
+            case EHEStateStarted:
+            case EHEStateHarvesting:
+            case EHEStatePaused:
+            case EHEStateResumed:
+                {
+                iMMCHarvestingTemp = ETrue;
+                break;
+                }
+            case EHEStateFinished:
+            case EHEStateUninitialized:
+                {
+                iMMCHarvestingTemp = EFalse;
+                break;
+                }
+            };
+        
+        if(iMMCHarvestingTemp != iMMCHarvesting)
+            {
+            iMMCHarvesting = iMMCHarvestingTemp;
+            
+            if( iMMCHarvesting )
+                {
+                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesterin started");
+                if(iPreviousItemsLeft != KErrNotReady)
+                    {
+                    iPreviousItemsLeft = KErrNotReady;
+                    RProperty::Set(KTAGDPSNotification, KDaemonProcessing, iPreviousItemsLeft);
+                    }
+                }
+            else
+                {
+                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesting finished ");
+                }
+            }
+        }
    
-    TN_DEBUG3( "CThumbAGProcessor::HarvestingUpdated -- end() iHarvesting == %d, iPHHarvesting == %d ", iHarvesting, iPHHarvesting);
+    TN_DEBUG4( "CThumbAGProcessor::HarvestingUpdated -- end() iHarvesting == %d, iPHHarvesting == %d iMMCHarvesting == %d ", iHarvesting, iPHHarvesting, iMMCHarvesting);
     }
 
 // ---------------------------------------------------------------------------
@@ -1770,19 +1785,19 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
         daemonProcessing = ETrue;
         }
     
-    //disable 2nd round generarion when there is items in 1st round queues
-    //or 2nd queue is empty 
-    if( !i2ndRoundGenerateQueue.Count() || itemsLeft )
-        {
-        i2ndRound = EFalse;
-        }
-    
     //adjust items left to containing also items not yet processed but removed from queue under processing
     if((iLastQueue == &iModifyQueue || iLastQueue == &iAddQueue) && !i2ndRound)
         {
         itemsLeft +=iQueryQueue.Count();
         }
     
+    //cancel 2nd round generarion when there is items in 1st round queues
+    if(itemsLeft && i2ndRound)
+        {
+        DeleteAndCancelQuery();
+        i2ndRound = EFalse;
+        }
+        
     TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() KItemsleft == %d", itemsLeft);
     
     if(aDefine)

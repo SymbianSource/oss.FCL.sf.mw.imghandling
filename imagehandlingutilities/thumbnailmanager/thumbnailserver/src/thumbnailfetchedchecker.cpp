@@ -17,7 +17,7 @@
 
 #include "thumbnailfetchedchecker.h"
 
-const int KMaxStoredEntries = 50;
+const int KMaxStoredEntries = 100;
 
 // -----------------------------------------------------------------------------
 // CThumbnailFetchedChecker::CThumbnailFetchedChecker()
@@ -78,10 +78,11 @@ void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, TInt aError )
     else
         {
         // Add or update
-        CEntry* entry = CEntry::New( aUri, aError );
-        if ( entry )
+        CEntry* entry = NULL;
+        TRAPD( err, entry = CEntry::NewL( aUri, aError ) );
+        if ( !err && entry )
             {
-            TInt err = iNotFetched.Find( entry );
+            err = iNotFetched.Find( entry );
             if ( err != KErrNotFound )
                 {
                 TInt i = iNotFetched.FindInOrder( aUri, CEntry::FindCB );
@@ -118,10 +119,10 @@ void CThumbnailFetchedChecker::Reset()
 // CThumbnailFetchedChecker::CEntry::New()
 // -----------------------------------------------------------------------------
 //
-CThumbnailFetchedChecker::CEntry* CThumbnailFetchedChecker::CEntry::New(
+CThumbnailFetchedChecker::CEntry* CThumbnailFetchedChecker::CEntry::NewL(
         const TDesC& aUri, TInt aError )
     {
-    CEntry* self = new (ELeave) CEntry();
+    CEntry* self  = new (ELeave) CEntry();
     if ( self )
         {
         self->iUri = aUri.Alloc();

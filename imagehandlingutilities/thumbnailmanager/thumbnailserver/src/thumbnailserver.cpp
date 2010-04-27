@@ -621,6 +621,7 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     TN_DEBUG2( "CThumbnailServer::DeleteThumbnailsL(%S)", &aPath);
     
     StoreForPathL( aPath )->DeleteThumbnailsL( aPath );
+    
     if( iFetchedChecker ) 
         {
         iFetchedChecker->SetFetchResult( aPath, KErrNone );
@@ -936,16 +937,14 @@ CThumbnailStore* CThumbnailServer::StoreForPathL( const TDesC& aPath )
 // CThumbnailStore::PersistentSizeL()
 // ---------------------------------------------------------------------------
 //
-TThumbnailPersistentSize & CThumbnailServer::PersistentSizeL( TThumbnailSize
-        aThumbnailSize )
+TThumbnailPersistentSize & CThumbnailServer::PersistentSizeL( TThumbnailSize aThumbnailSize )
     {
     if ( !iCenrep )
-           {
-           iCenrep = CThumbnailCenRep::NewL();
-           }
+       {
+       iCenrep = CThumbnailCenRep::NewL();
+       }
     
-    return iCenrep->PersistentSizeL( aThumbnailSize );
-    
+    return iCenrep->PersistentSizeL( aThumbnailSize ); 
     }
 
 // -----------------------------------------------------------------------------
@@ -1200,6 +1199,11 @@ TBool CThumbnailServer::UpdateThumbnailsL( const TDesC& aPath,
             // delete old thumbs
             store->DeleteThumbnailsL(aPath, ETrue);
             
+            if( iFetchedChecker ) 
+                {
+                iFetchedChecker->SetFetchResult( aPath, KErrNone );
+                }
+            
             // need to create new thumbs
             }
         else
@@ -1226,6 +1230,12 @@ void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC
     TN_DEBUG2( "CThumbnailServer::RenameThumbnailsL(%S)", &aCurrentPath);
     
     StoreForPathL( aCurrentPath )->RenameThumbnailsL( aCurrentPath, aNewPath );
+    
+    if( iFetchedChecker ) 
+        {
+        iFetchedChecker->SetFetchResult( aNewPath, iFetchedChecker->LastFetchResult(aCurrentPath) );
+        iFetchedChecker->SetFetchResult( aCurrentPath, KErrNone );
+        }
     }
 
 // -----------------------------------------------------------------------------

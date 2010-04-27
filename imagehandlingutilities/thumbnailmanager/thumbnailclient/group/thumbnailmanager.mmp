@@ -54,5 +54,7 @@ LIBRARY 				hal.lib
 
 DEBUGLIBRARY            flogger.lib
 
+OPTION ARMCC -O3 -OTime
+
 PAGED
 BYTEPAIRCOMPRESSTARGET

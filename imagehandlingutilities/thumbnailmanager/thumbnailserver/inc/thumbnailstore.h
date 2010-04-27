@@ -40,7 +40,7 @@ class RThumbnailTransaction
     {
     enum TState
         {
-        EOpen, EError, EClosed
+        EOpen, EOldOpen, EError, EClosed
     };
 public:
     RThumbnailTransaction( RSqlDatabase& aDatabase );

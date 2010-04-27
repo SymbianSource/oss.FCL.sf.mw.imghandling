@@ -35,7 +35,7 @@
 #include "thumbnailserver.h"
 
 
-_LIT8( KThumbnailSqlConfig, "page_size=1024; cache_size=32;" );
+_LIT8( KThumbnailSqlConfig, "page_size=16384; cache_size=32;" );
 
 const TInt KStreamBufferSize = 1024 * 8;
 const TInt KMajor = 3;
@@ -68,7 +68,18 @@ RThumbnailTransaction::RThumbnailTransaction( RSqlDatabase& aDatabase ):
 // ---------------------------------------------------------------------------
 //
 void RThumbnailTransaction::BeginL()
-    {
+    {    
+    if (iDatabase.InTransaction())
+        {
+        TN_DEBUG1( "RThumbnailTransaction::BeginL() - error: old transaction open!" );
+        __ASSERT_DEBUG(( !iDatabase.InTransaction() ), ThumbnailPanic( EThumbnailSQLTransaction ));
+        
+        // old transaction already open, don't open another
+        iState = EOldOpen;
+        
+        return;
+        }
+    
     const TInt err = iDatabase.Exec( KThumbnailBeginTransaction );
     if ( err >= 0 )
         {
@@ -91,7 +102,7 @@ void RThumbnailTransaction::BeginL()
 //
 void RThumbnailTransaction::Close()
     {
-    if ( iState != EClosed )
+    if ( iState != EClosed && iState != EOldOpen )
         {
         Rollback();
         }
@@ -103,13 +114,16 @@ void RThumbnailTransaction::Close()
 //
 void RThumbnailTransaction::CommitL()
     {
-    TInt ret = iDatabase.Exec( KThumbnailCommitTransaction );
+    if ( iState != EOldOpen )
+        {
+        TInt ret = iDatabase.Exec( KThumbnailCommitTransaction );
     
 #ifdef _DEBUG
     TPtrC errorMsg = iDatabase.LastErrorMessage();
     TN_DEBUG3( "RThumbnailTransaction::CommitL() lastError %S, ret = %d" , &errorMsg, ret);
 #endif  
     User::LeaveIfError( ret );
+        }
     
     iState = EClosed;
     }
@@ -120,12 +134,20 @@ void RThumbnailTransaction::CommitL()
 //
 TInt RThumbnailTransaction::Rollback()
     {
-    const TInt err = iDatabase.Exec( KThumbnailRollbackTransaction );
-    if ( err >= 0 )
+    if ( iState != EOldOpen )
         {
-        iState = EClosed;
+        const TInt err = iDatabase.Exec( KThumbnailRollbackTransaction );
+        if ( err >= 0 )
+            {
+            iState = EClosed;
+            }
+        
+        return err;
         }
-    return err;
+    
+    iState = EClosed;
+    
+    return KErrNone;
     }
 
 
@@ -1766,12 +1788,15 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         
         CleanupStack::PopAndDestroy( stmt_infodata );
         CleanupStack::PopAndDestroy( stmt_info );
+        CleanupStack::PopAndDestroy( stmt );
         
 		//remove delete mark
         User::LeaveIfError( iDatabase.Exec( KThumbnailSqlDeleteFromDeleted ) );
         } 
     else
         {
+        TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- add to Deleted" );
+    
         // only add path to deleted table
         stmt = &iStmt_KThumbnailSqlInsertDeleted;
         CleanupStack::PushL(TCleanupItem(ResetStatement, stmt));
@@ -1781,9 +1806,9 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         User::LeaveIfError( stmt->BindText( paramIndex, *path ));
         
         count = stmt->Exec();
-        }
-    
-    CleanupStack::PopAndDestroy( stmt );    
+        
+        CleanupStack::PopAndDestroy( stmt );
+        }    
     
     if (aTransaction)
         {
@@ -1911,13 +1936,28 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         return;
         }
     
-    if(iBatchItemCount < iBatchFlushItemCount && !aForce)
+    // fixed batch size if MTP sync on
+    TInt MPXHarvesting(0);
+    TInt ret = RProperty::Get(KTAGDPSNotification, KMPXHarvesting, MPXHarvesting);
+    if(ret != KErrNone)
+        {
+        TN_DEBUG2( "CThumbnailStore::FlushCacheTable() error checking MTP sync: %d", ret);
+        }
+    
+    if(MPXHarvesting && iBatchItemCount < KMaxBatchItemsMTP && !aForce)
+        {
+        TN_DEBUG1("CThumbnailStore::FlushCacheTable() MTP sync, fixed batch...");
+    
+        //some items in cache
+        StartAutoFlush();
+        return;
+        }    
+    else if(!MPXHarvesting && iBatchItemCount < iBatchFlushItemCount && !aForce)
        {
        //some items in cache
        StartAutoFlush();
        return;
-       }
-    
+       }    
     
     iStartFlush.UniversalTime();
     
@@ -1972,25 +2012,29 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         // open new
         TRAP_IGNORE(OpenDatabaseL(ETrue));
         }
-    
-	//adjust batch size dynamically between min and max based on read flush speed. 
+   
     iStopFlush.UniversalTime();
     TInt aFlushDelay = (TInt)iStopFlush.MicroSecondsFrom(iStartFlush).Int64()/1000;
+    
     TN_DEBUG2( "CThumbnailStore::FlushCacheTable() took %d ms", aFlushDelay);
+    
+    //adjust batch size dynamically between min and max based on read flush speed
+    if (!MPXHarvesting)
+        {
+        //increase batch count if there room for one more item (based on average time per item)
+        if( aFlushDelay < KMaxFlushDelay && iBatchFlushItemCount < KMaxBatchItems )
+            {
+            iBatchFlushItemCount++;
+            }
+        //decrease batch count if we exeeced max time allowed in flushing the TEMP table
+        else if(aFlushDelay > KMaxFlushDelay && iBatchFlushItemCount > KMInBatchItems )
+            {
+            iBatchFlushItemCount--;
+            }
+        }
     
     //cache flushed
     iBatchItemCount = 0;
-    
-    //increase batch count if there room for one more item (based on average time per item)
-    if( aFlushDelay < KMaxFlushDelay && iBatchFlushItemCount < KMaxBatchItems )
-        {
-        iBatchFlushItemCount++;
-        }
-    //decrease batch count if we exeeced max time allowed in flushing the TEMP table
-    else if(aFlushDelay > KMaxFlushDelay && iBatchFlushItemCount > KMInBatchItems )
-        {
-        iBatchFlushItemCount--;
-        }
 
     TN_DEBUG2("CThumbnailStore::FlushCacheTable() out iBatchFlushItemCount = %d", iBatchFlushItemCount);
     }
@@ -2159,7 +2203,7 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
             {
             self->StartMaintenance();
             }  
-        else
+        else if (!self->iDeleteThumbs && !self->iCheckFilesExist)
             {
             // no need to monitor activity anymore
             self->iActivityManager->Cancel();

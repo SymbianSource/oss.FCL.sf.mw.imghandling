@@ -34,7 +34,7 @@ private:
     NONSHARABLE_CLASS( CEntry ) : public CBase
         {
     public:
-        static CEntry* New( const TDesC& aUri, TInt aError );
+        static CEntry* NewL( const TDesC& aUri, TInt aError );
         static TInt FindCB( const TDesC* aUri, const CEntry& aEntry );
         static TInt InsertCB( const CEntry& aEntry1, const CEntry& aEntry2 );
         CEntry();

@@ -553,7 +553,6 @@ void CThumbnailImageDecoder::CreateExifDecoderL( CThumbnailManager
         reader = CExifRead::NewL( *iBuffer, CExifRead::ENoJpeg );
         }
     
-    
     CleanupStack::PushL( reader );
 
     iExifThumbImage = reader->GetThumbnailL();
@@ -591,16 +590,6 @@ void CThumbnailImageDecoder::CreateExifDecoderL( CThumbnailManager
         User::LeaveIfError( err );
         }
 
-/*
-    // If the Exif thumbnail is smaller than requested it will not be used
-    TFrameInfo frame = iDecoder->FrameInfo( 0 );
-    
-    if ( frame.iOverallSizeInPixels.iWidth < iSize.iWidth ||
-        frame.iOverallSizeInPixels.iHeight < iSize.iHeight ) 
-        {
-        User::Leave( KErrGeneral );
-        }
-    */
     TN_DEBUG1( "CThumbnailImageDecoder::CreateExifDecoderL() end" );
     }
 
