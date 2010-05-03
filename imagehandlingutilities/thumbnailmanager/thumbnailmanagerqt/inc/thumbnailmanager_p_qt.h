@@ -19,19 +19,21 @@
 #define THUMBNAILMANAGER_P_QT_H
 
 #include <QObject>
+#include <QPixmap>
+
 #include <thumbnailmanager.h>
 #include <thumbnailmanager_qt.h>
 #include <thumbnailmanagerobserver.h>
-#include <qpixmap.h>
+
 
 class QString;
-class QPixmap;
 class QSize;
 class CThumbnailManager;
 class MThumbnailData;
 class CFbsBitmap;
 class QByteArray;
 
+class TestThumbnailManager;
 
 class ThumbnailManagerPrivate : 
 public QObject,
@@ -137,7 +139,7 @@ public:
      * Change the priority of a queued thumbnail operation.
      */
     bool changePriority( int id, int newPriority );
-
+    
     //FROM  MThumbnailManagerObserver
     /**
      * Preview thumbnail generation or loading is complete.
@@ -185,20 +187,40 @@ signals:
      * Final thumbnail bitmap generation or loading is complete.
      */
     void thumbnailReady( QPixmap , void * , int , int );
-    
-    
+
+    void thumbnailReady( QImage , void * , int , int );
+
 private:
+    /**
+     * Copy CFbsBitmap into a QImage.
+     */
+    QImage fromBitmap( CFbsBitmap* bitmap );
+    
     /**
      * Copy CFbsBitmap into a QPixmap.
      */
-    QPixmap copyPixmap( CFbsBitmap* bitmap );
+    QPixmap fromImage( CFbsBitmap* bitmap );
     
+    /**
+     * Limit priority to presumed range.
+     */
+    int convertPriority(int basePriority);
+
+
+public:
+    
+    int connectionCounterImage;
+
+    int connectionCounterPixmap;
     
 private:
 
     CThumbnailManager* iThumbnailManager;
     
     QByteArray* byteArray;
+    
+    friend class TestThumbnailManager;
+    
 };
 
 #endif // ThumbnailManager_H

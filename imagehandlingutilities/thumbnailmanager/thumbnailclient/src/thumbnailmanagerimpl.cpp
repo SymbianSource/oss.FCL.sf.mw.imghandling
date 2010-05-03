@@ -147,7 +147,7 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL(
     TInt aPriority, TBool aGeneratePersistentSizesOnly)
     {
     iRequestId++;
-    TN_DEBUG4( "CThumbnailManagerImpl::GetThumbnailL() URI==%S, iThumbnailSize==%d %d", &aObjectSource.Uri(), iThumbnailSize, iRequestId );
+    TN_DEBUG4( "CThumbnailManagerImpl::GetThumbnailL() URI==%S, iThumbnailSize==%d, req %d", &aObjectSource.Uri(), iThumbnailSize, iRequestId );
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
@@ -208,7 +208,7 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL( const TThumbnailId
     aThumbnailId, TAny* aClientData /*= NULL*/, TInt aPriority)
     {
     iRequestId++;
-    TN_DEBUG5( "CThumbnailManagerImpl::GetThumbnailL() reqid==%d, aThumbnailId==%d, iThumbnailSize==%d %d", iRequestId, aThumbnailId, iThumbnailSize, iRequestId );
+    TN_DEBUG4( "CThumbnailManagerImpl::GetThumbnailL() aThumbnailId==%d, iThumbnailSize==%d, req %d", aThumbnailId, iThumbnailSize, iRequestId );
 
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
@@ -613,7 +613,7 @@ void CThumbnailManagerImpl::UpdateThumbnailsL( const TThumbnailId aItemId, const
                                                TInt aPriority )
     {
     iRequestId++;
-    TN_DEBUG4( "CThumbnailManagerImpl::UpdateThumbnailsL() URI==%S, aItemId==%d %d", &aPath, aItemId, iRequestId); 
+    TN_DEBUG4( "CThumbnailManagerImpl::UpdateThumbnailsL() URI==%S, aItemId==%d, req %d", &aPath, aItemId, iRequestId); 
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
@@ -630,6 +630,35 @@ void CThumbnailManagerImpl::UpdateThumbnailsL( const TThumbnailId aItemId, const
     CleanupStack::Pop( getThumbnailActive );
     
     iRequestQueue->Process();
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailManagerImpl::RenameThumbnailsL()
+// Renames thumbnails by given path
+// ---------------------------------------------------------------------------
+//
+TThumbnailRequestId CThumbnailManagerImpl::RenameThumbnailsL( const TDesC& aCurrentPath, 
+        const TDesC& aNewPath, TInt aPriority )
+    {
+    iRequestId++;
+    TN_DEBUG3( "CThumbnailManagerImpl::RenameThumbnailsL() URI==%S, req %d", &aCurrentPath, iRequestId); 
+    
+    __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
+    
+    TInt priority = ValidatePriority(aPriority);
+    
+    CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
+        ( iFs, iSession, iObserver, iRequestId, priority, iRequestQueue );
+    CleanupStack::PushL( getThumbnailActive );
+    
+    getThumbnailActive->RenameThumbnails( aCurrentPath, aNewPath, priority );
+    
+    iRequestQueue->AddRequestL( getThumbnailActive );
+    CleanupStack::Pop( getThumbnailActive );
+    
+    iRequestQueue->Process();
+    
+    return iRequestId;
     }
 
 // ---------------------------------------------------------------------------

@@ -40,7 +40,8 @@ enum TThumbnailRequestType
     EReqSetThumbnailBitmap = 3,
     EReqUpdateThumbnails = 4,
     EReqGetThumbnailHandleLater = 5,
-    EReqDeleteThumbnails = 6
+    EReqDeleteThumbnails = 6,
+    EReqRenameThumbnails = 7
 };
 
 /**
@@ -221,6 +222,17 @@ public:
      */
     void DeleteThumbnails( const TDesC& aPath, const TThumbnailId aThumbnailId,
         const TInt aPriority );   
+    
+    /**
+     * Rename thumbnails.
+     *
+     * @since S60 v5.0
+     * @param aCurrentPath     Current path of the Thumbnail
+     * @param aNewPath         New path for the Thumbnail
+     * @param aPriority        Priority for this operation
+     */
+    void RenameThumbnails( const TDesC& aCurrentPath, const TDesC& aNewPath, 
+        const TInt aPriority );    
     
     /**
      * Start active request.

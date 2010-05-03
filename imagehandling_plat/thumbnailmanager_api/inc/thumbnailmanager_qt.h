@@ -18,12 +18,21 @@
 #ifndef THUMBNAILMANAGER_QT_H
 #define THUMBNAILMANAGER_QT_H
 
-#include <qobject>
-#include <QPixmap.h>
+#include <QObject>
+#include <qpixmap>
+#include <QImage>
+#include <QtGlobal>
 
 class ThumbnailManagerPrivate;
 class QString;
 class QSize;
+
+#ifdef TNMQT_DLL
+#  define TNM_EXPORT Q_DECL_EXPORT
+#else
+#  define TNM_EXPORT Q_DECL_IMPORT
+#endif  
+
 
 /** default priority value */
 const int tnmWrapperPriorityIdle = -100;
@@ -109,19 +118,19 @@ public:
      * 
      * @param parentPtr parent
      */    
-    IMPORT_C ThumbnailManager( QObject* parentPtr = NULL );
+    TNM_EXPORT ThumbnailManager( QObject* parentPtr = NULL );
 
     /**
      * Destructor
      */
-    IMPORT_C ~ThumbnailManager();
+    TNM_EXPORT ~ThumbnailManager();
 
     /**
      * Get quality versus performance preference.
      *
      * @return quality versus performance preference
      */
-    IMPORT_C QualityPreference qualityPreference() const;
+    TNM_EXPORT QualityPreference qualityPreference() const;
 
     /**
      * Set quality versus performance preference.
@@ -130,14 +139,14 @@ public:
      *                           value.
      * @return true on success
      */
-    IMPORT_C bool setQualityPreference( QualityPreference qualityPreference );
+    TNM_EXPORT bool setQualityPreference( QualityPreference qualityPreference );
 
     /**
      * Get the current desired size for thumbnail bitmaps.
      *
      * @return Current desired size for thumbnail bitmaps (in pixels).
      */
-    IMPORT_C QSize thumbnailSize() const;
+    TNM_EXPORT QSize thumbnailSize() const;
 
     /**
      * Set desired size for thumbnail bitmaps.
@@ -145,7 +154,7 @@ public:
      * @param thumbnailSize New desired thumbnail size.
      * @return true on success
      */
-    IMPORT_C bool setThumbnailSize( const QSize& thumbnailSize );
+    TNM_EXPORT bool setThumbnailSize( const QSize& thumbnailSize );
 
     /**
      * Set desired size for thumbnail bitmaps.
@@ -153,14 +162,14 @@ public:
      * @param thumbnailSize New desired thumbnail size.
      * @return true on success
      */
-    IMPORT_C bool setThumbnailSize( ThumbnailSize thumbnailSize );
+    TNM_EXPORT bool setThumbnailSize( ThumbnailSize thumbnailSize );
     
     /**
      * Get current mode for thumbnail generation.
      *
      * @return Current mode.
      */
-    IMPORT_C ThumbnailMode mode() const;
+    TNM_EXPORT ThumbnailMode mode() const;
 
     /**
      * Set mode for thumbnail generation.
@@ -168,7 +177,7 @@ public:
      * @param mode New flags.
      * @return true on success 
      */
-    IMPORT_C bool setMode( ThumbnailMode mode );
+    TNM_EXPORT bool setMode( ThumbnailMode mode );
 
     /**
      * Get a thumbnail for an object file. If a thumbnail already exists, it
@@ -188,7 +197,7 @@ public:
      *                      instance and may not be shared with other
      *                      instances.
      */
-    IMPORT_C int getThumbnail( const QString& fileName, void * clientData = NULL, 
+    TNM_EXPORT int getThumbnail( const QString& fileName, void * clientData = NULL, 
             int priority = tnmWrapperPriorityIdle );
 
     /**
@@ -209,7 +218,7 @@ public:
      *                      instance and may not be shared with other
      *                      instances.
      */    
-    IMPORT_C int getThumbnail( unsigned long int thumbnailId, void * clientData = NULL, 
+    TNM_EXPORT int getThumbnail( unsigned long int thumbnailId, void * clientData = NULL, 
             int priority = tnmWrapperPriorityIdle );
     
     /**
@@ -227,7 +236,7 @@ public:
      *                           cancel the request or change priority. 
      *                           
      */    
-    IMPORT_C int setThumbnail( const QPixmap& source, const QString& fileName,
+    TNM_EXPORT int setThumbnail( const QPixmap& source, const QString& fileName,
             void * clientData = NULL, int priority = tnmWrapperPriorityIdle );
     
     /**
@@ -245,7 +254,7 @@ public:
      *                           cancel the request or change priority. 
      *                           
      */    
-    IMPORT_C int setThumbnail( const QImage& source, const QString& fileName,
+    TNM_EXPORT int setThumbnail( const QImage& source, const QString& fileName,
             void * clientData = NULL, int priority = tnmWrapperPriorityIdle );
 
     /**
@@ -254,7 +263,7 @@ public:
      *
      * @param fileName      Source file
      */
-    IMPORT_C void deleteThumbnails( const QString& fileName );
+    TNM_EXPORT void deleteThumbnails( const QString& fileName );
 
     /**
      * Delete all thumbnails for a given object. This is an asynchronous
@@ -262,7 +271,7 @@ public:
      *
      * @param thumbnailId      thumbnail id
      */
-    IMPORT_C void deleteThumbnails( unsigned long int thumbnailId );
+    TNM_EXPORT void deleteThumbnails( unsigned long int thumbnailId );
 
     /**
      * Cancel a thumbnail operation.
@@ -270,7 +279,7 @@ public:
      * @param id      Request ID for the operation to be cancelled.
      * @return         true if cancelling was successful.
      */
-    IMPORT_C bool cancelRequest( int id );
+    TNM_EXPORT bool cancelRequest( int id );
 
     /**
      * Change the priority of a queued thumbnail operation.
@@ -280,7 +289,7 @@ public:
      * @param newPriority  New priority value
      * @return              true if change was successful.
      */
-    IMPORT_C bool changePriority( int id, int newPriority );
+    TNM_EXPORT bool changePriority( int id, int newPriority );
     
 signals:  
     /**
@@ -292,7 +301,23 @@ signals:
      * @param errorCode  error code
      */
     void thumbnailReady( QPixmap , void * , int , int );    
+
+    /**
+     * Final thumbnail bitmap generation or loading is complete.
+     *
+     * @param image      An object representing the resulting thumbnail.
+     * @param clientData Client data
+     * @param id         Request ID for the operation
+     * @param errorCode  error code
+     */
+    void thumbnailReady( QImage , void * , int , int );    
+
+protected:
     
+    void connectNotify(const char *signal);
+
+    void disconnectNotify(const char *signal);
+
 private:
     ThumbnailManagerPrivate* d;
 };

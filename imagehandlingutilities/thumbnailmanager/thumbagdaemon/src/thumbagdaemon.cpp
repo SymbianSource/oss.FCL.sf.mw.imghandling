@@ -186,7 +186,6 @@ CThumbAGDaemon::~CThumbAGDaemon()
         {
         // 2 observers
         TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
-//modify        TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
         
 #ifdef MDS_URI_OBSERVER
         // remove observer with uri
@@ -374,8 +373,7 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
             iProcessor->RemoveFromQueues( aObjectIdArray, EFalse);
             }
         
-        // Add event to processing queue by type and enable force run
-        
+        // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
         TRAPD(err, iProcessor->AddToQueueL(aType, aObjectIdArray, dummyArray, EFalse));
         if (err != KErrNone)

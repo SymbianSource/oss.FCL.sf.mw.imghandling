@@ -15,105 +15,126 @@
 *
 */
 
-#include <qsize.h>
+#include <QSize>
 #include "thumbnailmanager_qt.h"
 #include "thumbnailmanager_p_qt.h"
  
-EXPORT_C ThumbnailManager::ThumbnailManager( QObject* parentPtr ) :
+Q_DECL_EXPORT ThumbnailManager::ThumbnailManager( QObject* parentPtr ) :
 QObject( parentPtr ),
 d( new ThumbnailManagerPrivate() )
 {
     QObject::connect( d, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ),
             this, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ) );
+    QObject::connect( d, SIGNAL( thumbnailReady( QImage , void * , int , int ) ),
+            this, SIGNAL( thumbnailReady( QImage , void * , int , int ) ) );
 }
 
 
-EXPORT_C ThumbnailManager::~ThumbnailManager()
+Q_DECL_EXPORT ThumbnailManager::~ThumbnailManager()
 {
     QObject::disconnect( d, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ),
             this, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ) );
+    QObject::disconnect( d, SIGNAL( thumbnailReady( QImage , void * , int , int ) ),
+            this, SIGNAL( thumbnailReady( QImage , void * , int , int ) ) );
     if( NULL != d ){
         delete d;
     }
 }
 
-EXPORT_C ThumbnailManager::QualityPreference ThumbnailManager::qualityPreference() const
+Q_DECL_EXPORT ThumbnailManager::QualityPreference ThumbnailManager::qualityPreference() const
 {
     return d->qualityPreference();
 }
 
-EXPORT_C bool ThumbnailManager::setQualityPreference( QualityPreference
+Q_DECL_EXPORT bool ThumbnailManager::setQualityPreference( QualityPreference
     qualityPreference )
 {
     return d->setQualityPreference( qualityPreference );
 }
  
-EXPORT_C QSize ThumbnailManager::thumbnailSize() const
+Q_DECL_EXPORT QSize ThumbnailManager::thumbnailSize() const
 {
     return d->thumbnailSize();
 }
 
-EXPORT_C bool ThumbnailManager::setThumbnailSize( const QSize& thumbnailSize )
+Q_DECL_EXPORT bool ThumbnailManager::setThumbnailSize( const QSize& thumbnailSize )
 {
     return d->setThumbnailSize( thumbnailSize );
 }
 
-EXPORT_C bool ThumbnailManager::setThumbnailSize( ThumbnailSize thumbnailSize )
+Q_DECL_EXPORT bool ThumbnailManager::setThumbnailSize( ThumbnailSize thumbnailSize )
 {
     return d->setThumbnailSize( thumbnailSize );
 }
 
-EXPORT_C ThumbnailManager::ThumbnailMode ThumbnailManager::mode() const
+Q_DECL_EXPORT ThumbnailManager::ThumbnailMode ThumbnailManager::mode() const
 {
     return d->mode();
 }
 
-EXPORT_C bool ThumbnailManager::setMode( ThumbnailMode mode )
+Q_DECL_EXPORT bool ThumbnailManager::setMode( ThumbnailMode mode )
 {
     return d->setMode( mode );
 }
 
-EXPORT_C int ThumbnailManager::getThumbnail( const QString& fileName, void * clientData, 
+Q_DECL_EXPORT int ThumbnailManager::getThumbnail( const QString& fileName, void * clientData, 
         int priority )
 {
     return d->getThumbnail( fileName, clientData, priority );
 }
 
-EXPORT_C int ThumbnailManager::getThumbnail( unsigned long int thumbnailId, void * clientData, 
+Q_DECL_EXPORT int ThumbnailManager::getThumbnail( unsigned long int thumbnailId, void * clientData, 
         int priority )
 {
     return d->getThumbnail( thumbnailId, clientData, priority );
 }    
 
-EXPORT_C int ThumbnailManager::setThumbnail( const QPixmap& source, const QString& filename,
+Q_DECL_EXPORT int ThumbnailManager::setThumbnail( const QPixmap& source, const QString& filename,
         void * clientData , int priority )
 {
     return d->setThumbnail( source, filename, clientData, priority );
 }
 
-EXPORT_C int ThumbnailManager::setThumbnail( const QImage& source, const QString& filename,
+Q_DECL_EXPORT int ThumbnailManager::setThumbnail( const QImage& source, const QString& filename,
         void * clientData , int priority )
 {
     return d->setThumbnail( source, filename, clientData, priority );
 }
 
-EXPORT_C void ThumbnailManager::deleteThumbnails( const QString& fileName )
+Q_DECL_EXPORT void ThumbnailManager::deleteThumbnails( const QString& fileName )
 {
     d->deleteThumbnails( fileName );
 }
 
-EXPORT_C void ThumbnailManager::deleteThumbnails( unsigned long int thumbnailId )
+Q_DECL_EXPORT void ThumbnailManager::deleteThumbnails( unsigned long int thumbnailId )
 {
     d->deleteThumbnails( thumbnailId );
 }
 
-EXPORT_C bool ThumbnailManager::cancelRequest( int id )
+Q_DECL_EXPORT bool ThumbnailManager::cancelRequest( int id )
 {
     return d->cancelRequest( id );
 }
 
-EXPORT_C bool ThumbnailManager::changePriority( int id, int newPriority )
+Q_DECL_EXPORT bool ThumbnailManager::changePriority( int id, int newPriority )
 {
     return d->changePriority( id, newPriority );
 }
 
+void ThumbnailManager::connectNotify(const char *signal)
+{
+    if (QLatin1String(signal) == SIGNAL(thumbnailReady(QPixmap,void*,int,int))) {
+        d->connectionCounterPixmap++;
+    } else if (QLatin1String(signal) == SIGNAL(thumbnailReady(QImage,void*,int,int))) {
+        d->connectionCounterImage++;
+    }
+}
+
+void ThumbnailManager::disconnectNotify(const char *signal)
+{   
+    if (QLatin1String(signal) == SIGNAL(thumbnailReady(QPixmap,void*,int,int))) {
+        d->connectionCounterPixmap--;
+    } else if (QLatin1String(signal) == SIGNAL(thumbnailReady(QImage,void*,int,int))) {
+        d->connectionCounterImage--;
+    }
+}

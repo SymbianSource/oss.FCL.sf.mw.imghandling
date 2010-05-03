@@ -40,7 +40,7 @@ class RThumbnailTransaction
     {
     enum TState
         {
-        EOpen, EError, EClosed
+        EOpen, EOldOpen, EError, EClosed
     };
 public:
     RThumbnailTransaction( RSqlDatabase& aDatabase );
@@ -273,6 +273,15 @@ public:
                             TBool aTransaction = ETrue);
     
     /**
+     * Rename thumbnails.
+     *
+     * @since S60 v5.0
+     * @param aCurrentPath     Current path of the Thumbnail
+     * @param aNewPath         New path for the Thumbnail
+     */
+    void RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC& aNewPath );    
+    
+    /**
      * Persistent sizes.
      *
      * @since S60 v5.0
@@ -325,7 +334,7 @@ public:
      *
      * @since S60 v5.0
      */
-    TInt UpdateImeiL();
+    void UpdateImeiL();
     
     /**
      * Checks that database rowids match.
@@ -625,6 +634,18 @@ private:
     RSqlStatement iStmt_KThumbnailSqlDeleteInfoByRowID;
     RSqlStatement iStmt_KThumbnailSqlDeleteInfoDataByRowID;
     RSqlStatement iStmt_KThumbnailSelectAllPaths;
+    RSqlStatement iStmt_KThumbnailRename;
+    RSqlStatement iStmt_KThumbnailTempRename;
+    
+    /**
+     * Dynamic batch size
+     */
+    TInt iBatchFlushItemCount;
+
+    /**
+     * Measure time spend in flush
+     */
+    TTime iStartFlush, iStopFlush;
 
 };
 // End of File

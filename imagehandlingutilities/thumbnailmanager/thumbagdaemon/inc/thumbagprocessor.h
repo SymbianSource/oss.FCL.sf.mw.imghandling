@@ -158,7 +158,19 @@ protected:
      */
     void QueryL( RArray<TItemId>& aIDArray );
     
+	 /**
+     * QueryPlaceholdersL
+     *
+     * @since S60 v5.0
+     */
     void QueryPlaceholdersL();
+
+   	 /**
+     * DeleteAndCancelQuery
+     *
+     * @since Symbian^3
+     */
+    void DeleteAndCancelQuery();
     
 protected:
 
@@ -243,6 +255,13 @@ private:
      */
     void UpdatePSValues(const TBool aDefine = EFalse);
        
+    /**
+     * Comparison function for logaritmic use of queue arrays
+     * 
+     * @since S60 v5.0
+     */
+    static TInt Compare(const TItemId& aLeft, const TItemId& aRight);
+        
 private:
     
     // not own
@@ -265,21 +284,32 @@ private:
 	//reference to current processing queue
     RArray<TItemId>* iLastQueue;
     
+	//background generation state
+	// EFalse = 1st round, create only grid size thumbnail for images and videos
+	// ETrue = 2nds round, create all missing sizes for all media items
     TBool i2ndRound;    
     
+	//MDS query issues
     TBool iQueryActive;
+	//MDS query complete
     TBool iQueryReady;
     
+	//Processing MDS itens which are modified
     TBool iModify;
     TInt iProcessingCount;
 
-    //Flag is MDS Harvester harevsting
+    //MDS harvester's overall state
     TBool iHarvesting;
     TBool iHarvestingTemp;
-    
-	//Flag is MDS placeholder harvesting active
+
+    //MDS Harvester's placeholder harvesting state
     TBool iPHHarvesting;
     TBool iPHHarvestingTemp;
+    
+    //MDS Harvester's SD card harvesting state
+    TBool iMMCHarvesting;
+    TBool iMMCHarvestingTemp;
+    
     
     CPeriodic* iPeriodicTimer;
 

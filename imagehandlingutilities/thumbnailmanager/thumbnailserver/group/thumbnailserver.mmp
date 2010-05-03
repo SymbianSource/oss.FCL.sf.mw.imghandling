@@ -33,9 +33,10 @@ EPOCHEAPSIZE            4096 0x800000 // heap 8MB
 EPOCHEAPSIZE            4096 0x3000000 // max heap 48MB
 #endif
 
-
 CAPABILITY              ALL -TCB -DRM
 VENDORID                VID_DEFAULT
+
+EPOCPROCESSPRIORITY background
 
 SOURCEPATH              ../src
 SOURCE                  thumbnailserver.cpp
@@ -50,6 +51,7 @@ SOURCE                  thumbnaildiskunmountobserver.cpp
 SOURCE                  thumbnailcenrep.cpp 
 SOURCE                  thumbnailmemorycardobserver.cpp 
 SOURCE		        thumbnaildecodetask.cpp
+SOURCE                  thumbnailfetchedchecker.cpp
 #ifdef RD_MDS_2_5
 SOURCE			thumbnailmdsquerytask.cpp
 #endif // RD_MDS_2_5
@@ -90,7 +92,7 @@ LIBRARY 		hwrmlightclient.lib
 
 DEBUGLIBRARY            flogger.lib
 
-BYTEPAIRCOMPRESSTARGET
-EPOCPROCESSPRIORITY background
+OPTION ARMCC -O3 -OTime
 
 UNPAGED
+BYTEPAIRCOMPRESSTARGET

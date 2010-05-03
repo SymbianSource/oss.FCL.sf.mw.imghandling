@@ -133,7 +133,12 @@ TInt CThumbnailServerSession::DispatchMessageL( const RMessage2& aMessage )
                 {
                 UpdateThumbnailsL( aMessage );
                 break;
-                }                  
+                }       
+        case ERenameThumbnails:
+                {
+                RenameThumbnailsL( aMessage );
+                break;
+                } 
         default:
                 {
                 err = KErrUnknown;
@@ -332,6 +337,38 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
     else
         {
         TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - finished part 2" );
+        }
+    
+    iMessage = RMessage2();
+    }
+
+// -----------------------------------------------------------------------------
+// CThumbnailServerSession::RenameThumbnailsL()
+// Rename thumbnails.
+// -----------------------------------------------------------------------------
+//
+void CThumbnailServerSession::RenameThumbnailsL( const RMessage2& aMessage )
+    {
+    if(aMessage.Int1() != KCheckValue)
+       {
+       TN_DEBUG1( "CThumbnailServerSession::RenameThumbnailsL() - error in aMessage - leaving" );
+       User::Leave(KErrArgument);
+       }
+    
+    // read message params
+    aMessage.ReadL( 0, iRequestParams );
+    const TThumbnailRequestParams& params = iRequestParams();
+    
+    // renaming only inside one store
+    if (params.iFileName.Left(1).CompareF( params.iTargetUri.Left(1) ) == 0)
+        {
+        Server()->RenameThumbnailsL( params.iFileName, params.iTargetUri );
+        
+        aMessage.Complete( KErrNone );
+        }
+    else
+        {
+        aMessage.Complete( KErrNotSupported );
         }
     
     iMessage = RMessage2();
@@ -615,9 +652,14 @@ void CThumbnailServerSession::RequestSetThumbnailByBufferL( const RMessage2& aMe
        {
        TInt sourceType = TThumbnailPersistentSize::EUnknownSourceType;
        TDataType mimetype;
-       Server()->MimeTypeFromFileExt( params.iTargetUri, mimetype );
-       sourceType = Server()->SourceTypeFromMimeType( mimetype );   
-       ModifyThumbnailSize(sourceType);
+       TInt ret = Server()->MimeTypeFromFileExt( params.iTargetUri, mimetype );
+	   
+       if( ret == KErrNone )
+           {
+           sourceType = Server()->SourceTypeFromMimeType( mimetype );   
+           ModifyThumbnailSize(sourceType);
+           }
+       User::LeaveIfError( ret );
        }
     
     TInt bufferSize = aMessage.Int2();

@@ -16,7 +16,7 @@
 */
 
 #include <fbs.h>
-#include <qtcore>
+#include <QtCore>
 #include <qpixmap.h>
 #include <thumbnailmanager.h>
 #include <thumbnaildata.h>
@@ -24,7 +24,14 @@
 #include "thumbnailmanager_qt.h"
 #include "thumbnailmanager_p_qt.h"
 
-ThumbnailManagerPrivate::ThumbnailManagerPrivate() : iThumbnailManager( NULL ), byteArray( NULL )
+#include <e32base.h>
+
+const int ThumbnailMangerPriorityLowest = CActive::EPriorityIdle;
+const int ThumbnailMangerPriorityHighest = CActive::EPriorityHigh;
+
+ThumbnailManagerPrivate::ThumbnailManagerPrivate() : iThumbnailManager( NULL ), byteArray( NULL ),
+    connectionCounterImage( 0 ),
+    connectionCounterPixmap( 0 )
 {
     TRAP_IGNORE(
         iThumbnailManager = CThumbnailManager::NewL( *this );
@@ -103,6 +110,8 @@ int ThumbnailManagerPrivate::getThumbnail( const QString& fileName, void* client
 {
     int result( -1 );
     QString symbFileName( fileName );
+    
+    priority = convertPriority(priority);
 
     if( symbFileName.contains( "/" ) )
         symbFileName.replace( "/", "\\", Qt::CaseSensitive );
@@ -123,6 +132,9 @@ int ThumbnailManagerPrivate::getThumbnail( unsigned long int aThumbnailId, void*
         int priority )
 {
     int result( -1 );
+    
+    priority = convertPriority(priority);
+    
     TRAP_IGNORE( result = iThumbnailManager->GetThumbnailL( aThumbnailId, clientData, priority ));
     return result;
 }    
@@ -133,6 +145,8 @@ int ThumbnailManagerPrivate::setThumbnail( const QPixmap& source, const QString&
     int result( -1 );
     RBuf file;
     _LIT( mime, "image/png" );
+    
+    priority = convertPriority(priority);
 
     if( !byteArray ){
         byteArray = new QByteArray();
@@ -169,6 +183,8 @@ int ThumbnailManagerPrivate::setThumbnail( const QImage& source, const QString& 
     RBuf file;
     _LIT( mime, "image/png" );
 
+    priority = convertPriority(priority);
+    
     if( !byteArray ){
         byteArray = new QByteArray();
     }
@@ -228,21 +244,28 @@ bool ThumbnailManagerPrivate::cancelRequest( int id )
 
 bool ThumbnailManagerPrivate::changePriority( int id, int newPriority )
 {
+    newPriority = convertPriority(newPriority);
+    
     return ( iThumbnailManager->ChangePriority( id, newPriority ) == KErrNone );
 }
 
-QPixmap ThumbnailManagerPrivate::copyPixmap( CFbsBitmap* bitmap )
+QImage ThumbnailManagerPrivate::fromBitmap( CFbsBitmap* bitmap )
 {
     TSize size = bitmap->SizeInPixels();
-    int bytesPerLine = bitmap->ScanLineLength( size.iWidth,
-            bitmap->DisplayMode() );
+    int bytesPerLine = bitmap->ScanLineLength( size.iWidth, bitmap->DisplayMode() );
     const uchar* dataPtr = ( const uchar* ) bitmap->DataAddress();
+    QImage image = QImage(dataPtr, size.iWidth, size.iHeight, bytesPerLine, QImage::Format_RGB16);
+    return image.copy();
+}
 
-    return QPixmap::fromImage( QImage(  dataPtr,
-                                        size.iWidth,
-                                        size.iHeight,
-                                        bytesPerLine,
-                                        QImage::Format_RGB16 ) );
+QPixmap ThumbnailManagerPrivate::fromImage( CFbsBitmap* bitmap )
+{
+    return QPixmap::fromImage(fromBitmap(bitmap));
+}
+
+int ThumbnailManagerPrivate::convertPriority(int basePriority)
+{
+    return qBound(ThumbnailMangerPriorityLowest, basePriority, ThumbnailMangerPriorityHighest);    
 }
 
 void ThumbnailManagerPrivate::ThumbnailPreviewReady( MThumbnailData& /*aThumbnail*/,
@@ -258,15 +281,23 @@ void ThumbnailManagerPrivate::ThumbnailReady( TInt aError, MThumbnailData& aThum
         byteArray = NULL;
     }
     
-    QPixmap* pixmap( NULL );
+    if (connectionCounterImage || connectionCounterPixmap) {
+        QImage image;
 
-    if( aError == KErrNone ){
-        pixmap = new QPixmap( copyPixmap( aThumbnail.Bitmap() ) );
-    }else {
-        pixmap = new QPixmap();
+        if (aError == KErrNone) {
+            image = fromBitmap(aThumbnail.Bitmap());
+        } else {
+            image = QImage(); 
+        }
+
+        if (connectionCounterImage) {
+            emit thumbnailReady(image, aThumbnail.ClientData(), aId, aError);
+        }
+        
+        if (connectionCounterPixmap) {
+            QPixmap pixmap = QPixmap::fromImage(image);
+            emit thumbnailReady(pixmap, aThumbnail.ClientData(), aId, aError);          
+        }
     }
-    
-    emit thumbnailReady( *pixmap, aThumbnail.ClientData(), aId, aError );
-    delete pixmap;
 }
 

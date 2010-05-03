@@ -192,6 +192,13 @@ public:
     void UpdateThumbnails( const TDesC& aPath, const TInt aOrientation, const TInt64 aModified,
                            TThumbnailRequestParamsPckg& aParams, TRequestStatus& aStatus);
 
+    /**
+     * Rename thumbnails.
+     *
+     * @since S60 v5.0
+     */
+    void RenameThumbnails( TThumbnailRequestParamsPckg& aParams, TRequestStatus& aStatus );
+    
 private:
 
     /**

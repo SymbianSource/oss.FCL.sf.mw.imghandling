@@ -337,6 +337,23 @@ public:
      void UpdateThumbnailsL( const TThumbnailId aItemId, const TDesC& aPath,
                              const TInt aOrientation, const TInt64 aModified, TInt aPriority );
 
+     /**
+      * Rename Thumbnails. This is an asynchronous
+      * operation, which always returns immediately.
+      *
+      * @since S60 v5.0
+      * @param aCurrentPath     Current path of the Thumbnail
+      * @param aNewPath         New path for the Thumbnail
+      * @param aPriority        Priority for this operation
+      * @return                 Thumbnail request ID. This can be used to
+      *                         cancel the request or change priority.
+      *                         The ID is specific to this CThumbnailManager
+      *                         instance and may not be shared with other
+      *                         instances.
+      */
+     TThumbnailRequestId RenameThumbnailsL( const TDesC& aCurrentPath, 
+             const TDesC& aNewPath, TInt aPriority = CActive::EPriorityIdle );
+     
 private:
 
     /**
