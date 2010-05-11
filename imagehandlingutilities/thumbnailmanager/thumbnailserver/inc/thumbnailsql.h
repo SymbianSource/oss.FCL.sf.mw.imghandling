@@ -88,7 +88,6 @@ _LIT8( KThumbnailDeletedTable, "CREATE TABLE ThumbnailDeleted ("
 
 // indexes
 _LIT8( KThumbnailCreateInfoTableIndex1, "CREATE INDEX idx1 ON ThumbnailInfo(Path, Size);");
-_LIT8( KThumbnailCreateDeletedTableIndex, "CREATE INDEX idx4 ON ThumbnailDeleted(Path);");
 
 // parameters
 _LIT( KThumbnailSqlParamData, ":Data" );

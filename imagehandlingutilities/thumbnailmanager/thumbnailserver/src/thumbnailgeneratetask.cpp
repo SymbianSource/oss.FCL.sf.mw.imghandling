@@ -28,6 +28,7 @@
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"
+#include "thumbnailfetchedchecker.h"
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -488,11 +489,15 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
         {
         iServer.StoreForPathL( iFilename )->StoreThumbnailL( 
             iFilename, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, EFalse, ETrue );
+		//remove result from fetched checker
+        iServer.FetchedChecker().SetFetchResult( iFilename, KErrNone );
         }
     else if(iTargetUri != KNullDesC)
         {
         iServer.StoreForPathL( iTargetUri )->StoreThumbnailL( 
             iTargetUri, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, EFalse, ETrue );
+		//remove result from fetched checker
+        iServer.FetchedChecker().SetFetchResult( iTargetUri, KErrNone );
         }
 
     CleanupStack::PopAndDestroy( tempBitmap );

@@ -188,19 +188,10 @@ TInt CThumbnailRequestQueue::CancelRequest( const TThumbnailRequestId aRequestId
         CThumbnailRequestActive* request = iRequests[i];
         if ( request->RequestId() == aRequestId )
             {
-            // Cancel and remove from queue
             if (iRequests[i]->IsActive()) 
                 {
-                iRequests[i]->Cancel();
-                
-                iActiveRequests--;
-                if(iActiveRequests <= -1)
-                    {
-                    iActiveRequests = 0;
-                    }
-                
-                delete request;
-                iRequests.Remove( i );
+                // this doesn't yet actually cancel/complete the AO
+                iRequests[i]->AsyncCancel();
                 
                 TN_DEBUG2( "CThumbnailRequestQueue::CancelRequest() - canceled request ID: %d", aRequestId);
                 }

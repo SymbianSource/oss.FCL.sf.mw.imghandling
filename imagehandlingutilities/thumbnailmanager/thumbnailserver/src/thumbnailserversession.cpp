@@ -613,7 +613,9 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
                 User::Leave(err);
                 }
 	        
-	        if(Server()->StoreForPathL(params.iFileName)->IsDiskFull())
+	        // disk space check only for stored sizes
+	        if ( params.iThumbnailSize != ECustomThumbnailSize && 
+	             Server()->StoreForPathL(params.iFileName)->IsDiskFull() )
 	            {
 	            User::Leave( KErrDiskFull );
 	            }
@@ -736,22 +738,31 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
             {           
             if( bitmapSize.iWidth < bitmapSize.iHeight )
                {
-               TInt height = (*missingSizes)[i].iSize.iHeight;
-               (*missingSizes)[i].iSize.iHeight = (*missingSizes)[i].iSize.iWidth;
-               (*missingSizes)[i].iSize.iWidth = height;
-               TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL() - portrait");
+               TThumbnailSize size = (*missingSizes)[ i ].iType;
+        
+               if ( size == EFullScreenThumbnailSize ||
+                    size == EVideoFullScreenThumbnailSize ||
+                    size == EAudioFullScreenThumbnailSize ||
+                    size == EImageFullScreenThumbnailSize )
+                   {
+                   TInt height = (*missingSizes)[i].iSize.iHeight;
+                   (*missingSizes)[i].iSize.iHeight = (*missingSizes)[i].iSize.iWidth;
+                   (*missingSizes)[i].iSize.iWidth = height;
+                    
+                   TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL() - portrait");
+                   }
                }
-            
+        
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( Server()->Processor(),
-                *Server(), params.iTargetUri, bitmap, bitmapSize,
-                (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
-                KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
-                reqId);
+                    *Server(), params.iTargetUri, bitmap, bitmapSize,
+                    (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
+                    KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
+                    reqId);
             CleanupStack::PushL( scaleTask );
             scaleTask->SetDoStore( ETrue );
             Server()->Processor().AddTaskL( scaleTask );
             CleanupStack::Pop( scaleTask );
-            
+        
             // completion to first task, because task processor works like stack
             if( i == 0 )
                 {
@@ -793,7 +804,9 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
     TN_DEBUG2( 
         "CThumbnailServerSession::CreateGenerateTaskFromFileHandleL() -- create thumbnail generation task for %S", &params.iFileName );
     
-    if(Server()->StoreForPathL(params.iFileName)->IsDiskFull())
+    // disk space check only for stored sizes
+    if ( params.iThumbnailSize != ECustomThumbnailSize && 
+         Server()->StoreForPathL(params.iFileName)->IsDiskFull() )
         {
         User::Leave( KErrDiskFull );
         }
@@ -872,6 +885,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
     // Generate task is now responsible for completing the message
     iMessage = RMessage2();
     } 
+
 // -----------------------------------------------------------------------------
 // CThumbnailServerSession::CreateGenerateTaskL()
 // Create a task to generate a new thumbnail
@@ -884,7 +898,9 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
     TN_DEBUG2( 
         "CThumbnailServerSession::CreateGenerateTaskFromBufferL() -- create thumbnail generation task for %S", &params.iTargetUri );
   
-    if(Server()->StoreForPathL(params.iTargetUri)->IsDiskFull())
+    // disk space check only for stored sizes
+    if ( params.iThumbnailSize != ECustomThumbnailSize && 
+         Server()->StoreForPathL(params.iTargetUri)->IsDiskFull() )
         {
         User::Leave( KErrDiskFull );
         }

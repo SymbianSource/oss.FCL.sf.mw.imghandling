@@ -279,6 +279,13 @@ public:
      */
     void StartError( const TInt aErr );
     
+    /**
+     * Async cancel
+     *
+     * @since S60 v5.0
+     */
+    void AsyncCancel();
+    
 private:
 
     /**

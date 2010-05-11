@@ -35,7 +35,7 @@
 #include "thumbnailserver.h"
 
 
-_LIT8( KThumbnailSqlConfig, "page_size=16384; cache_size=32;" );
+_LIT8( KThumbnailSqlConfig, "page_size=32768; cache_size=32;" );
 
 const TInt KStreamBufferSize = 1024 * 8;
 const TInt KMajor = 3;
@@ -136,13 +136,21 @@ TInt RThumbnailTransaction::Rollback()
     {
     if ( iState != EOldOpen )
         {
-        const TInt err = iDatabase.Exec( KThumbnailRollbackTransaction );
-        if ( err >= 0 )
+        // in some cases there could have been automatic rollback
+        if (iDatabase.InTransaction())
             {
-            iState = EClosed;
+            const TInt err = iDatabase.Exec( KThumbnailRollbackTransaction );
+            if ( err >= 0 )
+                {
+                iState = EClosed;
+                }
+            
+            return err;
             }
-        
-        return err;
+        else
+            {
+            TN_DEBUG1( "RThumbnailTransaction::Rollback() - automatic rollback already done!" );
+            }
         }
     
     iState = EClosed;
@@ -416,10 +424,6 @@ void CThumbnailStore::CreateTablesL()
     
     err = iDatabase.Exec( KThumbnailCreateInfoTableIndex1 );
     TN_DEBUG2( "CThumbnailStore::CreateTablesL() KThumbnailCreateInfoTableIndex1 err=%d", err );
-    User::LeaveIfError( err );
-    
-    err = iDatabase.Exec( KThumbnailCreateDeletedTableIndex );
-    TN_DEBUG2( "CThumbnailStore::CreateTablesL() KThumbnailCreateDeletedTableIndex err=%d", err );
     User::LeaveIfError( err );
     
     err = iDatabase.Exec(KThumbnailVersionTable);
@@ -1936,23 +1940,51 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         return;
         }
     
-    // fixed batch size if MTP sync on
+    // longer flush allowed if MTP sync on
     TInt MPXHarvesting(0);
     TInt ret = RProperty::Get(KTAGDPSNotification, KMPXHarvesting, MPXHarvesting);
     if(ret != KErrNone)
+       {
+       TN_DEBUG2( "CThumbnailStore::FlushCacheTable() error checking MTP sync: %d", ret);
+       }
+    
+    //set init max flush delay
+    TInt aMaxFlushDelay(KMaxFlushDelay);
+    
+    if(MPXHarvesting)
         {
-        TN_DEBUG2( "CThumbnailStore::FlushCacheTable() error checking MTP sync: %d", ret);
+        //MTP or MPX harvesting active, allow longer flush -> bigger batch size
+        TN_DEBUG1("CThumbnailStore::FlushCacheTable() MTP sync, longer flush..");
+        aMaxFlushDelay = KMaxMTPFlushDelay;
         }
     
-    if(MPXHarvesting && iBatchItemCount < KMaxBatchItemsMTP && !aForce)
+    //1st item in batch    
+    if( iBatchItemCount == 1)
         {
-        TN_DEBUG1("CThumbnailStore::FlushCacheTable() MTP sync, fixed batch...");
+        //adjust batch size dynamically between min and max based on previous flush speed
+        if(iPreviousFlushDelay > 0 )
+            {
+            iBatchFlushItemCount = (aMaxFlushDelay/iPreviousFlushDelay)*iBatchFlushItemCount;
+            
+            if(iBatchFlushItemCount < KMInBatchItems)
+                {
+                iBatchFlushItemCount = KMInBatchItems;
+                }
+            else if(iBatchFlushItemCount > KMaxBatchItems)
+                {
+                iBatchFlushItemCount = KMaxBatchItems;
+                }
+            }
+        else
+            {
+            //cannot calculate, init values set to min
+            iBatchFlushItemCount = KMInBatchItems;
+            }
+        }
     
-        //some items in cache
-        StartAutoFlush();
-        return;
-        }    
-    else if(!MPXHarvesting && iBatchItemCount < iBatchFlushItemCount && !aForce)
+    TN_DEBUG3("CThumbnailStore::FlushCacheTable() iBatchFlushItemCount = %d, iBatchItemCount = %d", iBatchFlushItemCount, iBatchItemCount);
+    
+    if( iBatchItemCount < iBatchFlushItemCount && !aForce)
        {
        //some items in cache
        StartAutoFlush();
@@ -2014,29 +2046,14 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         }
    
     iStopFlush.UniversalTime();
-    TInt aFlushDelay = (TInt)iStopFlush.MicroSecondsFrom(iStartFlush).Int64()/1000;
+    iPreviousFlushDelay = (TInt)iStopFlush.MicroSecondsFrom(iStartFlush).Int64()/1000;
     
-    TN_DEBUG2( "CThumbnailStore::FlushCacheTable() took %d ms", aFlushDelay);
-    
-    //adjust batch size dynamically between min and max based on read flush speed
-    if (!MPXHarvesting)
-        {
-        //increase batch count if there room for one more item (based on average time per item)
-        if( aFlushDelay < KMaxFlushDelay && iBatchFlushItemCount < KMaxBatchItems )
-            {
-            iBatchFlushItemCount++;
-            }
-        //decrease batch count if we exeeced max time allowed in flushing the TEMP table
-        else if(aFlushDelay > KMaxFlushDelay && iBatchFlushItemCount > KMInBatchItems )
-            {
-            iBatchFlushItemCount--;
-            }
-        }
-    
+    TN_DEBUG2( "CThumbnailStore::FlushCacheTable() took %d ms", iPreviousFlushDelay);
+        
     //cache flushed
     iBatchItemCount = 0;
 
-    TN_DEBUG2("CThumbnailStore::FlushCacheTable() out iBatchFlushItemCount = %d", iBatchFlushItemCount);
+    TN_DEBUG1("CThumbnailStore::FlushCacheTable() out");
     }
 
 // -----------------------------------------------------------------------------

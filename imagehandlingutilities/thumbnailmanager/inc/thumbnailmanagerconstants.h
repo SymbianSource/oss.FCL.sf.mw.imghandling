@@ -55,11 +55,11 @@ const TInt KDaemonProcessing = 0x00000040;
 //minimum batch size
 const TUint KMInBatchItems = 3;
 //maximum batch size
-const TUint KMaxBatchItems = 18;
+const TUint KMaxBatchItems = 60;
 //Max allowed flush time
-const TUint KMaxFlushDelay = 3000; //ms
-// fixed batch size for MTP
-const TUint KMaxBatchItemsMTP = 60;
+const TUint KMaxFlushDelay = 3000; // 3 sec
+//Max allowed flush time on MTP/music collection refresh
+const TUint KMaxMTPFlushDelay = 15000; // 15 seconds
 
 //how many items daemon will query at once from MDS
 const TUint KMaxQueryItems = 100;

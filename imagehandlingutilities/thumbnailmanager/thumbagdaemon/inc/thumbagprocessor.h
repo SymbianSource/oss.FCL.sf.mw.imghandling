@@ -169,8 +169,9 @@ protected:
      * DeleteAndCancelQuery
      *
      * @since Symbian^3
+     * @param aRemoveItems restore IDs back to original queue, default = ETrue
      */
-    void DeleteAndCancelQuery();
+    void DeleteAndCancelQuery(TBool aRestoreItems);
     
 protected:
 
