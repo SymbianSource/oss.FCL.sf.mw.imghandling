@@ -94,6 +94,16 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
     
+    if ( KJpegMime() != iMimeType.Des8() ) 
+        {
+        iDisplayMode = EColor16M;
+        }
+		
+//TODO currently only ARM platforms supports MAP mode
+#if !(defined(__CC_ARM) || defined(__ARMCC__))
+    iDisplayMode = EColor16M;
+#endif	
+	
     iImageDecoder->CreateL( aFile, *iObserver, iQualityPreference, iMimeType, iTargetSize );
     iOriginalSize = iImageDecoder->OriginalSize();
     iImageDecoder->DecodeL( iDisplayMode, iFlags );
@@ -122,7 +132,16 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8* aBuffer, const
     iQualityPreference = aQualityPreference;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
-    
+    if ( KJpegMime() != iMimeType.Des8() ) 
+        {
+        iDisplayMode = EColor16M;
+        }
+
+//TODO currently only ARM platforms supports MAP mode
+#if !(defined(__CC_ARM) || defined(__ARMCC__))
+    iDisplayMode = EColor16M;
+#endif	
+		
     iImageDecoder->CreateL( aBuffer, *iObserver, iQualityPreference, iMimeType, iTargetSize );
     iOriginalSize = iImageDecoder->OriginalSize();
     iImageDecoder->DecodeL( iDisplayMode, iFlags );

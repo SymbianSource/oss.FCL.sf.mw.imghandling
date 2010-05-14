@@ -646,6 +646,10 @@ private:
      * Measure time spend in flush
      */
     TTime iStartFlush, iStopFlush;
+	/**
+     * How long previous flush took ms
+     */
+    TInt iPreviousFlushDelay;
 
 };
 // End of File

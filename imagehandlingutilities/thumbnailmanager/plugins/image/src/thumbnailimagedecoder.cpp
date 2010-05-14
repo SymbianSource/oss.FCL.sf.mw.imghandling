@@ -233,10 +233,6 @@ void CThumbnailImageDecoder::DecodeL( const TDisplayMode aDisplayMode, const CTh
         }
 
     iDecoder->Convert( &iStatus, * iBitmap );
-    while ( iStatus == KErrUnderflow )
-        {
-        iDecoder->ContinueConvert( &iStatus );
-        }
     
     SetActive();
     

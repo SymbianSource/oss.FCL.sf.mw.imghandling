@@ -295,7 +295,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
         delete iQueryAllItems;
         iQueryAllItems = NULL;
         }
-    else if(&aQuery == iQuery )
+    else if(&aQuery == iQuery ) 
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - Query completed");
         
@@ -318,7 +318,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                 
                 TInt itemIndex(KErrNotFound);
                 
-                //search delta items
+                //search delta items which were queried, but not found
                  for(TInt queryItem =0; queryItem < iQueryQueue.Count();queryItem++)
                      {
                      TBool found(EFalse);
@@ -369,7 +369,8 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             }
         else
             {
-            DeleteAndCancelQuery();
+            //Delete and cancel query, do not return items back to original queue
+            DeleteAndCancelQuery( EFalse );
             TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() Query FAILED!"); 
             }
         }
@@ -664,6 +665,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
                     }
                 }
             
+		   // 10.1 specific
            if( imageObjectDef.Id() != aObject->Def().Id()  )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() 1st round not image");
@@ -1030,7 +1032,8 @@ void CThumbAGProcessor::RunL()
         //force is coming, but executing non-forced query complete-> cancel old
         else
             {
-            DeleteAndCancelQuery();
+			//cancel query and move items back to original processing queue
+            DeleteAndCancelQuery( ETrue );
 	        ActivateAO();
             return;  
             }
@@ -1048,9 +1051,11 @@ void CThumbAGProcessor::RunL()
     //waiting for MDS query to complete
     else if( iQueryActive )
         {
+		//state mismatch
         if(iForceRun && !iModify)
             {
-            DeleteAndCancelQuery();
+			//cancel query and move items back to original processing queue
+            DeleteAndCancelQuery(ETrue);
             ActivateAO();
             }
         else  
@@ -1126,7 +1131,7 @@ void CThumbAGProcessor::RunL()
 // CThumbAGProcessor::DeleteAndCancelQuery()
 // ---------------------------------------------------------------------------
 //
-void CThumbAGProcessor::DeleteAndCancelQuery()
+void CThumbAGProcessor::DeleteAndCancelQuery(TBool aRestoreItems)
     {
     TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() in" );
     
@@ -1145,7 +1150,7 @@ void CThumbAGProcessor::DeleteAndCancelQuery()
     //move remainig IDs in query queue back to original queue
     while(iQueryQueue.Count())
         {
-        if(iLastQueue)
+        if(aRestoreItems && iLastQueue)
             {
             if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
                 {
@@ -1794,7 +1799,7 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
     //cancel 2nd round generarion when there is items in 1st round queues
     if(itemsLeft && i2ndRound)
         {
-        DeleteAndCancelQuery();
+        DeleteAndCancelQuery(ETrue);
         i2ndRound = EFalse;
         }
         

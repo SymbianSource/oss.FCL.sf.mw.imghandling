@@ -736,22 +736,31 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
             {           
             if( bitmapSize.iWidth < bitmapSize.iHeight )
                {
-               TInt height = (*missingSizes)[i].iSize.iHeight;
-               (*missingSizes)[i].iSize.iHeight = (*missingSizes)[i].iSize.iWidth;
-               (*missingSizes)[i].iSize.iWidth = height;
-               TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL() - portrait");
+               TThumbnailSize size = (*missingSizes)[ i ].iType;
+        
+               if ( size == EFullScreenThumbnailSize ||
+                    size == EVideoFullScreenThumbnailSize ||
+                    size == EAudioFullScreenThumbnailSize ||
+                    size == EImageFullScreenThumbnailSize )
+                   {
+                   TInt height = (*missingSizes)[i].iSize.iHeight;
+                   (*missingSizes)[i].iSize.iHeight = (*missingSizes)[i].iSize.iWidth;
+                   (*missingSizes)[i].iSize.iWidth = height;
+                    
+                   TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL() - portrait");
+                   }
                }
-            
+        
             CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( Server()->Processor(),
-                *Server(), params.iTargetUri, bitmap, bitmapSize,
-                (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
-                KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
-                reqId);
+                    *Server(), params.iTargetUri, bitmap, bitmapSize,
+                    (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
+                    KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
+                    reqId);
             CleanupStack::PushL( scaleTask );
             scaleTask->SetDoStore( ETrue );
             Server()->Processor().AddTaskL( scaleTask );
             CleanupStack::Pop( scaleTask );
-            
+        
             // completion to first task, because task processor works like stack
             if( i == 0 )
                 {

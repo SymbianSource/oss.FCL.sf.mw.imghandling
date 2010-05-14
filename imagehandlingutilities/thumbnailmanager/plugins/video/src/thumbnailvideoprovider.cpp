@@ -134,6 +134,11 @@ void CThumbnailVideoProvider::GetThumbnailL( RFs&  /*aFs*/, RFile64& aFile, cons
     iFlags = aFlags;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
+	
+//TODO currently only ARM platforms supports MAP mode
+#if !(defined(__CC_ARM) || defined(__ARMCC__))
+    iDisplayMode = EColor16M;
+#endif	
 
     TFileName filename;
     User::LeaveIfError( aFile.FullName( filename ));

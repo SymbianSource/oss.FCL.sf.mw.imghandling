@@ -93,6 +93,8 @@ void CThumbnailImageDecoderv3::CreateL( const TDesC8* aBuffer, MThumbnailProvide
 //
 void CThumbnailImageDecoderv3::DecodeL( const TDisplayMode aDisplayMode )
     {
+    TN_DEBUG1( "CThumbnailImageDecoderv3::DecodeL() start" );
+    
     // Create the bitmap
     if ( !iBitmap )
         {
@@ -141,11 +143,10 @@ void CThumbnailImageDecoderv3::DecodeL( const TDisplayMode aDisplayMode )
         }
     
     iDecoder->Convert( &iStatus, * iBitmap );
-    while ( iStatus == KErrUnderflow )
-        {
-        iDecoder->ContinueConvert( &iStatus );
-        }
+
     SetActive();
+    
+    TN_DEBUG1( "CThumbnailImageDecoderv3::DecodeL() end" );
     }
 
 

@@ -538,6 +538,7 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
         {
         TN_DEBUG1( "CThumbnailServer::StoreThumbnailL() - file doesn't exists anymore, skip store!");
         }
+    
     if( iFetchedChecker )    
         {
         iFetchedChecker->SetFetchResult( aPath, KErrNone );
@@ -558,6 +559,12 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
         TInt err( iFetchedChecker->LastFetchResult( aPath ) );
         if ( err == KErrNone ) // To avoid useless sql gets that fails for sure
             {
+            // custom sizes are not stored to db, skip fetching
+            if ( aThumbnailSize == ECustomThumbnailSize )
+                {
+                User::Leave( KErrNotFound );
+                }
+        
             TRAP( err, StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize) );
             if ( err != KErrNone )
                 {
@@ -568,6 +575,12 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
         }
     else
         {
+        // custom sizes are not stored to db, skip fetching
+        if ( aThumbnailSize == ECustomThumbnailSize )
+            {
+            User::Leave( KErrNotFound );
+            }
+    
         StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize);
         }
     }

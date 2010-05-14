@@ -141,8 +141,27 @@ void CThumbnailRequestActive::StartL()
             }        
         case EReqGetThumbnailPath:
             {
-            iSession.RequestThumbnailL( iPath, iTargetUri, iParams.iThumbnailId, 
-                                        iParamsPckg, iStatus );
+            // for custom size requests file handle can be opened here already, because
+            // custom thumbnails are never stored in db  
+            if (iParams.iThumbnailSize == ECustomThumbnailSize &&
+                iParams.iOriginalControlFlags != EThumbnailGeneratePersistentSizesOnly)
+                {
+                TN_DEBUG1( "CThumbnaiRequestActive::StartL()- custom size request" );
+                  
+                iFile.Close();
+                User::LeaveIfError( iFile.Open( iFs, iPath, EFileShareReadersOrWriters ) );  
+                
+                TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iTargetUri );
+                
+                CleanupClosePushL( iFile );
+                iSession.RequestThumbnailL( iFile, iPath, iParamsPckg, iStatus );
+                CleanupStack::PopAndDestroy( &iFile );   
+                }
+            else
+                {
+                iSession.RequestThumbnailL( iPath, iTargetUri, iParams.iThumbnailId, 
+                                            iParamsPckg, iStatus );
+                }            
             break;
             }  
         case EReqSetThumbnailBuffer:
@@ -212,7 +231,7 @@ void CThumbnailRequestActive::StartL()
 void CThumbnailRequestActive::RunL()
     {
     TN_DEBUG2( "CThumbnailRequestActive::RunL() - request ID: %d", iParams.iRequestId );
-    
+ 
     if ( iParams.iControlFlags == EThumbnailPreviewThumbnail )
         {
         iRequestCompleted = EFalse;
@@ -450,6 +469,24 @@ void CThumbnailRequestActive::DoCancel()
 
 
 // ---------------------------------------------------------------------------
+// CThumbnailRequestActive::AsyncCancel()
+// ---------------------------------------------------------------------------
+//
+void CThumbnailRequestActive::AsyncCancel()
+    {
+    TN_DEBUG1( "CThumbnailRequestActive::AsyncCancel");
+
+    __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
+    
+    iCanceled = ETrue;
+    iSession.CancelRequest( iRequestId );
+    ReleaseServerBitmap();
+
+    // AO stays active until request is complete or timeout is reached
+    }
+
+
+// ---------------------------------------------------------------------------
 // CThumbnailRequestActive::ReleaseServerBitmap()
 // Releases reserved bitmap.
 // ---------------------------------------------------------------------------
@@ -619,6 +656,7 @@ void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aT
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailSize = aThumbnailSize;
     iParams.iThumbnailId = aThumbnailId;
+    iParams.iFileName = aPath;
     
     iPath = aPath;
     iTargetUri = aTargetUri;
@@ -844,13 +882,6 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     CThumbnailRequestActive* self = static_cast<CThumbnailRequestActive*>( aAny );
     
     self->iTimer->Cancel();
-    
-    if (self->IsActive())
-        {
-        // hangs without this
-        TRequestStatus* statusPtr = &self->iStatus;
-        User::RequestComplete( statusPtr, KErrTimedOut );
-        }
     
     self->Cancel();
     
