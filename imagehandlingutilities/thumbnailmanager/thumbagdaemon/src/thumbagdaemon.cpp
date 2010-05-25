@@ -147,6 +147,7 @@ void CThumbAGDaemon::InitializeL()
             }
 
         iMdESession = CMdESession::NewL( *this );
+        iSessionError = EFalse;
         }
     else
         {
@@ -280,8 +281,10 @@ void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aErr
 void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbAGDaemon::HandleSessionError == %d", aError );
-    if (aError != KErrNone)
+    if (aError != KErrNone && !iSessionError)
         {
+        iSessionError = ETrue;
+    
         // kill processor right away, because it also has MdESession
         if(iProcessor)
             {

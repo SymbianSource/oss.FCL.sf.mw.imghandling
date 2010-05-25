@@ -134,6 +134,7 @@ void CThumbnailObjectSource::ConstructL( const TDesC& aUri, const TDesC&
     iUri = aUri.AllocL();
     iMimeType = HBufC8::NewL( aMimeType.Length() );
     iMimeType->Des().Copy( aMimeType );
+    iBitmap = NULL;
     }
 
 
@@ -149,6 +150,7 @@ void CThumbnailObjectSource::ConstructL( const RFile64& aFile, const TDesC&
     iMimeType = HBufC8::NewL( aMimeType.Length() );
     iMimeType->Des().Copy( aMimeType );
     iThumbnailId = 0;
+    iBitmap = NULL;
     }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +179,7 @@ void CThumbnailObjectSource::ConstructL( TDesC8* aBuffer, const TDesC&
     iMimeType->Des().Copy( aMimeType );
     iUri = aUri.AllocL(); 
     iThumbnailId = 0;
+    iBitmap = NULL;
     }
 
 // ---------------------------------------------------------------------------

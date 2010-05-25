@@ -685,11 +685,14 @@ private:
 #ifdef _DEBUG
     TUint32 iPlaceholderCounter;
 #endif
+    
     /**
      * Fetched checker.
      * Own.
      */
     CThumbnailFetchedChecker* iFetchedChecker;
+    
+    TBool iSessionError;
 };
 
 #endif // THUMBNAILSERVER_H

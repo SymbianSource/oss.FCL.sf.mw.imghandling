@@ -109,6 +109,7 @@ const TDisplayMode KThumbnailDefaultDisplayMode = EColor64K;
 
 //default displaymode (bpp - bits per pixel) for TNs in DB
 //this makes possible to provide all colour depths up to 16M aka 24 -bit full colour
+//Symbian^3 EColor16M
 const TDisplayMode KStoreDisplayMode = EColor16M;
 
 //required amount of memory to keep bitmaps on RAM in bits
@@ -155,7 +156,7 @@ _LIT8( KAacMime,     "audio/aac" );             _LIT( KAacExt,  ".aac" );
 _LIT8( KWmaMime,     "audio/x-ms-wma" );        _LIT( KWmaExt,  ".wma" );
 _LIT8( KBmpMime,     "image/bmp" );             _LIT( KBmpExt,  ".bmp" );
 _LIT8( KAudio3gppMime,     "audio/3gpp" ); 
-_LIT8( KVideo3gppMime,     "video/3gpp" );  _LIT( K3gpExt,  ".3gp" );
+_LIT8( KVideo3gppMime,     "video/3gpp" );  _LIT( K3gpExt,  ".3gp" ); _LIT( K3gppExt,  ".3gpp" );
 _LIT8( KAudioAmrMime,     "audio/AMR" );     _LIT( KAmrExt,  ".amr" );
 _LIT8( KVideoWmvMime, "video/x-ms-wmv" );     _LIT( KWmvExt,    ".wmv" );
 _LIT8( KRealAudioMime, "audio/vnd.rn-realaudio" );        _LIT( KRealAudioExt,    ".ra" );
@@ -280,8 +281,7 @@ public:
 	 * Control flags may be modified by server to signal client side what actually was done, like preview TN
      */
     TThumbnailControlFlags iControlFlags;
-    
-	
+    	
     /**
      * Original control flags set by the server for handling specific situations
      * (for example for distinguishing between preview thumbnails and
@@ -298,6 +298,11 @@ public:
      * Thumbnail's orientation
      */
     TInt iOrientation;
+    
+    /**
+     * Overwrite old thumbs (SetThumbnailL)
+     */
+    TBool iOverwrite;
     };
 
 

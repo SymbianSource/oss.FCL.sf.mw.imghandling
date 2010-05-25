@@ -35,7 +35,7 @@
 #include "thumbnailserver.h"
 
 
-_LIT8( KThumbnailSqlConfig, "page_size=32768; cache_size=32;" );
+_LIT8( KThumbnailSqlConfig, "page_size=32768; cache_size=64;" );
 
 const TInt KStreamBufferSize = 1024 * 8;
 const TInt KMajor = 3;
@@ -299,6 +299,7 @@ TInt CThumbnailStore::OpenDatabaseL( TBool aNewDatabase )
     {
     TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() drive: %d", iDrive );
         
+    CloseStatements();
     iDatabase.Close();
     iUnrecoverable = ETrue;
     
@@ -474,6 +475,7 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     TBuf<50> mediaid;
     mediaid.Num(id);
    
+    CloseStatements();
     iDatabase.Close();
     iUnrecoverable = ETrue;
     
@@ -529,6 +531,7 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     // delete db if not fully complete
     if (prepareErr < 0 || mediaidErr < 0)
         {
+        CloseStatements();
         iDatabase.Close();
         TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() delete database" );
         TInt del = iDatabase.Delete(pathPtr);     
@@ -1553,7 +1556,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     TInt found = KErrNotFound;
     TInt rowStatus = 0;
     TInt column = 0;
-    TBool inTempTable = ETrue;
     
     TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() -- TEMP TABLE lookup" );
 
@@ -1575,7 +1577,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     if(rowStatus != KSqlAtRow)
        {
        TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() -- MAIN TABLE lookup" );
-       inTempTable = EFalse;
       
        CleanupStack::PopAndDestroy( stmt );
        stmt = &iStmt_KThumbnailSelectInfoByPath;
@@ -1602,21 +1603,23 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
         // KErrNotFound to get thumbnail regenerated.
         column = 4;
         TInt flags = stmt->ColumnInt( column );
-        if( flags & KThumbnailDbFlagBlacklisted && (*path).Length() )
+        if( flags & KThumbnailDbFlagDeleted )
             {
-            TBool modified = EFalse;
-            CheckModifiedByPathL( aPath, inTempTable, modified );
-            if( modified )
-                {
-                // Close db to get deletion of thumbnails executed.
-                CleanupStack::PopAndDestroy( &stmt );
-                DeleteThumbnailsL( *path );
-                User::Leave( KErrNotFound );
-                }
-            else
-                {
-                User::Leave( KErrCompletion );
-                }
+            CleanupStack::PopAndDestroy( stmt );
+            
+            // delete existing blacklisted thumbs
+            DeleteThumbnailsL(*path, ETrue);
+            
+            CleanupStack::PopAndDestroy( path );
+        
+            User::Leave( KErrNotFound );
+            }
+        else if( flags & KThumbnailDbFlagBlacklisted )
+            {
+            CleanupStack::PopAndDestroy( stmt );
+            CleanupStack::PopAndDestroy( path );
+        
+            User::Leave( KErrCompletion );
             }
         else if( !(flags & KThumbnailDbFlagBlacklisted) )
             {
@@ -1799,19 +1802,40 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         } 
     else
         {
-        TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- add to Deleted" );
+        TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- MAIN TABLE lookup" );        
     
-        // only add path to deleted table
-        stmt = &iStmt_KThumbnailSqlInsertDeleted;
+        stmt = &iStmt_KThumbnailSqlSelectRowIDInfoByPath;
         CleanupStack::PushL(TCleanupItem(ResetStatement, stmt));
-        
+
         paramIndex = stmt->ParameterIndex( KThumbnailSqlParamPath );
         User::LeaveIfError( paramIndex );
         User::LeaveIfError( stmt->BindText( paramIndex, *path ));
-        
-        count = stmt->Exec();
-        
+             
+        rowStatus = stmt->Next();   
+           
         CleanupStack::PopAndDestroy( stmt );
+        
+        // there were matching rows in main table
+        if (rowStatus == KSqlAtRow)
+            {        
+            TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- add to Deleted" );
+        
+            // only add path to deleted table
+            stmt = &iStmt_KThumbnailSqlInsertDeleted;
+            CleanupStack::PushL(TCleanupItem(ResetStatement, stmt));
+            
+            paramIndex = stmt->ParameterIndex( KThumbnailSqlParamPath );
+            User::LeaveIfError( paramIndex );
+            User::LeaveIfError( stmt->BindText( paramIndex, *path ));
+            
+            count = stmt->Exec();
+            
+            CleanupStack::PopAndDestroy( stmt );
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- no thumbs in MAIN" );
+            }
         }    
     
     if (aTransaction)
@@ -1937,6 +1961,7 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     if(iBatchItemCount <= 0 || CheckDbState() != KErrNone)
         {
         // cache empty or db unusable
+        TN_DEBUG1( "CThumbnailStore::FlushCacheTable() error ");
         return;
         }
     
@@ -1949,7 +1974,9 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
        }
     
     //set init max flush delay
-    TInt aMaxFlushDelay(KMaxFlushDelay);
+    TReal32 aMaxFlushDelay(KMaxFlushDelay);
+    TReal32 aPreviousFlushDelay(iPreviousFlushDelay);
+    TReal32 aBatchFlushItemCount(iBatchFlushItemCount);
     
     if(MPXHarvesting)
         {
@@ -1961,16 +1988,24 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     //1st item in batch    
     if( iBatchItemCount == 1)
         {
+        TN_DEBUG2("CThumbnailStore::FlushCacheTable() calculate new batch size iPreviousFlushDelay = %d", iPreviousFlushDelay);
         //adjust batch size dynamically between min and max based on previous flush speed
-        if(iPreviousFlushDelay > 0 )
+        if( iPreviousFlushDelay > 0 )
             {
-            iBatchFlushItemCount = (aMaxFlushDelay/iPreviousFlushDelay)*iBatchFlushItemCount;
+            TReal32 aNewBatchFlushItemCount = aMaxFlushDelay / aPreviousFlushDelay * aBatchFlushItemCount;
+            iBatchFlushItemCount = (TInt)aNewBatchFlushItemCount;
+
+            TN_DEBUG2("CThumbnailStore::FlushCacheTable() aMaxFlushDelay %e", aMaxFlushDelay);      
+            TN_DEBUG2("CThumbnailStore::FlushCacheTable() aPreviousFlushDelay %e", aPreviousFlushDelay);      
+			TN_DEBUG2("CThumbnailStore::FlushCacheTable() aBatchFlushItemCount %e", aBatchFlushItemCount);      
+            TN_DEBUG2("CThumbnailStore::FlushCacheTable() aNewBatchFlushItemCount %e", aNewBatchFlushItemCount);
+            TN_DEBUG2("CThumbnailStore::FlushCacheTable() iBatchFlushItemCount %d", iBatchFlushItemCount);
             
-            if(iBatchFlushItemCount < KMInBatchItems)
+            if( iBatchFlushItemCount < KMInBatchItems )
                 {
                 iBatchFlushItemCount = KMInBatchItems;
                 }
-            else if(iBatchFlushItemCount > KMaxBatchItems)
+            else if( iBatchFlushItemCount > KMaxBatchItems )
                 {
                 iBatchFlushItemCount = KMaxBatchItems;
                 }
@@ -2203,14 +2238,14 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
             TRAPD( err, finished = self->FileExistenceCheckL() );
             if (err != KErrNone)
                 {
-                TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - file existance check failed, err %d", err);
+                TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - file existence check failed, err %d", err);
                 return err;
                 }
         
             // all files checked.
             if (finished)
                 {
-                TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - file existance check finished, store %d", self->iDrive);
+                TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - file existence check finished, store %d", self->iDrive);
                 self->iCheckFilesExist = EFalse;
                 }
             }
@@ -2288,9 +2323,9 @@ TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aM
                 {
                 TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is the same as original" );
                 }
-             }
-           
-        rowStatus = stmt->Next();
+            
+            rowStatus = stmt->Next();
+            }
        
         //switch to main table if modified not found from temp
         if(rowStatus != KSqlAtRow && !checkMain && !modifiedChanged)

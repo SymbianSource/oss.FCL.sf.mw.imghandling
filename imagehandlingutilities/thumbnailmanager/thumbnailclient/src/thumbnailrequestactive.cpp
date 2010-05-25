@@ -65,10 +65,11 @@ CThumbnailRequestActive::~CThumbnailRequestActive()
 //
 CThumbnailRequestActive* CThumbnailRequestActive::NewL( RFs& aFs,
     RThumbnailSession& aThumbnailSession, MThumbnailManagerObserver& aObserver,
+    MThumbnailManagerRequestObserver* aRequestObserver,
     TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue )
     {
     CThumbnailRequestActive* self = new( ELeave )CThumbnailRequestActive( aFs,
-        aThumbnailSession, aObserver, aId, aPriority, aQueue );
+        aThumbnailSession, aObserver, aRequestObserver, aId, aPriority, aQueue );
     CleanupStack::PushL( self );
     self->ConstructL();
     CleanupStack::Pop( self );
@@ -83,10 +84,11 @@ CThumbnailRequestActive* CThumbnailRequestActive::NewL( RFs& aFs,
 //
 CThumbnailRequestActive::CThumbnailRequestActive( RFs& aFs, RThumbnailSession&
     aThumbnailSession, MThumbnailManagerObserver& aObserver,
+    MThumbnailManagerRequestObserver* aRequestObserver,
     TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue ):
     CActive( aPriority ), iSession( aThumbnailSession ), iParamsPckg( iParams ),
-    iObserver( aObserver ), iFs( aFs ), iBitmapHandle( 0 ), iRequestId( aId ), 
-    iRequestQueue( aQueue ), iCanceled( EFalse )
+    iObserver( aObserver ), iRequestObserver( aRequestObserver ), iFs( aFs ), iBitmapHandle( 0 ), 
+    iRequestId( aId ), iRequestQueue( aQueue ), iCanceled( EFalse )
     {
     CActiveScheduler::Add( this );
     TN_DEBUG2( "CThumbnaiRequestActive::CThumbnailRequestActive() AO's priority = %d", Priority());
@@ -244,10 +246,38 @@ void CThumbnailRequestActive::RunL()
     
     iTimer->Cancel();
     
-    if (iRequestType == EReqDeleteThumbnails || iCanceled ||
-        iRequestType == EReqRenameThumbnails)
+    if (iRequestType == EReqDeleteThumbnails)
         {
-        TN_DEBUG1( "CThumbnailRequestActive::RunL() - rename/delete/canceled" );
+        TN_DEBUG1( "CThumbnailRequestActive::RunL() - delete" );
+    
+        if (iRequestObserver)
+            {
+            iRequestObserver->ThumbnailRequestReady(iStatus.Int(), ERequestDeleteThumbnails ,iParams.iRequestId);
+            }
+        
+        iFile.Close();
+        iMyFileHandle.Close();
+    
+        // no action for delete/rename or canceled request
+        iRequestQueue->RequestComplete(this);
+        
+#ifdef _DEBUG
+    TTime stop;
+    stop.UniversalTime();
+    TN_DEBUG3( "CThumbnailRequestActive::RunL() total execution time of req %d is %d ms",
+                iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+#endif
+        }
+    else if (iCanceled || iRequestType == EReqRenameThumbnails)
+        {
+        if (iCanceled)
+            {
+            TN_DEBUG1( "CThumbnailRequestActive::RunL() - canceled" );
+            }
+        else if (iRequestType == EReqRenameThumbnails)
+            {
+            TN_DEBUG1( "CThumbnailRequestActive::RunL() - rename" );
+            }
     
         iFile.Close();
         iMyFileHandle.Close();
@@ -287,7 +317,7 @@ void CThumbnailRequestActive::RunL()
                            TCallBack(TimerCallBack, this));
         SetActive();
         }
-    else if ( iStatus.Int())
+    else if ( iStatus.Int() )
         {
         TN_DEBUG2( "CThumbnailRequestActive::RunL() - error (%d) occured", iStatus.Int() );
         // An error occurred
@@ -527,16 +557,25 @@ void CThumbnailRequestActive::HandleError()
                 TN_DEBUG1( "CThumbnailRequestActive::HandleError() - session reconnected");
                 }
             }
-        iCallbackThumbnail->Set( NULL, iClientData );
+
+        if (iRequestObserver && iRequestType == EReqDeleteThumbnails)
+             {
+             TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iRequestObserver->ThumbnailRequestReady %d", iParams.iRequestId );
+             iRequestObserver->ThumbnailRequestReady(iError, ERequestDeleteThumbnails ,iParams.iRequestId);
+             }
+        else
+            {			
+			 iCallbackThumbnail->Set( NULL, iClientData );
         
-        // don't leak internal TNM codes
-        if (iError == KThumbnailErrThumbnailNotFound)
-            {
-            iError = KErrNotFound;
+	        // don't leak internal TNM codes
+	        if (iError == KThumbnailErrThumbnailNotFound)
+	            {
+	            iError = KErrNotFound;
+	            }
+			
+            TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+            iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
             }
-        
-        TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
-        iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
         
         iError = KErrNone;
         }
@@ -589,6 +628,7 @@ void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId 
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailSize = aThumbnailSize;
     iParams.iThumbnailId = aThumbnailId;
+    iParams.iOverwrite = EFalse;
     
     User::LeaveIfError( iFile.Duplicate( aFile ));
     
@@ -624,6 +664,7 @@ void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailSize = aThumbnailSize;
     iParams.iThumbnailId = aThumbnailId;
+    iParams.iOverwrite = EFalse;
     
     iTargetUri = aTargetUri;
     }
@@ -657,6 +698,7 @@ void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aT
     iParams.iThumbnailSize = aThumbnailSize;
     iParams.iThumbnailId = aThumbnailId;
     iParams.iFileName = aPath;
+    iParams.iOverwrite = EFalse;
     
     iPath = aPath;
     iTargetUri = aTargetUri;
@@ -671,7 +713,8 @@ void CThumbnailRequestActive::SetThumbnailL( TDesC8* aBuffer, TThumbnailId aThum
     const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags,
     CThumbnailManager::TThumbnailQualityPreference aQualityPreference, const TSize& aSize,
     const TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData,
-    TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, TThumbnailSize aThumbnailSize )
+    TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, TThumbnailSize aThumbnailSize,
+    TBool aOverwrite)
     {
     iRequestType = EReqSetThumbnailBuffer;
 
@@ -691,6 +734,7 @@ void CThumbnailRequestActive::SetThumbnailL( TDesC8* aBuffer, TThumbnailId aThum
     iParams.iFlags = aFlags;
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailId = aThumbnailId;
+    iParams.iOverwrite = aOverwrite;
     
     iTargetUri = aTargetUri;
     }
@@ -704,7 +748,8 @@ void CThumbnailRequestActive::SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId a
     const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags,
     CThumbnailManager::TThumbnailQualityPreference aQualityPreference, const TSize& aSize,
     const TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData,
-    TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, TThumbnailSize aThumbnailSize )
+    TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, TThumbnailSize aThumbnailSize,
+    TBool aOverwrite)
     {    
     iClientData = aClientData;
     iParams.iControlFlags = (aGeneratePersistentSizesOnly ?
@@ -721,6 +766,7 @@ void CThumbnailRequestActive::SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId a
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailId = aThumbnailId;
     iParams.iFileName = aTargetUri;
+    iParams.iOverwrite = aOverwrite;
     
     iTargetUri = aTargetUri;
     
@@ -769,6 +815,7 @@ void CThumbnailRequestActive::UpdateThumbnailsL( const TDesC& aPath,
     iParams.iFlags = aFlags;
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailId = aThumbnailId;
+    iParams.iOverwrite = EFalse;
     
     iPath = aPath;
     iOrientation = aOrientation;

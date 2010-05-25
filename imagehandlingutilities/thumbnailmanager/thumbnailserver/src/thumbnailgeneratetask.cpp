@@ -240,6 +240,7 @@ void CThumbnailGenerateTask::CalculateTargetSizesL( TSize& aEffectiveTargetSize,
                    size.iSize.iWidth );
                aCroppedTargetSize.iHeight = Max( aCroppedTargetSize.iHeight,
                    size.iSize.iHeight );
+               
                if(iBuffer)
                  {
                  iFlags = ( CThumbnailManager::TThumbnailFlags ) (iFlags | CThumbnailManager::ECropToAspectRatio);
