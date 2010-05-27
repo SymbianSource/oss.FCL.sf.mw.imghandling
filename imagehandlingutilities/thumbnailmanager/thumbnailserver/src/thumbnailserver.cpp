@@ -224,6 +224,7 @@ void CThumbnailServer::ConstructL()
     
     // connect to MDS
     iMdESession = CMdESession::NewL( *this );
+    iSessionError = EFalse;
     
     User::LeaveIfError( iFbsSession.Connect());
     User::LeaveIfError( Start( KThumbnailServerName ));
@@ -329,8 +330,10 @@ void CThumbnailServer::HandleSessionOpened( CMdESession& /* aSession */, TInt /*
 void CThumbnailServer::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbnailServer::HandleSessionError == %d", aError );
-    if (aError != KErrNone && !iShutdown)
+    if (aError != KErrNone && !iShutdown && !iSessionError)
         {
+        iSessionError = ETrue;
+    
         if (!iReconnect->IsActive())
             {
             iReconnect->Start( KMdEReconnect, KMdEReconnect, 
@@ -425,17 +428,15 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
     const TThumbnailBitmapRef* ref = bpiter.NextValue();
 
     while ( ref )
-        {
-        
-        TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
-        
+        {        
         if ( ref->iSession == aSession )
-            {            
+            {
+            TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
+        
             delete ref->iBitmap;            
             bpiter.RemoveCurrent();
                         
-            TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", 
-                                iBitmapPool.Count());
+            TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", iBitmapPool.Count());
             }
         ref = bpiter.NextValue();
         
@@ -889,7 +890,6 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
     CThumbnailStore** resPtr = iStores.Find( aDrive );
     CThumbnailStore* res = NULL;
 
-
     if ( resPtr )
         {
         res = * resPtr;
@@ -1321,6 +1321,10 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
         {
         aMimeType = TDataType( KVideo3gppMime );
         } 
+    else if ( ext.CompareF( K3gppExt ) == 0 )
+        {
+        aMimeType = TDataType( KVideo3gppMime );
+        }
     else if ( ext.CompareF( KAmrExt ) == 0 )
         {
         aMimeType = TDataType( KAudioAmrMime );
@@ -1629,6 +1633,7 @@ TInt CThumbnailServer::ReconnectCallBack(TAny* aAny)
     
     // reconnect to MDS
     TRAP_IGNORE( self->iMdESession = CMdESession::NewL( *self ) );
+    self->iSessionError = EFalse;
     
     TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - done");
     

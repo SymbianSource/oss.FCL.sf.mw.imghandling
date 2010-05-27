@@ -32,7 +32,7 @@ class RThumbnailSession;
 class CThumbnailDataImpl;
 class CThumbnailRequestQueue;
 
-enum TThumbnailRequestType
+enum TThumbnailReqType
     {
     EReqGetThumbnailHandle = 0, 
     EReqGetThumbnailPath = 1,
@@ -66,16 +66,17 @@ public:
      * @since S60 v5.0
      * @param aFs Fileserver used.
      * @param aThumbnailSession Session used.
-     * @param aObserver Observer to receive notifications about completed
-     *                  operations.
+     * @param aObserver Observer to receive notifications about completed operations.
+     * @param aRequestObserver Observer to receive notifications about completed requests.
      * @param aId Assigned ID of the request, session specific.
      * @param aPriority assigned processing priority
      * @param aQueue request processor
      * @return New CThumbnailRequestActive object.
      */
     static CThumbnailRequestActive* NewL( RFs& aFs, RThumbnailSession&
-        aThumbnailSession, MThumbnailManagerObserver& aObserver,
-        TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue );
+        aThumbnailSession, MThumbnailManagerObserver& aObserver, 
+        MThumbnailManagerRequestObserver* aRequestObserver, TThumbnailRequestId aId, 
+        TInt aPriority, CThumbnailRequestQueue* aQueue );
 
     /**
      * Get a thumbnail created from file object.
@@ -163,12 +164,13 @@ public:
      * @param aGeneratePersistentSizesOnly
      * @param aTargetUri         Target URI to which the imported thumbnail is linked.
      * @param aThumbnailSize Requested thumbnail size 
+     * @param aOverwrite Overwrite old existing thumbs
      */    
     void SetThumbnailL( TDesC8* aBuffer, TThumbnailId aThumbnailId, const TDesC8& aMimeType,
         CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
         ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
         TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
-        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize );
+        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize, TBool aOverwrite);
     
     /**
      * Set a thumbnail
@@ -187,12 +189,13 @@ public:
      * @param aGeneratePersistentSizesOnly
      * @param aTargetUri         Target URI to which the imported thumbnail is linked.
      * @param aThumbnailSize Requested thumbnail size 
+     * @param aOverwrite Overwrite old existing thumbs
      */    
     void SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId aThumbnailId, const TDesC8& aMimeType,
         CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
         ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
         TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
-        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize );    
+        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize, TBool aOverwrite);    
     
     /**
      * Update thumbnails by Id.
@@ -294,16 +297,16 @@ private:
      * @since S60 v5.0
      * @param aFs Fileserver used.
      * @param aThumbnailSession Session used.
-     * @param aObserver Observer to receive notifications about completed
-     *                  operations.
+     * @param aObserver Observer to receive notifications about completed operations.
+     * @param aRequestObserver Observer to receive notifications about completed requests.
      * @param aId Assigned ID of the request, session specific.
      * @param aPriority assigned processing priority
      * @param aQueue request processor
      * @return New CThumbnailRequestActive object.
      */
     CThumbnailRequestActive( RFs& aFs, RThumbnailSession& aThumbnailSession,
-        MThumbnailManagerObserver& aObserver, TThumbnailRequestId aId, TInt aPriority,
-        CThumbnailRequestQueue* aQueue);
+        MThumbnailManagerObserver& aObserver, MThumbnailManagerRequestObserver* aRequestObserver, 
+        TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue);
 
     /**
      * Symbian 2nd phase constructor can leave.
@@ -386,6 +389,11 @@ private:
      * Observer to receive notifications about completed operations.
      */
     MThumbnailManagerObserver& iObserver;
+    
+    /**
+     * Observer to receive notifications about completed requests.
+     */
+    MThumbnailManagerRequestObserver* iRequestObserver;
 
     /**
      * Fileserver, not own
@@ -454,7 +462,7 @@ private:
     // not own
     CThumbnailRequestQueue* iRequestQueue;
     
-    TThumbnailRequestType iRequestType;
+    TThumbnailReqType iRequestType;
     
     // request timeout timer
     CPeriodic* iTimer;

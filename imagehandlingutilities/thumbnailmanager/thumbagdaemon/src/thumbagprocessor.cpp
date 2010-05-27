@@ -66,6 +66,8 @@ void CThumbAGProcessor::ConstructL()
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - begin" );
     
     iTMSession = CThumbnailManager::NewL( *this );
+    iTMSession->SetRequestObserver(*this);
+    
     iQueryAllItems = NULL;
     iQueryPlaceholders = NULL;
     iQuery = NULL;
@@ -116,24 +118,7 @@ CThumbAGProcessor::~CThumbAGProcessor()
     {
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - begin" );
     
-    if(iForegroundGenerationObserver)
-      {
-      delete iForegroundGenerationObserver;
-      iForegroundGenerationObserver = NULL;
-      }
-    
-    if(iActivityManager)
-        {
-        delete iActivityManager;
-        iActivityManager = NULL;
-        }
-    
-    if (iInactivityTimer)
-        {
-        iInactivityTimer->Cancel();
-        delete iInactivityTimer;
-        iInactivityTimer = NULL;
-        }
+    Cancel();
     
     if(iPeriodicTimer)
         {
@@ -141,27 +126,10 @@ CThumbAGProcessor::~CThumbAGProcessor()
         delete iPeriodicTimer;
         }
     
-    if (!iInit)
+    if(iActivityManager)
         {
-#ifdef MDS_MODIFY_OBSERVER
-        iHarvesterClient.RemoveHarvesterEventObserver(*this);
-        iHarvesterClient.Close();
-#endif
-        }
-    
-    if ( iCollectionUtility )
-        {
-        iCollectionUtility->Close();
-        iCollectionUtility = NULL;
-        }
-
-    Cancel();
-    
-    if(iQueryPlaceholders)
-        {
-        iQueryPlaceholders->Cancel();
-        delete iQueryPlaceholders;
-        iQueryPlaceholders = NULL;
+        delete iActivityManager;
+        iActivityManager = NULL;
         }
     
     if (iQuery)
@@ -171,12 +139,39 @@ CThumbAGProcessor::~CThumbAGProcessor()
         iQuery = NULL;
         }
     
+    if(iQueryPlaceholders)
+        {
+        iQueryPlaceholders->Cancel();
+        delete iQueryPlaceholders;
+        iQueryPlaceholders = NULL;
+        }
+    
     if (iQueryAllItems)
        {
        iQueryAllItems->Cancel();
        delete iQueryAllItems;
        iQueryAllItems = NULL;
        }
+    
+    if (!iInit)
+        {
+#ifdef MDS_MODIFY_OBSERVER
+        iHarvesterClient.RemoveHarvesterEventObserver(*this);
+        iHarvesterClient.Close();
+#endif
+        }
+    
+    if(iForegroundGenerationObserver)
+        {
+        delete iForegroundGenerationObserver;
+        iForegroundGenerationObserver = NULL;
+        }
+    
+    if ( iCollectionUtility )
+        {
+        iCollectionUtility->Close();
+        iCollectionUtility = NULL;
+        }
 
     iAddQueue.Close();
     iModifyQueue.Close();
@@ -188,6 +183,7 @@ CThumbAGProcessor::~CThumbAGProcessor()
     
     if (iTMSession)
         {
+        iTMSession->RemoveRequestObserver();
         delete iTMSession;
         iTMSession = NULL;
         }
@@ -435,6 +431,29 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
     TN_DEBUG1( "CThumbAGProcessor::ThumbnailReady() - end" );
     }
 
+// -----------------------------------------------------------------------------
+// CThumbAGProcessor::ThumbnailRequestReady()
+// -----------------------------------------------------------------------------
+//
+void CThumbAGProcessor::ThumbnailRequestReady( TInt /*aError*/, TThumbnailRequestType aRequestType,
+                                               TThumbnailRequestId /*aId*/ )
+    {	
+    if (aRequestType == ERequestDeleteThumbnails)
+        {
+        TN_DEBUG1( "CThumbAGProcessor::ThumbnailRequestReady() - delete" );
+    
+        iActiveCount--;
+        
+        if(iActiveCount <= 0)
+            {
+            iActiveCount = 0;
+            iActive = EFalse;
+            }
+    
+        ActivateAO();
+        }
+    }
+
 // ---------------------------------------------------------------------------
 // CThumbAGProcessor::SetMdESession()
 // ---------------------------------------------------------------------------
@@ -665,7 +684,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
                     }
                 }
             
-		   // 10.1 specific
+		   // Symbian^4 specific
            if( imageObjectDef.Id() != aObject->Def().Id()  )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() 1st round not image");
@@ -935,6 +954,7 @@ void CThumbAGProcessor::RunL()
             }        
         else 
             {
+            iTMSession->SetRequestObserver(*this);
             iSessionDied = EFalse;
             }
         }    
@@ -1110,9 +1130,10 @@ void CThumbAGProcessor::RunL()
             iRemoveQueue.Remove( 0 );
             delete source;
             delete uri;
-            }
             
-        ActivateAO();
+            iActiveCount++;
+            iActive = ETrue;
+            }
         }
     else if( i2ndRoundGenerateQueue.Count() > 0)
         {
@@ -1133,7 +1154,7 @@ void CThumbAGProcessor::RunL()
 //
 void CThumbAGProcessor::DeleteAndCancelQuery(TBool aRestoreItems)
     {
-    TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() in" );
+    TN_DEBUG2( "CThumbAGProcessor::DeleteAndCancelQuery(aRestoreItems = %d) in", aRestoreItems );
     
     if(iQuery)
         {
@@ -1728,7 +1749,8 @@ void CThumbAGProcessor::ActivityChanged(const TBool aActive)
         {
         iIdle = ETrue; 
         
-        if(iAddQueue.Count() + iModifyQueue.Count() + iRemoveQueue.Count() + i2ndRoundGenerateQueue.Count() > 0 )
+        if(iAddQueue.Count() + iModifyQueue.Count() + iRemoveQueue.Count() + 
+           iQueryQueue.Count() + i2ndRoundGenerateQueue.Count() > 0 )
             {
             ActivateAO();
             }

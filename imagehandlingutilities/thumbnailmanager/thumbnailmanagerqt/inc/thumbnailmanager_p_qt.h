@@ -214,11 +214,14 @@ public:
     int connectionCounterPixmap;
     
 private:
+    
+    ThumbnailManager *q_ptr;
 
     CThumbnailManager* iThumbnailManager;
     
     QByteArray* byteArray;
-    
+
+    friend class ThumbnailManager;
     friend class TestThumbnailManager;
     
 };

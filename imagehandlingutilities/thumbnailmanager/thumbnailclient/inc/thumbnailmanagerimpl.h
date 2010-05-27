@@ -353,6 +353,22 @@ public:
       */
      TThumbnailRequestId RenameThumbnailsL( const TDesC& aCurrentPath, 
              const TDesC& aNewPath, TInt aPriority = CActive::EPriorityIdle );
+
+     /**
+      * Set optional request observer for getting information about completed 
+      * requests that don't include a thumbnail.
+      *
+      * @since Symbian^3
+      * @param aObserver Observer to receive notifications.
+      */
+     void SetRequestObserver( MThumbnailManagerRequestObserver& aObserver );
+     
+     /**
+      * Remove optional request observer.
+      *
+      * @since Symbian^3
+      */
+     void RemoveRequestObserver();
      
 private:
 
@@ -400,6 +416,11 @@ private:
      * Observer to receive notifications about completed operations.
      */
     MThumbnailManagerObserver& iObserver;
+    
+    /**
+     * Observer to receive notifications about completed requests.
+     */
+    MThumbnailManagerRequestObserver* iRequestObserver;
 
     /**
      * Session.

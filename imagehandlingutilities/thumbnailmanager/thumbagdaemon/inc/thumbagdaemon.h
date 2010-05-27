@@ -173,6 +173,8 @@ private:
     // reconnect timer
     CPeriodic* iReconnect;
     
+    TBool iSessionError;
+    
 #ifdef _DEBUG
     TUint32 iAddCounter;
     TUint32 iModCounter;

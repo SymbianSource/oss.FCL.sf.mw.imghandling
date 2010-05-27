@@ -26,6 +26,7 @@
 #include <thumbnailobjectsource.h>
 
 class MThumbnailManagerObserver;
+class MThumbnailManagerRequestObserver;
 
 typedef TInt TThumbnailRequestId;
 
@@ -45,7 +46,8 @@ EAudioListThumbnailSize,
 EAudioFullScreenThumbnailSize,
 EGridThumbnailSize,
 EListThumbnailSize,
-EFullScreenThumbnailSize
+EFullScreenThumbnailSize,
+EThumbnailSizeCount //last item, don't remove
 } TThumbnailSize;
 /**
  *  Thumbnail engine.
@@ -413,8 +415,7 @@ public:
      * @return              Symbian OS error code or KErrNone if change was
      *                      successful.
      */
-    virtual TInt ChangePriority( TThumbnailRequestId aId, TInt aNewPriority ) =
-        0;
+    virtual TInt ChangePriority( TThumbnailRequestId aId, TInt aNewPriority ) = 0;
 
     /**
      * Get a list of supported file formats for object files.
@@ -566,6 +567,21 @@ public:
        virtual TThumbnailRequestId RenameThumbnailsL( const TDesC& aCurrentPath, 
                const TDesC& aNewPath, TInt aPriority = CActive::EPriorityIdle ) = 0;
 
+       /**
+        * Set optional request observer for getting information about completed 
+        * requests that don't include a thumbnail.
+        *
+        * @since Symbian^3
+        * @param aObserver Observer to receive notifications.
+        */
+       virtual void SetRequestObserver( MThumbnailManagerRequestObserver& aObserver ) = 0;
+       
+       /**
+        * Remove optional request observer.
+        *
+        * @since Symbian^3
+        */
+       virtual void RemoveRequestObserver() = 0;
 };
 
 #endif // THUMBNAILMANAGER_H

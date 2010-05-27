@@ -101,4 +101,37 @@ public:
         TThumbnailRequestId aId ) = 0;
 };
 
+/**  Thumbnail request types */
+enum TThumbnailRequestType
+    {
+    ERequestDeleteThumbnails = 0
+    };
+
+/**
+ *  Optional callback interface for getting information about other completed 
+ *  requests that don't include a thumbnail. 
+ *  
+ *  Request types:
+ *  - ERequestDeleteThumbnails
+ *  
+ *  Can be added using SetRequestObserver(MThumbnailManagerRequestObserver& aObserver)
+ *  and removed using RemoveRequestObserver().
+ *
+ *  @since Symbian^3
+ */
+class MThumbnailManagerRequestObserver
+    {
+public:
+    /**
+     * A request is complete.
+     *
+     * @since Symbian^3
+     * @param aError         Error code.
+     * @param aRequestType   Type of the completed request.
+     * @param aId            Request ID for the operation.
+     */
+    virtual void ThumbnailRequestReady( TInt aError, TThumbnailRequestType aRequestType,
+        TThumbnailRequestId aId ) = 0;
+};
+
 #endif // THUMBNAILMANAGEROBSERVER_H

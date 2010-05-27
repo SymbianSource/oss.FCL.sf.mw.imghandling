@@ -43,6 +43,7 @@ class MMPXCollectionUtility;
  */
 class CThumbAGProcessor: public CActive,
                          public MThumbnailManagerObserver,
+                         public MThumbnailManagerRequestObserver,
                          public MMdEQueryObserver,
                          public MHarvesterEventObserver,
                          public MMPXCollectionObserver,
@@ -78,6 +79,8 @@ public:
     // from MThumbnailManagerObserver
     void ThumbnailPreviewReady( MThumbnailData& aThumbnail, TThumbnailRequestId aId );
     void ThumbnailReady( TInt aError, MThumbnailData& aThumbnail, TThumbnailRequestId aId );
+    // from MThumbnailManagerRequestObserver
+    void ThumbnailRequestReady( TInt aError, TThumbnailRequestType aRequestType, TThumbnailRequestId aId  );
 
     // from MHarvesterEventObserver
     void HarvestingUpdated( 
@@ -311,7 +314,6 @@ private:
     TBool iMMCHarvesting;
     TBool iMMCHarvestingTemp;
     
-    
     CPeriodic* iPeriodicTimer;
 
 	//MDS Harvester client
@@ -346,8 +348,7 @@ private:
     
 	//Flag is MPX harvesting or MTP synchronisation in progress
     TBool iMPXHarvesting;
-    //inactivity polling timer
-    CPeriodic* iInactivityTimer;
+
     //overall status of device
     TBool iIdle;
     

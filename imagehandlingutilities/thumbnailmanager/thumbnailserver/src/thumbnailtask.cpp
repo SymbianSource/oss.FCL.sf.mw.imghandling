@@ -113,9 +113,9 @@ void CThumbnailTask::Complete( TInt aReason )
         {
         iState = EComplete;
         
-        if ( iMessage.Handle())
+        if ( ClientThreadAlive() )
             {
-            if(iMessage.Identity() == KDaemonUid ) 
+            if( iMessage.Identity() == KDaemonUid ) 
                 {
                 iProcessor.SetDaemonAsProcess(ETrue);
                 }
@@ -123,9 +123,11 @@ void CThumbnailTask::Complete( TInt aReason )
                 {
                 iProcessor.SetDaemonAsProcess(EFalse);
                 }
+            
             iMessage.Complete( CThumbnailServerSession::ConvertSqlErrToE32Err( aReason ));
-            ResetMessageData();
             }
+        
+        ResetMessageData();
         
         iProcessor.TaskComplete( this );
         }
@@ -230,15 +232,12 @@ TThumbnailServerRequestId CThumbnailTask::RequestId()const
 //
 void CThumbnailTask::CancelMessage()
     {
-    if ( iMessage.Handle())
+    if ( ClientThreadAlive() )
         {
-        if ( ClientThreadAlive() )
-            {
-            iMessage.Complete( KErrCancel );
-            }
-        
-        ResetMessageData();
+        iMessage.Complete( KErrCancel );
         }
+    
+    ResetMessageData();
     }
 
 // ---------------------------------------------------------------------------

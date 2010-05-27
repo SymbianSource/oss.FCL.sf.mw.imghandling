@@ -29,9 +29,11 @@
 const int ThumbnailMangerPriorityLowest = CActive::EPriorityIdle;
 const int ThumbnailMangerPriorityHighest = CActive::EPriorityHigh;
 
-ThumbnailManagerPrivate::ThumbnailManagerPrivate() : iThumbnailManager( NULL ), byteArray( NULL ),
+ThumbnailManagerPrivate::ThumbnailManagerPrivate() : 
     connectionCounterImage( 0 ),
-    connectionCounterPixmap( 0 )
+    connectionCounterPixmap( 0 ),
+    iThumbnailManager( NULL ), 
+    byteArray( NULL )
 {
     TRAP_IGNORE(
         iThumbnailManager = CThumbnailManager::NewL( *this );
@@ -291,12 +293,12 @@ void ThumbnailManagerPrivate::ThumbnailReady( TInt aError, MThumbnailData& aThum
         }
 
         if (connectionCounterImage) {
-            emit thumbnailReady(image, aThumbnail.ClientData(), aId, aError);
+            emit q_ptr->thumbnailReady(image, aThumbnail.ClientData(), aId, aError);
         }
         
         if (connectionCounterPixmap) {
             QPixmap pixmap = QPixmap::fromImage(image);
-            emit thumbnailReady(pixmap, aThumbnail.ClientData(), aId, aError);          
+            emit q_ptr->thumbnailReady(pixmap, aThumbnail.ClientData(), aId, aError);
         }
     }
 }

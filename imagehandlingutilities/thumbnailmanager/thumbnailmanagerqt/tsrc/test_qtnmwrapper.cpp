@@ -146,7 +146,7 @@ void TestThumbnailManager::init()
     connect( wrapper, SIGNAL(thumbnailReady( QPixmap , void* , int, int ) ),
             this, SLOT( thumbnailReady( QPixmap , void* , int , int )));
     
-    wrapper_p = new ThumbnailManagerPrivate();
+    wrapper_p = wrapper->d; //new ThumbnailManagerPrivate();
 }
     
 void TestThumbnailManager::cleanup()
@@ -161,7 +161,7 @@ void TestThumbnailManager::cleanup()
         ipixmap = NULL;
         }
  
-    delete wrapper_p;
+ //   delete wrapper_p;
 }
 
 // --- test ---
@@ -327,8 +327,7 @@ void TestThumbnailManager::testThumbnailReadyImage()
     QVERIFY(td.bitmap->SizeInPixels().iHeight == TestThumbnailData::BITMAP_HEIGHT);
 
     disconnect( wrapper_p, SIGNAL(thumbnailReady( QImage , void* , int, int ) ),
-        this, SLOT( thumbnailReadyImage(QImage, void* , int , int )));
-    
+        this, SLOT( thumbnailReadyImage(QImage, void* , int , int )));  
 }
 
 void TestThumbnailManager::testThumbnailReadyPixmap()
@@ -355,7 +354,6 @@ void TestThumbnailManager::testThumbnailReadyPixmap()
 
     disconnect( wrapper_p, SIGNAL(thumbnailReady( QPixmap , void* , int, int ) ),
         this, SLOT( thumbnailReadyPixmap( QPixmap , void* , int , int )));
-
 }
 
 void TestThumbnailManager::testThumbnailReadyImageAndPixmap()
@@ -387,8 +385,7 @@ void TestThumbnailManager::testThumbnailReadyImageAndPixmap()
         this, SLOT( thumbnailReadyImage( QImage , void* , int , int )));
 
     disconnect( wrapper_p, SIGNAL(thumbnailReady( QPixmap , void* , int, int ) ),
-        this, SLOT( thumbnailReadyPixmap( QPixmap , void* , int , int )));
-    
+        this, SLOT( thumbnailReadyPixmap( QPixmap , void* , int , int )));    
 }
 
 void TestThumbnailManager::testPriorities_data()
@@ -417,13 +414,18 @@ void TestThumbnailManager::testPriorities()
 
 // --- private slots - callback  ---
 
-void TestThumbnailManager::thumbnailReady( QPixmap /*pixmap*/, void * /*clientData*/, int /*id*/, int /*errorCode*/ )
+void TestThumbnailManager::thumbnailReady( QPixmap pixmap, void *clientData, int id, int errorCode )
 {
     //do nothing, we dont test Thumbnail Manager's functionality, we just use it
+    Q_UNUSED( pixmap );
+    Q_UNUSED( clientData );
+    Q_UNUSED( id );
+    Q_UNUSED( errorCode );
 }
 
-void TestThumbnailManager::thumbnailReady_p( QPixmap pixmap, void * /*clientData*/, int id, int errorCode )
+void TestThumbnailManager::thumbnailReady_p( QPixmap pixmap, void * clientData, int id, int errorCode )
 {
+    Q_UNUSED( clientData );
     QVERIFY( pixmap.isNull() == pixmapNull );
     QVERIFY( errorCode == aerrorCode );
     QVERIFY( id == aid );

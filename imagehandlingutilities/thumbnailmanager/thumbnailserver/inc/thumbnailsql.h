@@ -204,7 +204,7 @@ _LIT8( KThumbnailRename, "UPDATE ThumbnailInfo SET Path = :NewPath WHERE Path = 
 _LIT8( KThumbnailTempRename, "UPDATE TempThumbnailInfo SET Path = :NewPath WHERE Path = :Path;" );
 
 // reset blacklisted
-_LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Modified = 0 WHERE Flags & :Flag" );
+_LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Flags = 4, Modified = 0 WHERE Flags & :Flag" );
 
 // existence check
 _LIT8( KThumbnailSelectAllPaths, "SELECT ThumbnailInfo.RowID,Path FROM ThumbnailInfo "

@@ -18,14 +18,17 @@
 #ifndef THUMBNAILMANAGER_QT_H
 #define THUMBNAILMANAGER_QT_H
 
-#include <QObject>
-#include <qpixmap>
-#include <QImage>
+#include <qobject.h>
+#include <qpixmap.h>
+#include <qimage.h>
+
 #include <QtGlobal>
 
-class ThumbnailManagerPrivate;
 class QString;
 class QSize;
+
+class ThumbnailManagerPrivate;
+class TestThumbnailManager;
 
 #ifdef TNMQT_DLL
 #  define TNM_EXPORT Q_DECL_EXPORT
@@ -300,7 +303,7 @@ signals:
      * @param id         Request ID for the operation
      * @param errorCode  error code
      */
-    void thumbnailReady( QPixmap , void * , int , int );    
+    TNM_EXPORT void thumbnailReady( QPixmap , void * , int , int );    
 
     /**
      * Final thumbnail bitmap generation or loading is complete.
@@ -310,7 +313,7 @@ signals:
      * @param id         Request ID for the operation
      * @param errorCode  error code
      */
-    void thumbnailReady( QImage , void * , int , int );    
+    TNM_EXPORT void thumbnailReady( QImage , void * , int , int );    
 
 protected:
     
@@ -320,6 +323,9 @@ protected:
 
 private:
     ThumbnailManagerPrivate* d;
+    
+    friend class ThumbnailManagerPrivate;
+    friend class TestThumbnailManager;
 };
 
 #endif // THUMBNAILMANAGER_QT

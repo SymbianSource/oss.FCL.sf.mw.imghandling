@@ -16,4 +16,6 @@ EXPORTS
 	?getThumbnail@ThumbnailManager@@QAEHKPAXH@Z @ 15 NONAME ; int ThumbnailManager::getThumbnail(unsigned long, void *, int)
 	?mode@ThumbnailManager@@QBE?AW4ThumbnailMode@1@XZ @ 16 NONAME ; enum ThumbnailManager::ThumbnailMode ThumbnailManager::mode(void) const
 	?setThumbnail@ThumbnailManager@@QAEHABVQImage@@ABVQString@@PAXH@Z @ 17 NONAME ; int ThumbnailManager::setThumbnail(class QImage const &, class QString const &, void *, int)
+	?thumbnailReady@ThumbnailManager@@IAEXVQImage@@PAXHH@Z @ 18 NONAME ; void ThumbnailManager::thumbnailReady(class QImage, void *, int, int)
+	?thumbnailReady@ThumbnailManager@@IAEXVQPixmap@@PAXHH@Z @ 19 NONAME ; void ThumbnailManager::thumbnailReady(class QPixmap, void *, int, int)
 
