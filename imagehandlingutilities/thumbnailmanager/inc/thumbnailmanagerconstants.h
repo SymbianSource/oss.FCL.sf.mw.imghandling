@@ -173,6 +173,9 @@ _LIT( KAudioMime, "audio/*" );
 _LIT( KM4vExt,  ".m4v" );
 _LIT( KNonEmbeddedArtExt, ".alb" );
 
+_LIT( KPrivateFolder, ":\\private\\");
+_LIT( KSysFolder, ":\\sys\\");
+
 /**
  *  Control flags set by the server for handling specific situations
  *  (for example for distinguishing between preview thumbnails and

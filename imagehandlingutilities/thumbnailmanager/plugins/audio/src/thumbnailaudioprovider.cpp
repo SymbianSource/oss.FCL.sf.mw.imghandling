@@ -102,10 +102,6 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
       User::Leave( KErrNotFound );            
       }
     
-    CleanupStack::Pop( data );
-    CleanupStack::PopAndDestroy(&wantedFields);
-    CleanupStack::PopAndDestroy(metaDataUtil);
-
     if ( !iImageDecoderv3 )
         {
         iImageDecoderv3 = new( ELeave )CThumbnailImageDecoderv3( aFs );
@@ -117,6 +113,11 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     iDisplayMode = KStoreDisplayMode;
     
     iImageDecoderv3->CreateL( data, *iObserver, iFlags, iMimeType, iTargetSize );
+    
+    CleanupStack::Pop( data );
+    CleanupStack::PopAndDestroy(&wantedFields);
+    CleanupStack::PopAndDestroy(metaDataUtil);
+    
     iOriginalSize = iImageDecoderv3->OriginalSize();
     iImageDecoderv3->DecodeL( iDisplayMode );
     }

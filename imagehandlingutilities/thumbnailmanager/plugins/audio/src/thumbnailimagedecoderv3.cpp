@@ -39,8 +39,8 @@ const TInt KMaximumReductionFactor = 8;
 // C++ default constructor can NOT contain any code, that might leave.
 // ---------------------------------------------------------------------------
 //
-CThumbnailImageDecoderv3::CThumbnailImageDecoderv3( RFs& aFs ): CActive(
-    EPriorityStandard ), iFs( aFs )
+CThumbnailImageDecoderv3::CThumbnailImageDecoderv3( RFs& aFs ): 
+    CActive(EPriorityStandard ), iBitmap( NULL ), iFs( aFs ), iBuffer( NULL )
     {
     CActiveScheduler::Add( this );
     }
@@ -158,8 +158,14 @@ void CThumbnailImageDecoderv3::DecodeL( const TDisplayMode aDisplayMode )
 void CThumbnailImageDecoderv3::Release()
     {
     Cancel();
+    
     delete iDecoder;
     iDecoder = NULL;
+    
+    delete iBitmap;
+    iBitmap = NULL;
+    delete iBuffer; // we own the buffer
+    iBuffer = NULL;
     }
 
 
@@ -175,6 +181,11 @@ void CThumbnailImageDecoderv3::DoCancel()
         delete iDecoder;
         iDecoder = NULL;
         }
+    
+    delete iBitmap;
+    iBitmap = NULL;
+    delete iBuffer; // we own the buffer
+    iBuffer = NULL;
     }
 
 
@@ -188,8 +199,9 @@ void CThumbnailImageDecoderv3::RunL()
     iObserver->ThumbnailProviderReady( iStatus.Int(), iBitmap, iOriginalSize, EFalse, EFalse );
 
     iBitmap = NULL; // owned by server now
-    delete iBuffer;
+    delete iBuffer; // we own the buffer
     iBuffer = NULL;
+    
     Release();
     }
 

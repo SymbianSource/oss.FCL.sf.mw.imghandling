@@ -462,6 +462,15 @@ public:
     TBool IsFormatting();
   
     inline CThumbnailFetchedChecker& FetchedChecker() const { return *iFetchedChecker; }
+    
+    /**
+     * Check is path in public folder
+     *
+     * @param aPath
+     * @ret 
+     */
+    TBool IsPublicPath( const TDesC& aPath );
+    
 protected: // Functions from base classes
 
     /**
@@ -528,7 +537,7 @@ private:
      * @since S60 v5.0
      */
     static TInt ReconnectCallBack(TAny* aAny);
-
+    
 private:
 
     /**

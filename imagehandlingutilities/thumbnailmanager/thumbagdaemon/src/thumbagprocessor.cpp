@@ -95,12 +95,6 @@ void CThumbAGProcessor::ConstructL()
     iActivityManager = CTMActivityManager::NewL( this, KBackgroundGenerationIdle);
 
     UpdatePSValues(ETrue);
-
-    if(iForegroundGenerationObserver)
-        {
-        delete iForegroundGenerationObserver;
-        iForegroundGenerationObserver = NULL;
-        }
     
     RProperty::Define(KTAGDPSNotification, KMPXHarvesting, RProperty::EInt);
     
@@ -167,6 +161,12 @@ CThumbAGProcessor::~CThumbAGProcessor()
         iForegroundGenerationObserver = NULL;
         }
     
+    if(iFormatObserver)
+        {
+        delete iFormatObserver;
+        iFormatObserver = NULL;
+        }
+    
     if ( iCollectionUtility )
         {
         iCollectionUtility->Close();
@@ -187,8 +187,6 @@ CThumbAGProcessor::~CThumbAGProcessor()
         delete iTMSession;
         iTMSession = NULL;
         }
-    
-    delete iFormatObserver;
     
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - end" );
     }

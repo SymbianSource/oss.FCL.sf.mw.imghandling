@@ -1068,7 +1068,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
     const TSize& aSize, const TSize& aOriginalSize, const TThumbnailFormat& aFormat, TInt aFlags, 
 	const TThumbnailSize& aThumbnailSize, const TInt64 aModified, const TBool aThumbFromPath )
     {
-    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( const TDes8& ) in" );
+    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( private ) in" );
 
 #ifdef _DEBUG
     TTime aStart, aStop;
@@ -1131,7 +1131,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
     // try getting modification time from file
     TTime timeStamp;
     
-    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() timeStamp aModified %Ld", aModified );
+    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp aModified %Ld", aModified );
         
     if( aModified )
         {
@@ -1153,11 +1153,11 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
             
             if (timeErr != KErrNone)
                 {
-                TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() error getting timeStamp: %d", timeErr );
+                TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) error getting timeStamp: %d", timeErr );
                 }
             else
                 {
-                TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() timeStamp       iFs %Ld", timeStamp.Int64() );
+                TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp       iFs %Ld", timeStamp.Int64() );
                 }
             }
         
@@ -1165,11 +1165,11 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
             {
             // otherwise current time
             timeStamp.UniversalTime();
-            TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() timeStamp   current %Ld", timeStamp.Int64() );
+            TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp   current %Ld", timeStamp.Int64() );
             }
         }
         
-   TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() timeStamp       set %Ld", timeStamp.Int64());
+   TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp       set %Ld", timeStamp.Int64());
    
     paramIndex = stmt->ParameterIndex( KThumbnailSqlParamModified );
     User::LeaveIfError( paramIndex );
@@ -1203,9 +1203,9 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
     TN_DEBUG2( "CThumbnailStore::THUMBSTORE-COUNTER----------, Thumbs = %d", iThumbCounter );
     
     aStop.UniversalTime();
-    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL() insert to table %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
+    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) insert to table %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
 #endif 
-    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( const TDes8& ) out" );
+    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( private ) out" );
     }
 
 
@@ -1219,7 +1219,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     const TInt64 aModified, TBool aThumbFromPath, TBool aBlackListed )
     {
     TSize thumbSize = aThumbnail->SizeInPixels();
-    TN_DEBUG4( "CThumbnailStore::StoreThumbnailL( CFbsBitmap ) aThumbnailSize = %d, aThumbnailSize(%d,%d) IN", aThumbnailSize, thumbSize.iWidth, thumbSize.iHeight );
+    TN_DEBUG4( "CThumbnailStore::StoreThumbnailL( public ) aThumbnailSize = %d, aThumbnailSize(%d,%d) IN", aThumbnailSize, thumbSize.iWidth, thumbSize.iHeight );
 
     __ASSERT_DEBUG(( aThumbnail ), ThumbnailPanic( EThumbnailNullPointer ));
     
@@ -1229,7 +1229,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     if(aThumbnailSize == ECustomThumbnailSize || aThumbnailSize == EUnknownThumbnailSize 
             || thumbSize.iWidth <= 0 || thumbSize.iHeight <= 0 )
         {
-        TN_DEBUG1( "CThumbnailStore::StoreThumbnailL() not stored");
+        TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) not stored");
         return;
         }
     
@@ -1261,6 +1261,8 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
             if( (aThumbnailSize == EImageFullScreenThumbnailSize || aThumbnailSize == EVideoFullScreenThumbnailSize ||
                  aThumbnailSize == EAudioFullScreenThumbnailSize) && !aBlackListed )
                 {
+                TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - encode jpg" );
+            
                 HBufC8* data = NULL;
                 CleanupStack::PushL( data );
                 
@@ -1282,9 +1284,8 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 User::LeaveIfError(frameImageData->AppendImageData(imageData));
                 CleanupStack::Pop( imageData );
                 
-                
 #ifdef _DEBUG
-        TN_DEBUG4( "CThumbnailStore::StoreThumbnailL() size %d x %d displaymode %d ", 
+        TN_DEBUG4( "CThumbnailStore::StoreThumbnailL( public ) - size: %d x %d, displaymode: %d ", 
                 aThumbnail->SizeInPixels().iWidth, 
                 aThumbnail->SizeInPixels().iHeight, 
                 aThumbnail->DisplayMode());
@@ -1298,13 +1299,19 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 CleanupStack::PopAndDestroy( encoder );
                 
                 if(request == KErrNone)
-                    {
+                    {           
+                    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - encoding ok" );    
+                
                     CleanupStack::PushL( data );
                     TPtr8 ptr = data->Des(); 
                     StoreThumbnailL( *path, ptr, aThumbnail->SizeInPixels(), 
                                      aOriginalSize, EThumbnailFormatJpeg, flags, 
                                      aThumbnailSize, aModified, aThumbFromPath  );
                     CleanupStack::Pop( data );
+                    }
+                else
+                    {
+                    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - encoding failed: %d", request.Int() );
                     }
                 
                 delete data;
@@ -1331,7 +1338,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     
     CleanupStack::PopAndDestroy( path );
     
-    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( CFbsBitmap* ) out" );
+    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) out" );
     }
 
 // ---------------------------------------------------------------------------
@@ -2212,6 +2219,8 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
         // thumbmnail deletion
         if (self->iDeleteThumbs)
             {
+            TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - cleanup");
+        
             TInt deleteCount = 0;
             
             // delete marked rows from database
@@ -2233,6 +2242,8 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
         // file existence check
         else if (self->iCheckFilesExist)
             {
+            TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - file existence check");
+        
             TBool finished = EFalse;
         
             TRAPD( err, finished = self->FileExistenceCheckL() );
@@ -2253,10 +2264,13 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
         // next round
         if (self->iIdle && ( self->iDeleteThumbs || self->iCheckFilesExist) )
             {
+            TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - continue maintenance");
             self->StartMaintenance();
             }  
         else if (!self->iDeleteThumbs && !self->iCheckFilesExist)
             {
+            TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - no more maintenance");
+        
             // no need to monitor activity anymore
             self->iActivityManager->Cancel();
             }

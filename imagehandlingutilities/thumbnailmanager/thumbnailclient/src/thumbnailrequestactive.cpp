@@ -153,7 +153,7 @@ void CThumbnailRequestActive::StartL()
                 iFile.Close();
                 User::LeaveIfError( iFile.Open( iFs, iPath, EFileShareReadersOrWriters ) );  
                 
-                TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iTargetUri );
+                TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iPath );
                 
                 CleanupClosePushL( iFile );
                 iSession.RequestThumbnailL( iFile, iPath, iParamsPckg, iStatus );
