@@ -251,20 +251,6 @@ bool ThumbnailManagerPrivate::changePriority( int id, int newPriority )
     return ( iThumbnailManager->ChangePriority( id, newPriority ) == KErrNone );
 }
 
-QImage ThumbnailManagerPrivate::fromBitmap( CFbsBitmap* bitmap )
-{
-    TSize size = bitmap->SizeInPixels();
-    int bytesPerLine = bitmap->ScanLineLength( size.iWidth, bitmap->DisplayMode() );
-    const uchar* dataPtr = ( const uchar* ) bitmap->DataAddress();
-    QImage image = QImage(dataPtr, size.iWidth, size.iHeight, bytesPerLine, QImage::Format_RGB16);
-    return image.copy();
-}
-
-QPixmap ThumbnailManagerPrivate::fromImage( CFbsBitmap* bitmap )
-{
-    return QPixmap::fromImage(fromBitmap(bitmap));
-}
-
 int ThumbnailManagerPrivate::convertPriority(int basePriority)
 {
     return qBound(ThumbnailMangerPriorityLowest, basePriority, ThumbnailMangerPriorityHighest);    
@@ -284,20 +270,19 @@ void ThumbnailManagerPrivate::ThumbnailReady( TInt aError, MThumbnailData& aThum
     }
     
     if (connectionCounterImage || connectionCounterPixmap) {
-        QImage image;
+		QPixmap pixmap;
 
         if (aError == KErrNone) {
-            image = fromBitmap(aThumbnail.Bitmap());
+            pixmap = QPixmap::fromSymbianCFbsBitmap(aThumbnail.Bitmap());
         } else {
-            image = QImage(); 
+            pixmap = QPixmap(); 
         }
 
         if (connectionCounterImage) {
-            emit q_ptr->thumbnailReady(image, aThumbnail.ClientData(), aId, aError);
+            emit q_ptr->thumbnailReady(pixmap.toImage(), aThumbnail.ClientData(), aId, aError);
         }
         
         if (connectionCounterPixmap) {
-            QPixmap pixmap = QPixmap::fromImage(image);
             emit q_ptr->thumbnailReady(pixmap, aThumbnail.ClientData(), aId, aError);
         }
     }

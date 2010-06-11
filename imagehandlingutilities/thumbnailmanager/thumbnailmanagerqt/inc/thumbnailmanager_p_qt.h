@@ -192,16 +192,6 @@ signals:
 
 private:
     /**
-     * Copy CFbsBitmap into a QImage.
-     */
-    QImage fromBitmap( CFbsBitmap* bitmap );
-    
-    /**
-     * Copy CFbsBitmap into a QPixmap.
-     */
-    QPixmap fromImage( CFbsBitmap* bitmap );
-    
-    /**
      * Limit priority to presumed range.
      */
     int convertPriority(int basePriority);

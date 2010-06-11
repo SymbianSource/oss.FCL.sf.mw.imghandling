@@ -124,8 +124,7 @@ void CThumbnailGenerateTask::StartL()
 #ifdef _DEBUG
     aStart.UniversalTime();
 #endif
-
-      
+   
     TParsePtrC parse(iFilename);
     TPtrC ext(parse.Ext());
     TBuf8< KMaxDataTypeLength > mimeType;                
@@ -357,19 +356,21 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                     }
                 }
             
-            CThumbnailScaleTask* scaleTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
+            CThumbnailScaleTask* complTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
                 aBitmap, iOriginalSize, (*iMissingSizes)[ i ].iSize, (*iMissingSizes)[ i ].iCrop, iDisplayMode,
                 KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF,
                 iRequestId);
-            CleanupStack::PushL( scaleTask );
+            CleanupStack::PushL( complTask );
             
             TInt err1 = KErrNone;
             TInt err2 = KErrNone;
+            
             if(iFilename != KNullDesC)
                 {
                 TRAP(err1, iServer.StoreForPathL(iFilename));
                 }
-            if(iTargetUri != KNullDesC)
+            
+            if(iTargetUri != KNullDesC )
                 {
                 TRAP(err2, iServer.StoreForPathL(iTargetUri));
                 }
@@ -379,22 +380,30 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                     (*iMissingSizes)[ i ].iType == ECustomThumbnailSize || 
                     (*iMissingSizes)[ i ].iType == EUnknownThumbnailSize )
                 {
-                scaleTask->SetDoStore( EFalse );
+                complTask->SetDoStore( EFalse );
                 TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() - do not store", this );
                 }
             else
                 {
-                scaleTask->SetDoStore( ETrue );
+                if(iFilename != KNullDesC)
+                    {
+                    complTask->SetDoStore(iServer.IsPublicPath( iFilename ));
+                    }
+                
+                if(iTargetUri != KNullDesC)
+                    {
+                    complTask->SetDoStore(iServer.IsPublicPath( iTargetUri ));
+                    }
                 }
             
-            iProcessor.AddTaskL( scaleTask );
-            CleanupStack::Pop( scaleTask );
+            iProcessor.AddTaskL( complTask );
+            CleanupStack::Pop( complTask );
             
             // completion to first task, because task processor works like stack
             if( i == 0 )
                 {
                 // compTask is now responsible for completing the RMessage
-                scaleTask->SetMessageData( iRequestId, iMessage, iClientThread );
+                complTask->SetMessageData( iRequestId, iMessage, iClientThread );
                 ResetMessageData();
                 }
             }
@@ -441,7 +450,15 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             }
         else
             {
-            complTask->SetDoStore( ETrue );
+            if(iFilename != KNullDesC)
+                {
+                complTask->SetDoStore(iServer.IsPublicPath( iFilename ));
+                }
+             
+             if(iTargetUri != KNullDesC)
+                {
+                complTask->SetDoStore(iServer.IsPublicPath( iTargetUri ));
+                }
             }
         
         iProcessor.AddTaskL( complTask );

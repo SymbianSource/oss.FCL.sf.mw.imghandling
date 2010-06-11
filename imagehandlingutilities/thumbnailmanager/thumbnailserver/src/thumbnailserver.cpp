@@ -1640,3 +1640,28 @@ TInt CThumbnailServer::ReconnectCallBack(TAny* aAny)
     return KErrNone;
     }
 
+// -----------------------------------------------------------------------------
+// CThumbnailServer::IsPublicPath
+// -----------------------------------------------------------------------------
+//
+
+TBool CThumbnailServer::IsPublicPath( const TDesC& aPath )
+    {
+    TInt pos = aPath.FindF(KPrivateFolder);
+    
+    if ( pos == 1 )
+        {
+        TN_DEBUG1( "CThumbnailServer::IsPublicPath() NO");
+        return EFalse;
+        }
+    
+    pos = aPath.FindF(KSysFolder);
+    if ( pos == 1 )
+        {
+        TN_DEBUG1( "CThumbnailServer::IsPublicPath() NO");
+        return EFalse;
+        }
+    
+    return ETrue;
+    }
+

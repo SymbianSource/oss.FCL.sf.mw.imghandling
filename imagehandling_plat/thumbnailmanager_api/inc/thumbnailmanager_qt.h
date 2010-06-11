@@ -18,9 +18,9 @@
 #ifndef THUMBNAILMANAGER_QT_H
 #define THUMBNAILMANAGER_QT_H
 
-#include <qobject.h>
-#include <qpixmap.h>
-#include <qimage.h>
+#include <QObject>
+#include <QPixmap>
+#include <QImage>
 
 #include <QtGlobal>
 

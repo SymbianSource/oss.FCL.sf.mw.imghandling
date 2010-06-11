@@ -52,8 +52,9 @@ _LIT( KSvgMime, "image/svg+xml" );
 // C++ default constructor can NOT contain any code, that might leave.
 // ---------------------------------------------------------------------------
 //
-CThumbnailImageDecoder::CThumbnailImageDecoder( RFs& aFs ): CActive(
-    EPriorityStandard ), iFs( aFs )
+CThumbnailImageDecoder::CThumbnailImageDecoder( RFs& aFs ): 
+    CActive(EPriorityStandard ), iBitmap( NULL ), iJpegReadBuffer( NULL ),  
+    iExifThumbImage( NULL ), iFs( aFs ), iBuffer( NULL )
     {
     CActiveScheduler::Add( this );
     }
@@ -248,12 +249,18 @@ void CThumbnailImageDecoder::DecodeL( const TDisplayMode aDisplayMode, const CTh
 void CThumbnailImageDecoder::Release()
     {
     Cancel();
+   
+    delete iDecoder;
+    iDecoder = NULL;
+    
+    delete iBitmap;
+    iBitmap = NULL;
     delete iJpegReadBuffer;
     iJpegReadBuffer = NULL;
     delete iExifThumbImage;
     iExifThumbImage = NULL;
-    delete iDecoder;
-    iDecoder = NULL;
+    
+    iBuffer = NULL; // we don't own the buffer
     }
 
 
@@ -266,13 +273,18 @@ void CThumbnailImageDecoder::DoCancel()
     if ( iDecoder )
         {
         iDecoder->Cancel();
-        delete iJpegReadBuffer;
-        iJpegReadBuffer = NULL;
-        delete iExifThumbImage;
-        iExifThumbImage = NULL;
         delete iDecoder;
         iDecoder = NULL;
         }
+    
+    delete iBitmap;
+    iBitmap = NULL;
+    delete iJpegReadBuffer;
+    iJpegReadBuffer = NULL;
+    delete iExifThumbImage;
+    iExifThumbImage = NULL;
+    
+    iBuffer = NULL; // we don't own the buffer
     }
 
 
@@ -286,6 +298,8 @@ void CThumbnailImageDecoder::RunL()
     iObserver->ThumbnailProviderReady( iStatus.Int(), iBitmap, iOriginalSize, iEXIF, iPortrait );
 
     iBitmap = NULL; // owned by server now
+    iBuffer = NULL; // we don't own the buffer
+    
     Release();
     }
 
@@ -570,8 +584,7 @@ void CThumbnailImageDecoder::CreateExifDecoderL( CThumbnailManager
             CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
         }
 
-    TRAPD( err, iDecoder = CExtJpegDecoder::DataNewL( iFs, * iExifThumbImage,
-        options ));
+    TRAPD( err, iDecoder = CExtJpegDecoder::DataNewL( iFs, * iExifThumbImage, options ));
 
     if ( err == KErrNotFound || err == KErrNotSupported )
         {

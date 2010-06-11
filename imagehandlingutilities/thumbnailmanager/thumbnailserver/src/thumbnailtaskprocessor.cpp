@@ -351,13 +351,13 @@ void CThumbnailTaskProcessor::RunL()
                     }
                 }
             
-            if ( processingDaemonTasksOnly && task->GetMessageData().Handle())
+            if ( processingDaemonTasksOnly && task->ClientThreadAlive() )
                 {
-                    if(task->GetMessageData().Identity() != KDaemonUid )
-                        {
-                        TN_DEBUG1( "CThumbnailTaskProcessor::RunL() processingDaemonTasksOnly = EFalse" );
-                        processingDaemonTasksOnly = EFalse; 
-                        }
+                if(task->GetMessageData().Identity() != KDaemonUid )
+                    {
+                    TN_DEBUG1( "CThumbnailTaskProcessor::RunL() processingDaemonTasksOnly = EFalse" );
+                    processingDaemonTasksOnly = EFalse; 
+                    }
                 }
             }
         }

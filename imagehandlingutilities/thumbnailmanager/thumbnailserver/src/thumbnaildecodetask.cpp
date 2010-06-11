@@ -51,6 +51,7 @@ CThumbnailDecodeTask::CThumbnailDecodeTask( CThumbnailTaskProcessor& aProcessor,
 //
 CThumbnailDecodeTask::~CThumbnailDecodeTask()
     {
+    TN_DEBUG2( "CThumbnailDecodeTask(0x%08x)::~CThumbnailDecodeTask()", this );
     if ( iProvider )
         {
         iProvider->CancelGetThumbnail();

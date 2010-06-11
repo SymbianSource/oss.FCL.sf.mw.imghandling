@@ -25,6 +25,7 @@
 CTMActivityManager* CTMActivityManager::NewL(MTMActivityManagerObserver* aObserver, TInt aTimeout)
     {
     TN_DEBUG1( "CTMActivityManager::NewL()");
+    
     CTMActivityManager* self = new (ELeave) CTMActivityManager(aObserver, aTimeout);
     CleanupStack::PushL(self);
     self->ConstructL();
@@ -40,6 +41,7 @@ CTMActivityManager::CTMActivityManager(MTMActivityManagerObserver* aObserver, TI
 : CActive(CActive::EPriorityHigh), iObserver(aObserver), iTimeout(aTimeout), iPreviousStatus(KErrNotFound)
     {
     TN_DEBUG1( "CTMActivityManager::CTMActivityManager()");
+    
     CActiveScheduler::Add(this);
     }
 
@@ -50,10 +52,12 @@ CTMActivityManager::CTMActivityManager(MTMActivityManagerObserver* aObserver, TI
 CTMActivityManager::~CTMActivityManager()
     {
     TN_DEBUG1( "CTMActivityManager::~CTMActivityManager()");
+    
 #ifdef MONITOR_LIGHTS
     delete iLight;
     iLight = NULL;
 #endif
+    
     Cancel();
     iTimer.Close();
     }
@@ -65,6 +69,7 @@ CTMActivityManager::~CTMActivityManager()
 void CTMActivityManager::ConstructL()
     {
     TN_DEBUG1( "CTMActivityManager::ConstructL()");
+    
     iTimer.CreateLocal();
     iWatch = ENone;
     }
@@ -76,6 +81,7 @@ void CTMActivityManager::ConstructL()
 void CTMActivityManager::SetTimeout(TInt aTimeout)
     {
     TN_DEBUG1( "CTMActivityManager::SetTimeout()");
+    
     iTimeout = aTimeout;
     Reset();
     }
@@ -87,10 +93,12 @@ void CTMActivityManager::SetTimeout(TInt aTimeout)
 void CTMActivityManager::Reset()
     {
     TN_DEBUG1( "CTMActivityManager::Reset()");
+
 #ifdef MONITOR_LIGHTS
     delete iLight;
     iLight = NULL;
 #endif
+    
     Cancel();
     Start();
     }
@@ -101,6 +109,12 @@ void CTMActivityManager::Reset()
 void CTMActivityManager::DoCancel()
     {
     TN_DEBUG1( "CTMActivityManager::DoCancel()");
+    
+#ifdef MONITOR_LIGHTS
+    delete iLight;
+    iLight = NULL;
+#endif
+    
     iTimer.Cancel();
     iWatch = ENone;
     }
@@ -279,6 +293,7 @@ void CTMActivityManager::LightStatusChanged(TInt aTarget, CHWRMLight::TLightStat
 void CTMActivityManager::NotifyObserver()
     {
     TN_DEBUG1( "void CTMAActivityManager::NotifyObserver()");
+    
     TBool status = IsInactive();
     
     if( iPreviousStatus != status )
