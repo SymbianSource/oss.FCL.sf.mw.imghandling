@@ -471,6 +471,11 @@ private:
     // request already canceled by client
     TBool iCanceled;
     
+#ifdef __RETRY_ON_SERVERCRASH
+    //request retry count
+    TUint iRetry;
+#endif
+    
 #ifdef _DEBUG
     TTime iStartExecTime;
 #endif

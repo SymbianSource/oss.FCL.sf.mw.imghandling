@@ -44,6 +44,7 @@ const TInt KMinor = 2;
 const TInt KStoreUnrecoverableErr = KErrCorrupt;
 
 // Database path without drive letter
+//Symbian^3 v4
 _LIT( KThumbnailDatabaseName, ":[102830AB]thumbnail_v4.db" );
 
 _LIT( KDrv, ":");
@@ -209,11 +210,6 @@ CThumbnailStore::~CThumbnailStore()
         iMaintenanceTimer->Cancel();
         delete iMaintenanceTimer;
         iMaintenanceTimer = NULL;
-        }
-    
-    if(!iServer->IsFormatting())
-        {
- 	    FlushCacheTable( ETrue );
         }
     
     CloseStatements();   
@@ -570,7 +566,7 @@ TInt CThumbnailStore::CheckRowIDs()
                 
     stmt.Close();
     
-    if(ret < 0)
+    if(rowStatus < 0)
         {
 #ifdef _DEBUG
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
@@ -595,7 +591,7 @@ TInt CThumbnailStore::CheckRowIDs()
             
     stmt.Close();
     
-    if(ret < 0)
+    if( rowStatus < 0)
         {
 #ifdef _DEBUG
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
@@ -647,7 +643,7 @@ TInt CThumbnailStore::CheckVersion()
     
     stmt.Close();
     
-    if(ret < 0 )
+    if( rowStatus < 0 )
         {
 #ifdef _DEBUG
          TPtrC errorMsg = iDatabase.LastErrorMessage();
@@ -698,7 +694,7 @@ TInt CThumbnailStore::CheckImei()
     
     stmt.Close(); 
     
-    if(ret < 0 )
+    if( rowStatus < 0 )
         {
 #ifdef _DEBUG
          TPtrC errorMsg = iDatabase.LastErrorMessage();
@@ -1266,7 +1262,39 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 HBufC8* data = NULL;
                 CleanupStack::PushL( data );
                 
-                CImageEncoder* encoder = CImageEncoder::DataNewL( data,  KJpegMime(), CImageEncoder::EOptionAlwaysThread );
+                CImageEncoder* encoder = NULL;
+                TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::EHwImplementation, data, CImageEncoder::EOptionAlwaysThread ) );
+                if ( decErr != KErrNone )
+                    {
+                    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - HW CExtJpegEncoder failed %d", decErr);
+                
+                    TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::ESwImplementation, data, CImageEncoder::EOptionAlwaysThread ) );
+                    if ( decErr != KErrNone )
+                        {
+                        TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - SW CExtJpegEncoder failed %d", decErr);
+                    
+                        TRAPD( decErr, encoder = CImageEncoder::DataNewL( data,  KJpegMime(), CImageEncoder::EOptionAlwaysThread ) );
+                        if ( decErr != KErrNone )
+                            {
+                            TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - CImageEncoder failed %d", decErr);
+                            
+                            User::Leave(decErr);
+                            }
+                        else
+                            {
+                            TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - CImageEncoder created" );
+                            }
+                        }
+                    else
+                        {
+                        TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - SW CExtJpegEncoder created" );
+                        }
+                    }
+                else
+                    {
+                    TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - HW CExtJpegEncoder created" );
+                    }             
+                
                 CleanupStack::Pop( data );
                 CleanupStack::PushL( encoder );
              

@@ -134,11 +134,15 @@ void CThumbnailScaleTask::StartL()
 
     if ( !iCrop )
         {
+        TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - cropping OFF", this );
+    
         // target size at max, keep aspect ratio
         CalculateTargetSize();
         }
     else
         {
+        TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - cropping ON", this );
+    
         // exact target size, crop excess
         CalculateCropRectangle();
         }

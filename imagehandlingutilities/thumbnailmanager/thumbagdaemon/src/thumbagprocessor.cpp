@@ -65,6 +65,8 @@ void CThumbAGProcessor::ConstructL()
     {
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - begin" );
     
+    iShutdown = EFalse;
+    
     iTMSession = CThumbnailManager::NewL( *this );
     iTMSession->SetRequestObserver(*this);
     
@@ -112,12 +114,15 @@ CThumbAGProcessor::~CThumbAGProcessor()
     {
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - begin" );
     
+    Shutdown();
+    
     Cancel();
     
     if(iPeriodicTimer)
         {
         iPeriodicTimer->Cancel();
         delete iPeriodicTimer;
+        iPeriodicTimer = NULL;
         }
     
     if(iActivityManager)
@@ -191,6 +196,17 @@ CThumbAGProcessor::~CThumbAGProcessor()
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - end" );
     }
 
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::Shutdown()
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::Shutdown()
+    {
+    TN_DEBUG1( "CThumbAGProcessor::Shutdown()" );
+    iShutdown = ETrue;
+    UpdatePSValues();
+    }
+
 // -----------------------------------------------------------------------------
 // CThumbAGProcessor::HandleQueryNewResults()
 // -----------------------------------------------------------------------------
@@ -200,6 +216,12 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
                                                const TInt aNewItemCount )
     {
     // PH & AllItems query results are handled here
+    
+    if(iShutdown)
+        {
+        return;
+        }
+    
     if (aNewItemCount > 0)
         {
         if(&aQuery == iQueryPlaceholders)
@@ -260,6 +282,11 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
 void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aError )
     {
     TN_DEBUG3( "CThumbAGProcessor::HandleQueryCompleted, aError == %d Count== %d", aError, aQuery.Count());
+    
+    if(iShutdown)
+        {
+        return;
+        }
     
     if(&aQuery == iQueryPlaceholders)
         {
@@ -737,7 +764,7 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryL() !iMdeSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryL() !iDefNamespace "), KErrBadHandle));
     
-    if(!iMdESession  || !iDefNamespace)
+    if(!iMdESession  || !iDefNamespace || iShutdown)
         {
         return;
         }
@@ -822,7 +849,7 @@ void CThumbAGProcessor::QueryPlaceholdersL()
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iMdeSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iDefNamespace "), KErrBadHandle));
     
-    if(!iMdESession  || !iDefNamespace)
+    if(!iMdESession  || !iDefNamespace || iShutdown)
          {
          return;
          }
@@ -880,6 +907,12 @@ void CThumbAGProcessor::QueryPlaceholdersL()
 void CThumbAGProcessor::RunL()
     {
     TN_DEBUG1( "CThumbAGProcessor::RunL() - begin" );
+	
+	if(iShutdown)
+		{
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - shutdown" );
+		return;
+		}
     
     if (iSessionDied)
         {
@@ -1209,6 +1242,11 @@ void CThumbAGProcessor::HarvestingUpdated(
          TInt /*aItemsLeft*/ )
     {
     TN_DEBUG3( "CThumbAGProcessor::HarvestingUpdated -- start() aHEObserverType = %d, aHarvesterEventState = %d", aHEObserverType, aHarvesterEventState );
+    
+    if(iShutdown)
+        {
+        return;
+        }
 
     #ifdef _DEBUG
     if( aHEObserverType == EHEObserverTypePlaceholder)
@@ -1348,7 +1386,7 @@ void CThumbAGProcessor::StartTimeout()
     TN_DEBUG1( "CThumbAGProcessor::StartTimeout()");
     CancelTimeout();
     
-    if(!iHarvesting && !iMPXHarvesting && !iPeriodicTimer->IsActive())
+    if(!iHarvesting && !iMPXHarvesting && !iPeriodicTimer->IsActive() && !iShutdown)
         {
         iPeriodicTimer->Start( KHarvestingCompleteTimeout, KHarvestingCompleteTimeout,
                 TCallBack(PeriodicTimerCallBack, this));
@@ -1427,7 +1465,7 @@ void CThumbAGProcessor::ActivateAO()
         SetForceRun( EFalse );
         }
     
-    if( !IsActive() && ((!iActive && !iQueryActive) || iForceRun ))
+    if( !IsActive() && !iShutdown && ((!iActive && !iQueryActive) || iForceRun ))
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - Activated");
         SetActive();
@@ -1655,7 +1693,7 @@ void CThumbAGProcessor::QueryAllItemsL()
 //
 void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aError )
     {
-    if ( aError != KErrNone || !aMessage )
+    if ( aError != KErrNone || !aMessage || iShutdown )
         {
         return;
         }
@@ -1814,6 +1852,13 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
     {
     TInt itemsLeft = iModifyQueue.Count() + iAddQueue.Count();
     TBool daemonProcessing = EFalse;
+    
+    if(iShutdown)
+        {
+        RProperty::Set(KTAGDPSNotification, KDaemonProcessing, EFalse);
+        RProperty::Set(KTAGDPSNotification, KItemsleft, 0 );
+        return;
+        }
     
     if(itemsLeft + i2ndRoundGenerateQueue.Count() + iRemoveQueue.Count() > 0 )
         {

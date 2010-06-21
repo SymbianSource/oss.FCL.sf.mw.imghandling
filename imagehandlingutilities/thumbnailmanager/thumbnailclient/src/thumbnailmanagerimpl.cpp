@@ -47,7 +47,11 @@ const TInt KThumbnailMimeTypeListGranularity = 8;
 //
 CThumbnailManagerImpl::~CThumbnailManagerImpl()
     {
-    delete iRequestQueue;   
+    TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - start" );
+	
+    delete iRequestQueue;  
+    iRequestQueue = NULL;
+    
     iSession.Close();
     iFs.Close();
 
@@ -65,6 +69,8 @@ CThumbnailManagerImpl::~CThumbnailManagerImpl()
         }
 
     delete iMimeTypeList;
+	
+	TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - end" );
     }
 
 
@@ -94,6 +100,7 @@ CThumbnailManagerImpl::CThumbnailManagerImpl( MThumbnailManagerObserver&
     ( EOptimizeForQuality ), iRequestId( 0 )
     {
     // No implementation required
+    TN_DEBUG1( "CThumbnailManagerImpl::CThumbnailManagerImpl()" );
     }
 
 
@@ -104,6 +111,8 @@ CThumbnailManagerImpl::CThumbnailManagerImpl( MThumbnailManagerObserver&
 //
 void CThumbnailManagerImpl::ConstructL()
     {
+    TN_DEBUG1( "CThumbnailManagerImpl::ConstructL - start");
+    
     User::LeaveIfError( iSession.Connect());
     User::LeaveIfError( iFs.Connect());
     User::LeaveIfError( iFs.ShareProtected());
@@ -129,11 +138,14 @@ void CThumbnailManagerImpl::ConstructL()
             {
             // Fbs connection was available in the beginning, no need to
             // increase the reference count
+            TN_DEBUG1( "CThumbnailManagerImpl::ConstructL - no need to update sessionCount");
             }
         }
     
     // request processor
     iRequestQueue = CThumbnailRequestQueue::NewL();
+    
+    TN_DEBUG1( "CThumbnailManagerImpl::ConstructL - end");
     }
 
 

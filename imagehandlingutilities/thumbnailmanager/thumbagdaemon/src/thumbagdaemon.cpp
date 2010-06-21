@@ -120,6 +120,7 @@ void CThumbAGDaemon::InitializeL()
         // create processor
         if(iProcessor)
             {
+            iProcessor->Shutdown();
             delete iProcessor;
             iProcessor = NULL; 
             }
@@ -179,6 +180,7 @@ CThumbAGDaemon::~CThumbAGDaemon()
     
     if (iProcessor)
         {
+        iProcessor->Shutdown();
         delete iProcessor;
         iProcessor = NULL;
         }
@@ -281,26 +283,24 @@ void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aErr
 void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbAGDaemon::HandleSessionError == %d", aError );
-    if (aError != KErrNone && !iSessionError)
+    if (aError != KErrNone && !iShutdown && !iSessionError)
         {
         iSessionError = ETrue;
     
         // kill processor right away, because it also has MdESession
         if(iProcessor)
             {
+			iProcessor->Shutdown();
             delete iProcessor;
             iProcessor = NULL; 
             }
     
-        if (!iShutdown)
+        if (!iReconnect->IsActive())
             {
-            if (!iReconnect->IsActive())
-                {
-                iReconnect->Start( KMdEReconnect, KMdEReconnect, 
-                                   TCallBack(ReconnectCallBack, this));
-                
-                TN_DEBUG1( "CThumbAGDaemon::HandleSessionError() - reconnect timer started" );
-                }
+            iReconnect->Start( KMdEReconnect, KMdEReconnect, 
+                               TCallBack(ReconnectCallBack, this));
+            
+            TN_DEBUG1( "CThumbAGDaemon::HandleSessionError() - reconnect timer started" );
             }
 
         }   
@@ -318,6 +318,11 @@ void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/,
         const RPointerArray<HBufC>& aObjectUriArray)
     {
     TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - begin" );
+    
+    if(!iProcessor || iShutdown)
+        {
+        return;
+        }
     
     if(aType == ENotifyRemove)
         {

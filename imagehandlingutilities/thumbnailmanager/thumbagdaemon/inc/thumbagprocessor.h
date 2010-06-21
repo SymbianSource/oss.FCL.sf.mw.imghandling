@@ -148,6 +148,9 @@ public:
     void RemoveFromQueues( const RArray<TItemId>& aIDArray, const TBool aRemoveFromDelete = EFalse);
     
     void SetForceRun( const TBool aForceRun );
+	
+	//prepare processor for shutdown
+	void Shutdown();
     
 protected:
     
@@ -362,6 +365,8 @@ private:
     TBool iPreviousDaemonProcessing; 
 	//set ETrue when QueryAllItems needs to be run after placeholder query
     TBool iDoQueryAllItems;
+    
+    TBool iShutdown;
 };
 
 #endif // THUMBAGPROCESSOR_H

@@ -48,11 +48,15 @@ CThumbnailRequestActive::~CThumbnailRequestActive()
         iTimer->Cancel();
         }
     delete iTimer;
+    iTimer = NULL;
     
     ReleaseServerBitmap();
     delete iCallbackThumbnail;
+    iCallbackThumbnail = NULL;
     delete iParams.iBuffer;
+    iParams.iBuffer = NULL;
     delete iBitmap;
+    iBitmap = NULL;
     iFile.Close();
     iMyFileHandle.Close();
     }
@@ -89,6 +93,9 @@ CThumbnailRequestActive::CThumbnailRequestActive( RFs& aFs, RThumbnailSession&
     CActive( aPriority ), iSession( aThumbnailSession ), iParamsPckg( iParams ),
     iObserver( aObserver ), iRequestObserver( aRequestObserver ), iFs( aFs ), iBitmapHandle( 0 ), 
     iRequestId( aId ), iRequestQueue( aQueue ), iCanceled( EFalse )
+#ifdef __RETRY_ON_SERVERCRASH
+    ,iRetry(0)
+#endif
     {
     CActiveScheduler::Add( this );
     TN_DEBUG2( "CThumbnaiRequestActive::CThumbnailRequestActive() AO's priority = %d", Priority());
@@ -572,9 +579,24 @@ void CThumbnailRequestActive::HandleError()
 	            {
 	            iError = KErrNotFound;
 	            }
-			
-            TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
-            iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
+	        
+#ifdef __RETRY_ON_SERVERCRASH
+	        if(iError == KErrServerTerminated )
+	            {
+                  
+                if(iRetry < KMaxRequestRetryCount )
+                    {
+                    iRetry++;
+                    TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - KErrServerTerminated, retry %d", iRetry);
+                    iError = KErrNone;
+                    TRAPD(err, StartL());
+                    return;
+                    }
+	            }
+#endif
+	        TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+	        iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
+	            
             }
         
         iError = KErrNone;

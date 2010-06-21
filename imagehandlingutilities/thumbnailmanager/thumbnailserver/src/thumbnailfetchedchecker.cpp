@@ -96,12 +96,15 @@ void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, TInt aError )
                 if( iNotFetched.Count() < KMaxStoredEntries )
                     {
                     TInt err = iNotFetched.InsertInOrder( entry, CEntry::InsertCB );
-                    if ( err != KErrNone )
+                    if ( err == KErrNone )
                         {
-                        delete entry;
+                        entry = NULL; // owned by array now
                         }
                     }
                 }
+            
+            delete entry;
+            entry = NULL;
             }
         }
     }

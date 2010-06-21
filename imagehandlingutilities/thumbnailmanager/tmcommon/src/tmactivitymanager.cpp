@@ -53,12 +53,15 @@ CTMActivityManager::~CTMActivityManager()
     {
     TN_DEBUG1( "CTMActivityManager::~CTMActivityManager()");
     
+    iObserver = NULL;
+    Cancel();
+    
 #ifdef MONITOR_LIGHTS
     delete iLight;
     iLight = NULL;
 #endif
-    
-    Cancel();
+
+    iTimer.Cancel();
     iTimer.Close();
     }
  

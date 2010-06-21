@@ -69,10 +69,17 @@ const TUint KMaxQueryItems2 = 100;
 // maximum number of active client side queue requests
 const TUint KMaxClientRequests = 2;
 
+#ifdef __RETRY_ON_SERVERCRASH
+// maximum number of request retry
+const TUint KMaxRequestRetryCount = 2;
+#endif
+
 // maximum number of active daemon requests
 const TUint KMaxDaemonRequests = 2;
 
-const TUint KMdEReconnect = 100000; //100 ms
+const TUint KMdEReconnect = 1*1000*1000; //1 second
+
+const TUint KUnmountTimerTimeout = 5*1000*1000; //5 seconds
 
 const TUint KClientRequestTimeout = 60000000; //60 sec
 const TUint KClientRequestStartErrorTimeout = 100000; //100 ms
@@ -83,8 +90,11 @@ const TUint KThumbnailServerBuildVersionNumber = 1;
 
 const TInt KThumbnailErrThumbnailNotFound = -62000;
 
-//give MDS 1000 msec time to settle before starting generating TNs
+//give MDS some to settle before starting generating TNs
 const TInt KHarvestingCompleteTimeout = 10000000; //10 sec
+
+//after MMC mount wait while before count is calculated
+const TInt KMountTimeout = 5*1000*1000; //5 sec
 
 const TInt KPSKeyTimeout = 10000000; //10 sec
 //Store's auto flush timeout
@@ -487,75 +497,6 @@ enum TThumbnailFormat
     EThumbnailFormatJpeg
     };
 
-struct TThumbnailDatabaseData
-    {
-public:
-    /**
-    * Full path to object to which the imported thumb is to be linked.
-    */
-    TPath iPath;
-    /**
-    * Thumbnail ID
-    */      
-    TInt iTnId;
-    /**
-    * Requested thumbnail size new requests.
-    */
-    TInt iSize;
-    /**
-    * type of data
-    */ 
-    TInt iFormat;
-    /**
-    * Path for the thumbnails
-    */  
-    TPath iTnPath;
-    /**
-    * Data if bitmap
-    */  
-    CFbsBitmap* iBlob;
-    /**
-    * Data if jpeg
-    */
-    TDesC8* iData;
-   /**
-    * Width of thumbnail
-    */  
-    TInt iWidth;
-    /**
-    * Height of thumbnail
-    */  
-    TInt iHeight;
-    /**
-    * Original width of thumbnail
-    */  
-    TInt iOrigWidth;
-    /**
-    * Original height of thumbnail
-    */  
-    TInt iOrigHeight;
-    /**
-    * flags
-    */  
-    TInt iFlags;
-    /**
-    * videoposition
-    */
-    TInt iVideoPosition;
-    /**
-    * thumb oritentation
-    */  
-    TInt iOrientation;
-    /**
-    * Thumb created from associated path
-    */  
-    TInt iThumbFromPath;
-    /**
-    * last modified
-    */
-    TInt64 iModified;
-    
-    };
 
 /**
  *  MDS query modes used during thumbnail generation
