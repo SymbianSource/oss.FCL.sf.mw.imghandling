@@ -31,6 +31,7 @@
 RThumbnailSession::RThumbnailSession(): RSessionBase()
     {
     // No implementation required
+    TN_DEBUG1( "RThumbnailSession::RThumbnailSession");
     }
 
 
@@ -40,6 +41,8 @@ RThumbnailSession::RThumbnailSession(): RSessionBase()
 //
 TInt RThumbnailSession::Connect()
     { 
+    TN_DEBUG1( "RThumbnailSession::Connect - start");
+    
     StartServer();
     
     // special case
@@ -54,11 +57,15 @@ TInt RThumbnailSession::Connect()
     // old server still alive, wait and try again
     while (retry <= 10 && err != KErrNone)
         {
+        TN_DEBUG1( "RThumbnailSession::Connect - retry");
+    
         User::After(retry * 50000);
         StartServer();
         err = CreateSession( KThumbnailServerName, Version(), KMessageSlots );
         retry++;
         }
+    
+    TN_DEBUG1( "RThumbnailSession::Connect - end");
     
     return err;
     }
@@ -71,6 +78,8 @@ TInt RThumbnailSession::Connect()
 //
 void RThumbnailSession::Close()
     {
+    TN_DEBUG1( "RThumbnailSession::Close");
+    
     RSessionBase::Close();
     }
 
@@ -94,23 +103,29 @@ TVersion RThumbnailSession::Version()
 //
 TInt RThumbnailSession::StartServer()
     {
+    TN_DEBUG1( "RThumbnailSession::StartServer - start");
+    
     TInt res( KErrNone );
     // create server - if one of this name does not already exist
 
     TFindServer findServer( KThumbnailServerName );
     TFullName name;
     if ( findServer.Next( name ) != KErrNone )
-    // we don't exist already
+        // we don't exist already
         {
+        TN_DEBUG1( "RThumbnailSession::StartServer - server process doesn't exist yet");
+    
         RProcess server;
         // Create the server process
         // KNullDesC param causes server's E32Main() to be run
         res = server.Create( KThumbnailServerExe, KNullDesC );
         if ( res != KErrNone )
-        // thread created ok - now start it going
             {
+            TN_DEBUG2( "RThumbnailSession::StartServer - error creating process: %d", res);
             return res;
             }
+        
+        TN_DEBUG1( "RThumbnailSession::StartServer - process created");
 
         // Process created successfully
         TRequestStatus status;
@@ -122,13 +137,18 @@ TInt RThumbnailSession::StartServer()
 
         if ( status != KErrNone )
             {
+            TN_DEBUG2( "RThumbnailSession::StartServer - status: %d, closing", status.Int() );
+        
             server.Close();
             return status.Int();
             }
+        
         // Server created successfully
         server.Close(); // we're no longer interested in the other process
-
         }
+    
+    TN_DEBUG1( "RThumbnailSession::StartServer - end");
+    
     return res;
     }
 

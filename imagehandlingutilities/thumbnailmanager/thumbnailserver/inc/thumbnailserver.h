@@ -234,6 +234,14 @@ public:
      * @return Thumbnail provider.
      */
     CThumbnailProvider* ResolveProviderL( const TDesC8& aMimeType );
+    
+    /**
+     * Preload provider plugins
+     *
+     * @since S^3
+     */
+    void PreLoadProviders();
+    
 
     /**
      * Add thumbnailtask to processor queue.
@@ -538,6 +546,20 @@ private:
      */
     static TInt ReconnectCallBack(TAny* aAny);
     
+    /**
+     * Start unmount timer
+     *
+     * @since S60 S^3
+     */
+    void StartUnmountTimeout( const TInt aDrive);
+    
+    /**
+     * Callback for unmount timer
+     *
+     * @since S60 S^3
+     */
+    static TInt UnmountCallBack(TAny* aAny);
+    
 private:
 
     /**
@@ -690,6 +712,12 @@ private:
     
     // reconnect timer
     CPeriodic* iReconnect;
+
+    // unmount timer
+    CPeriodic* iUnmount;
+    
+    // array of unmounte
+    RArray < TInt > iUnmountedDrives;
     
 #ifdef _DEBUG
     TUint32 iPlaceholderCounter;

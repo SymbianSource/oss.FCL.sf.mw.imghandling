@@ -49,6 +49,12 @@ SOURCE			tmshutdownobserver.cpp
 SOURCE			tmformatobserver.cpp 
 SOURCE			tmsrproptertyobserver.cpp
 
+SOURCEPATH              ../src
+SOURCE 			thumbagimageobserver.cpp 
+SOURCE			thumbagcameraobserver.cpp
+SOURCE			thumbagaudioobserver.cpp 
+SOURCE			thumbagvideoobserver.cpp
+
 // Default system include paths for middleware layer modules.
 MW_LAYER_SYSTEMINCLUDE
 

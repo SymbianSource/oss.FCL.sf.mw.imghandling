@@ -50,7 +50,8 @@ CThumbAGProcessor* CThumbAGProcessor::NewL()
 // CThumbAGProcessor::CThumbAGProcessor()
 // ---------------------------------------------------------------------------
 //
-CThumbAGProcessor::CThumbAGProcessor(): CActive( CActive::EPriorityStandard )
+CThumbAGProcessor::CThumbAGProcessor(): CActive( CActive::EPriorityStandard ), iMMCHarvestingItemsLeftTemp(0), 
+        iPHHarvestingItemsLeftTemp(0)
     {
     TN_DEBUG1( "CThumbAGProcessor::CThumbAGProcessor() - begin" );
     
@@ -64,6 +65,8 @@ CThumbAGProcessor::CThumbAGProcessor(): CActive( CActive::EPriorityStandard )
 void CThumbAGProcessor::ConstructL()
     {
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - begin" );
+    
+    iShutdown = EFalse;
     
     iTMSession = CThumbnailManager::NewL( *this );
     iTMSession->SetRequestObserver(*this);
@@ -82,8 +85,9 @@ void CThumbAGProcessor::ConstructL()
     
     iPeriodicTimer = CPeriodic::NewL(CActive::EPriorityIdle);
     
+    iMountTimer = CPeriodic::NewL(CActive::EPriorityUserInput);
+    
     SetForceRun( EFalse );    
-    iActive = EFalse;
     
     iFormatObserver = CTMFormatObserver::NewL( *this );
        
@@ -94,7 +98,7 @@ void CThumbAGProcessor::ConstructL()
     
     iActivityManager = CTMActivityManager::NewL( this, KBackgroundGenerationIdle);
 
-    UpdatePSValues(ETrue);
+    UpdatePSValues(ETrue, ETrue);
     
     RProperty::Define(KTAGDPSNotification, KMPXHarvesting, RProperty::EInt);
     
@@ -112,12 +116,29 @@ CThumbAGProcessor::~CThumbAGProcessor()
     {
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - begin" );
     
+    Shutdown();
+    
     Cancel();
+    
+    if (iTMSession)
+        {
+        iTMSession->RemoveRequestObserver();
+        delete iTMSession;
+        iTMSession = NULL;
+        }
+    
+    if(iMountTimer)
+        {
+        iMountTimer->Cancel();
+        delete iMountTimer;
+        iMountTimer = NULL;
+        }
     
     if(iPeriodicTimer)
         {
         iPeriodicTimer->Cancel();
         delete iPeriodicTimer;
+        iPeriodicTimer = NULL;
         }
     
     if(iActivityManager)
@@ -172,23 +193,30 @@ CThumbAGProcessor::~CThumbAGProcessor()
         iCollectionUtility->Close();
         iCollectionUtility = NULL;
         }
-
-    iAddQueue.Close();
-    iModifyQueue.Close();
-    iRemoveQueue.ResetAndDestroy();
-    iQueryQueue.Close();
-    iPlaceholderQueue.Close();
-	  
-    i2ndRoundGenerateQueue.Close();
     
-    if (iTMSession)
+    for(TInt i=0;i<iGenerationQueue.Count();i++)
         {
-        iTMSession->RemoveRequestObserver();
-        delete iTMSession;
-        iTMSession = NULL;
+        delete iGenerationQueue[i].iUri;
+        iGenerationQueue[i].iUri = NULL;
         }
     
+    iGenerationQueue.Reset();
+    iGenerationQueue.Close();
+    
+    iQueryQueue.Close();
+    
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - end" );
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::Shutdown()
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::Shutdown()
+    {
+    TN_DEBUG1( "CThumbAGProcessor::Shutdown()" );
+    iShutdown = ETrue;
+    UpdatePSValues(EFalse, EFalse);
     }
 
 // -----------------------------------------------------------------------------
@@ -200,6 +228,12 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
                                                const TInt aNewItemCount )
     {
     // PH & AllItems query results are handled here
+    
+    if(iShutdown)
+        {
+        return;
+        }
+    
     if (aNewItemCount > 0)
         {
         if(&aQuery == iQueryPlaceholders)
@@ -222,13 +256,19 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
                     }
                
                 // ignore if fails
-                iPlaceholderQueue.InsertInOrder(object->Id(), Compare);               
+                TThumbnailGenerationItem item;
+                item.iItemId = object->Id();
+                item.iPlaceholder = ETrue;
+                
+                SetGenerationItemType( item, object->Def().Id());
+                
+                AppendProcessingQueue( item );
                 }  
             }
         else if(&aQuery == iQueryAllItems)
             {
             TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults - QueryAllItems, %d new", aNewItemCount);
-    
+            
             for(TInt i = aFirstNewItemIndex; i < iQueryAllItems->Count(); i++)
                 {    
                 const CMdEObject* object = &iQueryAllItems->Result(i);
@@ -237,13 +277,17 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
                     {
                     continue;
                     }
-               
-                if (iAddQueue.FindInOrder(object->Id(), Compare) == KErrNotFound && 
-                    iModifyQueue.FindInOrder(object->Id(), Compare) == KErrNotFound )
-                    {
-                    // ignore if fails
-                    iAddQueue.InsertInOrder(object->Id(), Compare);
-                    }
+
+                TThumbnailGenerationItem item;
+                item.iItemId = object->Id();
+                
+                SetGenerationItemType(item, object->Def().Id());
+                
+                TInt itemIndex = iGenerationQueue.FindInOrder(item, Compare);
+                
+                item.iPlaceholder = object->Placeholder(); 
+                
+                AppendProcessingQueue( item );
                 }
             }    
         }
@@ -261,11 +305,14 @@ void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aErr
     {
     TN_DEBUG3( "CThumbAGProcessor::HandleQueryCompleted, aError == %d Count== %d", aError, aQuery.Count());
     
+    if(iShutdown)
+        {
+        return;
+        }
+    
     if(&aQuery == iQueryPlaceholders)
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - iQueryPlaceholders completed");
-        
-        iPlaceholderQueue.Reset();
         
         //free query
         delete iQueryPlaceholders;
@@ -304,60 +351,123 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             {
             iProcessingCount = iQuery->Count();
 			
-            if(iProcessingCount != iQueryQueue.Count())
+            if(iProcessingCount != iQueryQueue.Count() )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() some result items missing");
                 
                 RArray<TItemId> queryQueueDelta;
                 
-                TInt itemIndex(KErrNotFound);
-                
-                //search delta items which were queried, but not found
-                 for(TInt queryItem =0; queryItem < iQueryQueue.Count();queryItem++)
-                     {
-                     TBool found(EFalse);
-                     for(TInt queryResult = 0; queryResult < iQuery->Count(); queryResult++)
-                        {    
-                        const CMdEObject* object = &iQuery->Result(queryResult);
-                        
-                        if( iQueryQueue[queryItem] == object->Id())
+                    //search delta items which were queried, but not found
+                     for(TInt queryItem =0; queryItem < iQueryQueue.Count();queryItem++)
+                         {
+                         TBool found(EFalse);
+                         for(TInt queryResult = 0; queryResult < iQuery->Count(); queryResult++)
+                            {    
+                            const CMdEObject* object = &iQuery->Result(queryResult);
+                            
+                            if( iQueryQueue[queryItem] == object->Id())
+                                {
+                                found = ETrue;
+                                break;
+                                }
+                            }
+                             
+                         if(!found)
+                             {
+                             TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() %d missing from query results", iQueryQueue[queryItem] );
+                             
+                             // ignore if fails
+                             queryQueueDelta.InsertInOrder(iQueryQueue[queryItem], CompareId);
+                             }
+                         }
+                     
+                     TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing items found %d", queryQueueDelta.Count()); 
+                     //cleanup from previous queue it item is not found from MDS
+                     while(queryQueueDelta.Count())
+                         {
+                         TThumbnailGenerationItem item;
+                         item.iItemId = queryQueueDelta[0];
+                         TInt itemIndex = iQueryQueue.FindInOrder(item.iItemId, CompareId);
+                         
+                         if(itemIndex >= 0)
+                             {
+                             TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove %d from iQueryQueue", queryQueueDelta[0]);
+                             iQueryQueue.Remove( itemIndex );
+                             
+                             //remove from procesing queue
+                             itemIndex = iGenerationQueue.FindInOrder(item, Compare);
+                             
+                             if(itemIndex >= 0)
+                                 {
+                                 
+                                 if( iUnknown )
+                                     {
+                                     TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() mark %d as EGenerationItemTypeNotFound in iGenerationQueue", queryQueueDelta[0]);
+                                     //mark to be removed, cleanup is done below
+                                     iGenerationQueue[itemIndex].iItemType = EGenerationItemTypeNotFound;
+                                     }
+                                 else
+                                     {
+                                     TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove %d from iGenerationQueue", queryQueueDelta[0]);
+                                     iGenerationQueue.Remove( itemIndex );
+                                     }
+                                 }
+                             }
+                         queryQueueDelta.Remove(0);
+                         }
+                     queryQueueDelta.Close();
+                    }
+
+                if(iUnknown)
+                    {
+                    for(TInt i = 0; i < iQuery->Count(); i++)
+                      {    
+                      const CMdEObject* object = &iQuery->Result(i);
+                     
+                      if(!object)
+                          {
+                          continue;
+                          }
+
+                          TThumbnailGenerationItem tempItem;
+                          tempItem.iItemId = object->Id();
+                          TInt itemIndex = iGenerationQueue.FindInOrder(tempItem, Compare);
+                                           
+                        if(itemIndex >= 0)
                             {
-                            found = ETrue;
-                            break;
+                            TThumbnailGenerationItem& item = iGenerationQueue[itemIndex]; 
+                            
+                            if(iGenerationQueue[itemIndex].iItemType == EGenerationItemTypeNotFound)
+                                {
+                                TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove EGenerationItemTypeNotFound %d item from iGenerationQueue", item.iItemId);
+                                iGenerationQueue.Remove(itemIndex);
+                                continue;
+                                }
+                            
+                                SetGenerationItemType(item, object->Def().Id());
+                                    
+                                if(item.iItemType == EGenerationItemTypeUnknown )
+                                  {
+                                  TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove unknown item %d", item.iItemId);
+                                  iGenerationQueue.Remove(itemIndex);
+                                  continue;
+                                  }
+                              
+                              item.iPlaceholder = object->Placeholder(); 
+                                      
                             }
                         }
-                         
-                     if(!found)
-                         {
-                         TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing from results item %d", iQueryQueue[queryItem] );
-                         
-                         // ignore if fails
-                         queryQueueDelta.InsertInOrder(iQueryQueue[queryItem], Compare);
-                         }
-                     }
-                 
-                 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing items total count %d", queryQueueDelta.Count()); 
-                 //cleanup from previous queue it item is not found from MDS
-                 while(queryQueueDelta.Count())
-                     {
-                     itemIndex = iLastQueue->FindInOrder(queryQueueDelta[0], Compare);
-                     
-                     if(itemIndex >= 0)
-                         {
-                         TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove items %d", iQueryQueue[0]);
-                         iLastQueue->Remove( itemIndex );
-                         }
-                     queryQueueDelta.Remove(0);
-                     }
-                 queryQueueDelta.Close();
-                }
+                
+                        iQueryQueue.Reset();
+                        iProcessingCount = 0;
+                        iUnknown = EFalse;
+                    }
             
             // no results, reset query
-            if( !iProcessingCount)
+            if( !iProcessingCount )
                 {
                 delete iQuery;
                 iQuery = NULL;
-                iProcessingCount = 0;
                 iModify = EFalse;
                 }
             }
@@ -389,7 +499,7 @@ void CThumbAGProcessor::ThumbnailPreviewReady( MThumbnailData& /*aThumbnail*/,
     }
 
 // -----------------------------------------------------------------------------
-// CThumbAGProcessor::ThumbnailReady()
+// CThumbAGProcessor::ThumbnailReady()d
 // -----------------------------------------------------------------------------
 //
 void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnail*/,
@@ -398,12 +508,6 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
     TN_DEBUG2( "CThumbAGProcessor::ThumbnailReady() aError == %d", aError );
     
     iActiveCount--;
-    
-    if(iActiveCount <= 0)
-        {
-        iActiveCount = 0;
-        iActive = EFalse;
-        }
     
     // TNM server died, delete session
     if( aError == KErrServerTerminated )
@@ -442,12 +546,6 @@ void CThumbAGProcessor::ThumbnailRequestReady( TInt /*aError*/, TThumbnailReques
     
         iActiveCount--;
         
-        if(iActiveCount <= 0)
-            {
-            iActiveCount = 0;
-            iActive = EFalse;
-            }
-    
         ActivateAO();
         }
     }
@@ -456,7 +554,7 @@ void CThumbAGProcessor::ThumbnailRequestReady( TInt /*aError*/, TThumbnailReques
 // CThumbAGProcessor::SetMdESession()
 // ---------------------------------------------------------------------------
 //
-void CThumbAGProcessor::SetMdESession( CMdESession* aMdESession )
+void CThumbAGProcessor::SetMdESessionL( CMdESession* aMdESession )
     {
     TN_DEBUG1( "CThumbAGProcessor::SetMdESession() - begin" );
     
@@ -468,14 +566,22 @@ void CThumbAGProcessor::SetMdESession( CMdESession* aMdESession )
     if (err != KErrNone)
         {
         TN_DEBUG2( "CThumbAGProcessor::SetMdESession() GetDefaultNamespaceDefL() err = %d", err );
+        __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iDefNamespace "), KErrBadHandle));
         }
-    
-    __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iDefNamespace "), KErrBadHandle));
-       
-    //do async init
-    iInit = ETrue;
-    
-	ActivateAO();
+    else
+        {
+        iImageObjectDef = &iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
+        __ASSERT_DEBUG((iImageObjectDef), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iDefNamespace "), KErrBadHandle));
+        iVideoObjectDef = &iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
+        __ASSERT_DEBUG((iVideoObjectDef), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iVideoObjectDef "), KErrBadHandle));
+        iAudioObjectDef = &iDefNamespace->GetObjectDefL( MdeConstants::Audio::KAudioObject );
+        __ASSERT_DEBUG((iAudioObjectDef), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iAudioObjectDef "), KErrBadHandle));
+        
+        //do async init
+        iInit = ETrue;
+
+        ActivateAO();
+        }
     }
 
 // ---------------------------------------------------------------------------
@@ -483,11 +589,13 @@ void CThumbAGProcessor::SetMdESession( CMdESession* aMdESession )
 // ---------------------------------------------------------------------------
 //
 void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType, 
+                                    TThumbnailGenerationItemType aItemType,
                                     const RArray<TItemId>& aIDArray, 
                                     const RPointerArray<HBufC>& aObjectUriArray,
                                     TBool /*aPresent*/ )
     {
     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - begin" );
+    
 
     // update queues
     if (aType == ENotifyAdd)
@@ -496,12 +604,18 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         
         for (int i=0; i<aIDArray.Count(); i++)
             {
-            // do not to append to Add queue if exist already in Add or 2nd Add queue (just processed)     
-            if (iAddQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound && 
-                i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound)
+            TThumbnailGenerationItem item;
+            item.iItemId = aIDArray[i];      
+            item.iItemType = aItemType;
+            
+            SetGenerationItemType(item, aItemType);
+            
+            if(iPHHarvesting)
                 {
-                User::LeaveIfError(iAddQueue.InsertInOrder(aIDArray[i], Compare));    
+                item.iPlaceholder = ETrue;
                 }
+
+            AppendProcessingQueue( item );
             }
         }
     else if (aType == ENotifyModify)
@@ -513,19 +627,23 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - PH  harvesting active, treat like add" );
             for (int i=0; i<aIDArray.Count(); i++)
                 {
-                TInt itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare);
+                TThumbnailGenerationItem item;
+                item.iItemId = aIDArray[i];
+                
+                TInt itemIndex = iGenerationQueue.FindInOrder(item, Compare);
                                 
                 if (itemIndex >= 0)
                     {
-                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - remove from placeholder queue");
-                    iPlaceholderQueue.Remove( itemIndex );
+                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - set as non-placeholder");
+                    iGenerationQueue[itemIndex].iPlaceholder = EFalse;
                     }
-                
-                if(iAddQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound && 
-                   i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare) == KErrNotFound)
+                else
                     {
-                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to add queue");
-                    User::LeaveIfError(iAddQueue.InsertInOrder(aIDArray[i], Compare));
+                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append");
+
+                     item.iPlaceholder = EFalse;
+                     SetGenerationItemType( item, 0 );
+                     AppendProcessingQueue( item );
                     }
                 }
             }
@@ -537,75 +655,89 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
             
             for (int i=0; i<aIDArray.Count(); i++)
                 {
-                itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare);
+                TThumbnailGenerationItem item;
+                item.iItemId = aIDArray[i];
+                
+                itemIndex = iGenerationQueue.FindInOrder(item, Compare);
                 
                 if (itemIndex >= 0)
                     {
-                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - placeholder modify, remove from placeholder queue");
-                    iPlaceholderQueue.Remove( itemIndex );
+                    if( iGenerationQueue[itemIndex].iPlaceholder )
+                        {
+                        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - placeholder modify");
+                        iGenerationQueue[itemIndex].iPlaceholder = EFalse;
+                        }
+                    else
+                        {
+                        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - real modify");
+                        iGenerationQueue[itemIndex].iItemAction = EGenerationItemActionModify;
+                        SetForceRun( ETrue );
+                        }
                     }
                 else
                     {
-                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - real modify");
-                    itemIndex = iAddQueue.FindInOrder(aIDArray[i], Compare);
-                                    
-                    if (itemIndex >= 0)
-                        {
-                        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - remove from add queue");
-                        iAddQueue.Remove( itemIndex );
-                        }
-					else
-						{						
-						itemIndex = i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare);
-                                    
-	                    if (itemIndex >= 0)
-	                        {
-	                        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - remove from 2nd round add queue");
-	                        i2ndRoundGenerateQueue.Remove( itemIndex );
-	                        }
-					}
-                    
-                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append to modify queue");
-                    User::LeaveIfError(iModifyQueue.InsertInOrder(aIDArray[i], Compare));
-                    
-                    SetForceRun( ETrue );
-                    } 
+                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append");
+                    SetGenerationItemType( item, 0 );
+                    item.iPlaceholder = EFalse;
+                    AppendProcessingQueue( item );
+                    }
                 }
             }
         }
-        else if (aType == ENotifyRemove)
+        else if (aType == ENotifyRemove && aItemType == EGenerationItemTypeAny)
             {
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyRemove, remove IDs from all queues");
             
             for (int i=0; i<aIDArray.Count(); i++)
                 {
-                // can be removed from Add queue
-                TInt itemIndex = iAddQueue.FindInOrder(aIDArray[i], Compare);
+                TThumbnailGenerationItem item;
+                item.iItemId = aIDArray[i];
+
+                TInt itemIndex = iGenerationQueue.FindInOrder(item, Compare);
+                
                 if(itemIndex >= 0)
                     {
-                    iAddQueue.Remove(itemIndex);
+                    iGenerationQueue[itemIndex].iItemAction = EGenerationItemActionDelete;
+                    delete iGenerationQueue[itemIndex].iUri;
+                    iGenerationQueue[itemIndex].iUri = NULL;
+                    
+                    if( aObjectUriArray[i])
+                        {
+                        iGenerationQueue[itemIndex].iUri = aObjectUriArray[i]->AllocL();
+                        }
+                    else
+                        {
+                        //invalid URI remove from processing queue
+                        iGenerationQueue.Remove(itemIndex);
+                        }
                     }
-    
-                // ..and Modify Queue
-                itemIndex = iModifyQueue.FindInOrder(aIDArray[i], Compare);
-                if(itemIndex >= 0)
+                else
                     {
-                    iModifyQueue.Remove(itemIndex);
+                    TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append");
+                    item.iItemAction = EGenerationItemActionDelete;
+                    delete item.iUri;
+                    item.iUri = NULL;
+                    
+                    if( aObjectUriArray[i])
+                        {
+                        item.iUri = aObjectUriArray[i]->AllocL();
+                        CleanupStack::PushL( item.iUri );
+                        User::LeaveIfError( iGenerationQueue.InsertInOrder(item, Compare) );
+                        CleanupStack::Pop();
+                        }
+                    
+                    //owned by item
+                    item.iUri = NULL;
                     }
-                }
-            
-            TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyRemove append URIs to remove queue");
-            for (int i=0; i<aObjectUriArray.Count(); i++)
-                {
-                HBufC* temp = aObjectUriArray[i]->AllocL();
-                iRemoveQueue.Append( temp );
-                TN_DEBUG2( "CThumbAGProcessor::AddToQueueL() - %S", temp); 
+                
+                TN_DEBUG2( "CThumbAGProcessor::AddToQueueL() - %S", aObjectUriArray[i]); 
                 }
             }
 #ifdef _DEBUG
         else
             {
 	        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() -  should not come here" );
+	        __ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbAGProcessor::AddToQueueL()"), KErrArgument));
 	        User::Leave( KErrArgument );
             }
 #endif
@@ -635,8 +767,8 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
     TInt64 modifiedVal = 0;
     
     CMdEProperty* orientation = NULL;
-    CMdEObjectDef& imageObjectDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );       
-    TInt orientErr = aObject->Property( imageObjectDef.GetPropertyDefL( MdeConstants::Image::KOrientationProperty ), orientation, 0 );
+       
+    TInt orientErr = aObject->Property( iImageObjectDef->GetPropertyDefL( MdeConstants::Image::KOrientationProperty ), orientation, 0 );
     
     if (orientErr == KErrNone)
         {
@@ -661,6 +793,20 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             //generate both if needed
             TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() EOptimizeForQuality ");
             iTMSession->SetQualityPreferenceL( CThumbnailManager::EOptimizeForQuality );
+            
+            TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 2nd round add remove from queue", aObject->Id() );
+                        
+            TThumbnailGenerationItem item;
+            item.iItemId = aObject->Id();
+            TInt itemIndex = iGenerationQueue.FindInOrder(item, Compare);
+            
+            if(itemIndex >=0 )
+                {
+                if(iGenerationQueue[itemIndex].iItemAction == EGenerationItemAction2ndAdd)
+                    {
+                    iGenerationQueue.Remove(itemIndex);
+                    }
+                }
             }
 		// 1st roung generation
         else
@@ -669,27 +815,30 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() EOptimizeForQualityWithPreview");
             iTMSession->SetQualityPreferenceL( CThumbnailManager::EOptimizeForQualityWithPreview );
             
-            CMdEObjectDef& videoObjectDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
-            
             // add item to 2nd round queue 
-            if(iLastQueue == &iAddQueue || iLastQueue == &iModifyQueue)
+            TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 1st round add/modify, append to 2nd round queue", aObject->Id() );
+            
+            TThumbnailGenerationItem item;
+            item.iItemId = aObject->Id();
+            TInt itemIndex = iGenerationQueue.FindInOrder(item, Compare);
+            
+            if(itemIndex >=0 )
                 {
-                TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 1st round add/modify, append to 2nd round queue", aObject->Id() );
-                if(i2ndRoundGenerateQueue.FindInOrder(aObject->Id(), Compare) == KErrNotFound)
+                if(iGenerationQueue[itemIndex].iItemAction == EGenerationItemActionModify)
                     {
-                    // ignore if fails
-                    i2ndRoundGenerateQueue.InsertInOrder(aObject->Id(), Compare);
+                    iGenerationQueue.Remove(itemIndex);
+                    }
+                //change 1st round item for 2nd round processing
+                //2nd round item can be deleted
+                else if(iGenerationQueue[itemIndex].iItemAction == EGenerationItemActionAdd)
+                    {
+                    iGenerationQueue[itemIndex].iItemAction = EGenerationItemAction2ndAdd;
+                    }
+                else
+                    {
+                    iGenerationQueue.Remove(itemIndex);
                     }
                 }
-            
-		   // Symbian^4 specific --->
-           if( imageObjectDef.Id() != aObject->Def().Id()  )
-                {
-                TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() 1st round not image");
-                ActivateAO();
-                return;
-                }
-			//Symbian^4 specific <---
             }
 
         // run as lower priority than getting but higher that creating thumbnails
@@ -700,13 +849,11 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL, iTMSession error == %d", err );
             
             iSessionDied = ETrue;
-            iActive = EFalse;
             ActivateAO();
             } 
         else
             {
             iActiveCount++;
-            iActive = ETrue;
             }
         }
     else
@@ -721,14 +868,14 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
 // CThumbAGProcessor::QueryL()
 // ---------------------------------------------------------------------------
 //
-void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
+void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGenerationItemAction aAction  )
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - begin" );
     
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryL() !iMdeSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryL() !iDefNamespace "), KErrBadHandle));
     
-    if(!iMdESession  || !iDefNamespace)
+    if(!iMdESession  || !iDefNamespace || iShutdown)
         {
         return;
         }
@@ -736,7 +883,6 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
 	//reset query queue
     iQueryQueue.Reset();
 	//set reference to current pprocessing queue
-    iLastQueue = &aIDArray;
     
     iQueryReady = EFalse;
 
@@ -748,18 +894,64 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
         }
     
     //move ID from source queue to Query queue
-    TInt maxCount = aIDArray.Count();
+    TInt maxCount = iGenerationQueue.Count();
         
-    TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill begin aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
+    TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill begin iGenerationQueue == %d, iQueryQueue == %d", iGenerationQueue.Count(), iQueryQueue.Count() );
     
-    for(TInt i=0; i < KMaxQueryItems && i < maxCount; i++)
+    
+    TInt itemCount(0);
+    for(TInt i=0; itemCount < KMaxQueryItems && i < maxCount; i++)
         {
-        TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", aIDArray[0] );
-        iQueryQueue.InsertInOrder(aIDArray[0], Compare);
-        aIDArray.Remove(0);
+        TInt itemIndex(KErrNotFound);
+        switch(aAction)
+            {
+            //1st round items
+            case EGenerationItemActionAdd:
+                if(iGenerationQueue[i].iItemAction == aAction )
+                    {
+                    itemIndex = i;
+                    }
+                break;
+            case EGenerationItemActionModify:
+                if( iGenerationQueue[i].iItemAction == aAction )
+                    {
+                    itemIndex = i;
+                    }
+                break;
+            case EGenerationItemAction2ndAdd:
+                if( iGenerationQueue[i].iItemAction == aAction )
+                    {
+                    itemIndex = i;
+                    }
+                break;
+            //unknown stuff
+            case EGenerationItemActionResolveType:
+                if( iGenerationQueue[i].iItemType == EGenerationItemTypeUnknown )
+                    {
+                    itemIndex = i;
+                    }
+                break;
+            default:
+                break;
+            };
+        
+        if( itemIndex >= 0 )
+            {
+            TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", iGenerationQueue[itemIndex].iItemId );        
+            iQueryQueue.InsertInOrder(iGenerationQueue[itemIndex].iItemId, CompareId);
+            itemCount++;
+            }
         }
     
-    TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill end aIDArray == %d, iQueryQueue == %d", aIDArray.Count(), iQueryQueue.Count() );
+    if(!itemCount)
+        {
+        TN_DEBUG1( "CThumbAGProcessor::QueryL() - empty query, cancel?!");
+        iQueryActive = EFalse;
+        __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryL() empty! "), KErrNotFound));
+        return;
+        }
+    
+    TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill end iGenerationQueue == %d, iQueryQueue == %d", iGenerationQueue.Count(), iQueryQueue.Count() );
     
     CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );
     iQuery = iMdESession->NewObjectQueryL( *iDefNamespace, objDef, this );
@@ -774,7 +966,7 @@ void CThumbAGProcessor::QueryL( RArray<TItemId>& aIDArray )
     CleanupStack::Pop( &iQueryQueue );
     
     // add object type conditions 
-    if (!iModify)
+    if (!(iModify || iUnknown))
         {
         CMdELogicCondition& objDefCondition = rootCondition.AddLogicConditionL( ELogicConditionOperatorOr );
         
@@ -813,7 +1005,7 @@ void CThumbAGProcessor::QueryPlaceholdersL()
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iMdeSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iDefNamespace "), KErrBadHandle));
     
-    if(!iMdESession  || !iDefNamespace)
+    if(!iMdESession  || !iDefNamespace || iShutdown)
          {
          return;
          }
@@ -858,7 +1050,7 @@ void CThumbAGProcessor::QueryPlaceholdersL()
     audioPHObjectCondition.SetPlaceholderOnly( ETrue );
     audioPHObjectCondition.SetNotPresent( ETrue );
     
-    iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryItems2);   
+    iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryBatchSize);   
    
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - end" );
     }
@@ -871,6 +1063,12 @@ void CThumbAGProcessor::QueryPlaceholdersL()
 void CThumbAGProcessor::RunL()
     {
     TN_DEBUG1( "CThumbAGProcessor::RunL() - begin" );
+	
+	if(iShutdown)
+		{
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - shutdown" );
+		return;
+		}
     
     if (iSessionDied)
         {
@@ -886,11 +1084,8 @@ void CThumbAGProcessor::RunL()
         iInit = EFalse;
         iInit2 = ETrue;
 
-        iAddQueue.Reset();
-        iModifyQueue.Reset();
-        iRemoveQueue.ResetAndDestroy();
+        iGenerationQueue.Reset();
         iQueryQueue.Reset();
-        iPlaceholderQueue.Reset();
         
         TRAP_IGNORE(QueryPlaceholdersL());
 		//query all items after PH query
@@ -912,13 +1107,20 @@ void CThumbAGProcessor::RunL()
         err = iHarvesterClient.Connect();
         TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient connect err = %d", err);
         
-        __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
+        __ASSERT_DEBUG((err == KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
         
         if(  err == KErrNone )
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer");
-            err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypeMMC | EHEObserverTypePlaceholder, KMaxTInt );
+            err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypeMMC | EHEObserverTypePlaceholder, 10 );
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
+            
+            if( !err )
+                {
+                TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer failed");
+                // if we fail observer harvester, fake it
+                iHarvesterActivated = ETrue;
+                }
             __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
             }
 #endif
@@ -942,7 +1144,6 @@ void CThumbAGProcessor::RunL()
     if (!iTMSession)
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - open TNM session");
-        iActive = EFalse;
         TRAPD( err, iTMSession = CThumbnailManager::NewL( *this ) );
 		
         if (err != KErrNone)
@@ -959,19 +1160,11 @@ void CThumbAGProcessor::RunL()
         }    
    
     // do not run if request is already issued to TNM server even if forced
-    if( iActive)
+    if(iActiveCount >= KMaxDaemonRequests)
         {
-        if(iActiveCount >= KMaxDaemonRequests)
-            {
-            TN_DEBUG1( "CThumbAGProcessor::RunL() - waiting for previous to complete, abort..." );
-            return;
-            }
+        TN_DEBUG1( "CThumbAGProcessor::RunL() - waiting for previous to complete, abort..." );
+        return;
         }
-    else
-        {
-        iActiveCount = 0;   
-        }
-    
     
     //force run can proceed from this point
 #ifdef _DEBUG
@@ -1029,21 +1222,16 @@ void CThumbAGProcessor::RunL()
             
             if ( object )
                 {
-                TInt itemIndex = iLastQueue->FindInOrder(object->Id(), Compare);
-                if(itemIndex >= 0)
-                    {
-                    iLastQueue->Remove(itemIndex);
-                    }
-				
                 //process one item at once
                 //remove item from queryQueue when request is issued 
-                itemIndex = iQueryQueue.FindInOrder(object->Id(), Compare);
+ 
+                TInt itemIndex = iQueryQueue.FindInOrder(object->Id(), CompareId);
                 if(itemIndex >= 0)
                     {
                     iQueryQueue.Remove(itemIndex);
                     }
             
-                TRAP( err, CreateThumbnailsL(object) );
+                TRAP( err, CreateThumbnailsL( object ) );
                 TN_DEBUG2( "CThumbAGProcessor::RunL(), CreateThumbnailsL error == %d", err );
                 __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), CreateThumbnailsL() "), err));
                 }
@@ -1071,7 +1259,7 @@ void CThumbAGProcessor::RunL()
     else if( iQueryActive )
         {
 		//state mismatch
-        if(iForceRun && !iModify)
+        if(iForceRun && !(iModify || iUnknown))
             {
 			//cancel query and move items back to original processing queue
             DeleteAndCancelQuery(ETrue);
@@ -1082,10 +1270,20 @@ void CThumbAGProcessor::RunL()
             TN_DEBUG1( "CThumbAGProcessor::RunL() - waiting for query to complete, abort..." );
             }    
         }
+    else if ( iUnknownItemCount > 0 )
+        {
+        TN_DEBUG1( "void CThumbAGProcessor::RunL() unknown items in queue");
+        
+        i2ndRound = EFalse;
+        iModify = EFalse;
+        iUnknown = ETrue;
+        iQueryActive = ETrue;
 
+        QueryL( EGenerationItemActionResolveType );
+       }
     // no items in query queue, start new
     // select queue to process, priority by type
-    else if ( iModifyQueue.Count() > 0 )
+    else if ( iModifyItemCount > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update thumbnails");
         
@@ -1094,54 +1292,77 @@ void CThumbAGProcessor::RunL()
         // query for object info
         iQueryActive = ETrue;
         iModify = ETrue;
-        QueryL( iModifyQueue );
+        iUnknown = EFalse;
+        QueryL( EGenerationItemActionModify );
        }
-    else if ( iAddQueue.Count() > 0 )
+    else if ( iAddItemCount > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update 1st round thumbnails");
         
         i2ndRound = EFalse;
-        
+        iUnknown = EFalse;
         // query for object info
         iQueryActive = ETrue;
         
-        QueryL( iAddQueue );     
+        QueryL( EGenerationItemActionAdd );     
         }
-    else if ( iRemoveQueue.Count() > 0 )
+    else if ( iDeleteItemCount > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
-
         i2ndRound = EFalse;
-        
+        iUnknown = EFalse;
         // delete thumbs by URI
         __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
         if(iTMSession)
             {
-            HBufC* uri = iRemoveQueue[0];
-            TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  uri);
-            CThumbnailObjectSource* source = NULL;
-            TRAPD(err,  source = CThumbnailObjectSource::NewL( *uri, KNullDesC));
-               
-        	if(err == KErrNone)
-            	{
-                iTMSession->DeleteThumbnails( *source );
+            TInt itemIndex(KErrNotFound);
+                                
+            for(TInt i=0;i<iGenerationQueue.Count() || itemIndex == KErrNotFound;i++)
+                {
+                if(iGenerationQueue[i].iItemAction == EGenerationItemActionDelete)
+                    {
+                    itemIndex = i;
+                    }
                 }
-            iRemoveQueue.Remove( 0 );
-            delete source;
-            delete uri;
-            
-            iActiveCount++;
-            iActive = ETrue;
+        
+            if(itemIndex >= 0)
+                {
+                if(!iGenerationQueue[itemIndex].iUri)
+                    {
+                    //URI is invalid
+                    TN_DEBUG1( "void CThumbAGProcessor::RunL() unable to delete URI inbalid");
+                    iGenerationQueue.Remove( itemIndex );
+                    ActivateAO();
+                    return;
+                    }
+
+                TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  iGenerationQueue[itemIndex].iUri);
+                CThumbnailObjectSource* source = NULL;                
+                TRAPD(err,  source = CThumbnailObjectSource::NewL( *iGenerationQueue[itemIndex].iUri, KNullDesC));
+                   
+                if(err == KErrNone)
+                    {
+                    iTMSession->DeleteThumbnails( *source );
+                    }
+                delete source;
+                
+                delete iGenerationQueue[itemIndex].iUri;
+                iGenerationQueue[itemIndex].iUri = NULL;
+                iGenerationQueue.Remove( itemIndex );
+                
+                iActiveCount++;
+                }
             }
         }
-    else if( i2ndRoundGenerateQueue.Count() > 0)
+    else if( i2ndAddItemCount > 0)
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update 2nd round thumbnails");
             
         // query for object info
         iQueryActive = ETrue;
         i2ndRound = ETrue;
-        QueryL( i2ndRoundGenerateQueue );     
+        iUnknown = EFalse;
+        QueryL( EGenerationItemAction2ndAdd );     
         }
         
     TN_DEBUG1( "CThumbAGProcessor::RunL() - end" );
@@ -1170,18 +1391,22 @@ void CThumbAGProcessor::DeleteAndCancelQuery(TBool aRestoreItems)
     //move remainig IDs in query queue back to original queue
     while(iQueryQueue.Count())
         {
-        if(aRestoreItems && iLastQueue)
+        if(!aRestoreItems )
             {
-            if(iLastQueue->FindInOrder(iQueryQueue[0], Compare) == KErrNotFound)
+            TThumbnailGenerationItem item;
+            item.iItemId = iQueryQueue[0];
+            TInt itemIndex = iGenerationQueue.FindInOrder(item, Compare);
+                
+            if(itemIndex >= 0)
                 {
-                //ignore if fails
-                iLastQueue->InsertInOrder(iQueryQueue[0], Compare);
+                delete iGenerationQueue[itemIndex].iUri;
+                iGenerationQueue[itemIndex].iUri = NULL;
+                iGenerationQueue.Remove(itemIndex);
                 }
             }
         iQueryQueue.Remove(0);
         }
-    iLastQueue = NULL;
-    
+
     TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() out" );
     }
 
@@ -1197,10 +1422,20 @@ void CThumbAGProcessor::DoCancel()
 void CThumbAGProcessor::HarvestingUpdated( 
          HarvesterEventObserverType aHEObserverType, 
          HarvesterEventState aHarvesterEventState,
-         TInt /*aItemsLeft*/ )
+         TInt aItemsLeft )
     {
-    TN_DEBUG3( "CThumbAGProcessor::HarvestingUpdated -- start() aHEObserverType = %d, aHarvesterEventState = %d", aHEObserverType, aHarvesterEventState );
+    TN_DEBUG4( "CThumbAGProcessor::HarvestingUpdated -- start() aHEObserverType = %d, aHarvesterEventState = %d, aItemsLeft = %d", aHEObserverType, aHarvesterEventState, aItemsLeft );
+    
+	if(iShutdown)
+        {
+        return;
+        }
 
+    if(!iHarvesterActivated)
+        {
+        iHarvesterActivated = ETrue;
+        }
+    
     #ifdef _DEBUG
     if( aHEObserverType == EHEObserverTypePlaceholder)
         {
@@ -1209,6 +1444,10 @@ void CThumbAGProcessor::HarvestingUpdated(
     else if( aHEObserverType == EHEObserverTypeOverall)
         {
         TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeOverall");
+        }
+    else if( aHEObserverType == EHEObserverTypeMMC)
+        {
+        TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeMMC");
         }
     #endif
     
@@ -1245,7 +1484,28 @@ void CThumbAGProcessor::HarvestingUpdated(
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesting finished");
                 TRAP_IGNORE(QueryPlaceholdersL());
+                iPHHarvestingItemsLeftTemp = 0;
                 }
+            }
+        
+        //restart mount timout if PH item count is increasing durin MMC harvesting 
+        if(iMMCHarvesting && iPHHarvesting && aItemsLeft > iPHHarvestingItemsLeftTemp)
+          {
+          //if items count increasing, restart mount timeout 
+            TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- PH count increasing, restart mount timeout");
+            
+           if(iMountTimer->IsActive())
+              {
+              iMountTimer->Cancel();
+              }
+
+            iMountTimer->Start( KMountTimeout, KMountTimeout, TCallBack(MountTimerCallBack, this));
+          }
+          
+        //we are interestead of only PHs during MMC harvesting
+        if( iMMCHarvesting )
+            {
+            iPHHarvestingItemsLeftTemp = aItemsLeft;
             }
         }
     //overall harvesting
@@ -1275,7 +1535,7 @@ void CThumbAGProcessor::HarvestingUpdated(
             
             if( iHarvesting )
                 {
-                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS harvesterin started");
+                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS harvesting started");
                 CancelTimeout();
                 }
             else
@@ -1283,6 +1543,11 @@ void CThumbAGProcessor::HarvestingUpdated(
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS harvesting finished ");
                 // continue processing if needed
                 StartTimeout();
+                
+                if(iMountTimer->IsActive())
+                    {
+                    iMountTimer->Cancel();
+                    }
                 }
             }
         }
@@ -1314,17 +1579,29 @@ void CThumbAGProcessor::HarvestingUpdated(
             if( iMMCHarvesting )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesterin started");
-                if(iPreviousItemsLeft != KErrNotReady)
-                    {
-                    iPreviousItemsLeft = KErrNotReady;
-                    RProperty::Set(KTAGDPSNotification, KDaemonProcessing, iPreviousItemsLeft);
-                    }
+                UpdatePSValues(EFalse, ETrue);
+                iMMCHarvestingItemsLeftTemp = 0;
                 }
             else
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesting finished ");
                 }
             }
+        
+        //restart mount timout if MMC item count is still increasing 
+        if(iMMCHarvesting && aItemsLeft > iMMCHarvestingItemsLeftTemp)
+            {
+              TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MMC count increasing, restart mount timeout");
+              
+             if(iMountTimer->IsActive())
+                {
+                iMountTimer->Cancel();
+                }
+
+              iMountTimer->Start( KMountTimeout, KMountTimeout, TCallBack(MountTimerCallBack, this));
+            }
+        
+            iMMCHarvestingItemsLeftTemp = aItemsLeft;
         }
    
     TN_DEBUG4( "CThumbAGProcessor::HarvestingUpdated -- end() iHarvesting == %d, iPHHarvesting == %d iMMCHarvesting == %d ", iHarvesting, iPHHarvesting, iMMCHarvesting);
@@ -1339,7 +1616,7 @@ void CThumbAGProcessor::StartTimeout()
     TN_DEBUG1( "CThumbAGProcessor::StartTimeout()");
     CancelTimeout();
     
-    if(!iHarvesting && !iMPXHarvesting && !iPeriodicTimer->IsActive())
+    if(!iHarvesting && !iMPXHarvesting && !iPeriodicTimer->IsActive() && !iShutdown)
         {
         iPeriodicTimer->Start( KHarvestingCompleteTimeout, KHarvestingCompleteTimeout,
                 TCallBack(PeriodicTimerCallBack, this));
@@ -1370,15 +1647,9 @@ TInt CThumbAGProcessor::RunError(TInt /*aError*/)
     {
     TN_DEBUG2( "CThumbAGrocessor::RunError() %d", aError);
     
-    UpdatePSValues();
+    UpdatePSValues(EFalse, EFalse);
         
     iActiveCount--;
-    
-    if(iActiveCount <= 0)
-        {
-        iActiveCount = 0;
-        iActive = EFalse;
-        }
     
 	ActivateAO();
 	
@@ -1392,23 +1663,17 @@ TInt CThumbAGProcessor::RunError(TInt /*aError*/)
 //
 void CThumbAGProcessor::ActivateAO()
     {
-#ifdef _DEBUG
-    TN_DEBUG6( "CThumbAGProcessor::ActivateAO() items in queue Add = %d, Mod = %d, Del = %d, Query = %d, iPlaceholder = %d", iAddQueue.Count(),  iModifyQueue.Count(), iRemoveQueue.Count(), iQueryQueue.Count(), iPlaceholderQueue.Count());
-    TN_DEBUG2( "CThumbAGProcessor::ActivateAO() items in queue 2nd Add = %d", i2ndRoundGenerateQueue.Count());
-    TN_DEBUG3( "CThumbAGProcessor::ActivateAO() iActive = %d, iActiveCount = %d", iActive, iActiveCount);
-    TN_DEBUG3( "CThumbAGProcessor::ActivateAO() iHarvesting == %d, iMPXHarvesting == %d", iHarvesting, iMPXHarvesting);
-    TN_DEBUG4( "CThumbAGProcessor::ActivateAO() iIdle = %d, timer = %d, iForceRun = %d", iIdle, iPeriodicTimer->IsActive(), iForceRun);
-    TN_DEBUG4( "CThumbAGProcessor::ActivateAO() iModify = %d, iQueryReady = %d, iProcessingCount = %d", iModify, iQueryReady, iProcessingCount);
-#endif
+    UpdateItemCounts();
     
     if(iFormatting)
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - FORMATTING - DAEMON ON PAUSE");
         return;
         }
+    
         
     //check if forced run needs to continue
-    if (iModifyQueue.Count())
+    if ( iModifyItemCount || iUnknownItemCount > 0 )
         {
         SetForceRun( ETrue );
         }
@@ -1418,7 +1683,7 @@ void CThumbAGProcessor::ActivateAO()
         SetForceRun( EFalse );
         }
     
-    if( !IsActive() && ((!iActive && !iQueryActive) || iForceRun ))
+    if( !IsActive() && !iShutdown && ((iActiveCount == 0 && !iQueryActive) || iForceRun ))
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - Activated");
         SetActive();
@@ -1426,7 +1691,7 @@ void CThumbAGProcessor::ActivateAO()
         User::RequestComplete( statusPtr, KErrNone );
         }
 
-    UpdatePSValues();
+    UpdatePSValues(EFalse, EFalse);
     }
 
 // ---------------------------------------------------------------------------
@@ -1515,59 +1780,32 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
     {
     TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() aRemoveFromDelete == %d - begin", aRemoveFromDelete );
     
-    TInt itemIndex = KErrNotFound;
+    TInt itemIndex(KErrNotFound);
     
     for (int i=0; i< aIDArray.Count(); i++)
         {
+        TThumbnailGenerationItem item;
+        item.iItemId = aIDArray[i];
         TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() - %d", aIDArray[i]);
 
-        itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare);                        
+        itemIndex = iGenerationQueue.FindInOrder(item, Compare);                        
         if(itemIndex >= 0)
             {
-            iPlaceholderQueue.Remove(itemIndex);
-            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iPlaceholderQueue" );
+            delete iGenerationQueue[itemIndex].iUri;
+            iGenerationQueue[itemIndex].iUri = NULL;
+            iGenerationQueue.Remove(itemIndex);
+            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iGenerationQueue" );
             }
                 
-        itemIndex = iAddQueue.FindInOrder(aIDArray[i], Compare);       
-        if(itemIndex >= 0)
-            {
-            iAddQueue.Remove(itemIndex);
-            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iAddQueue" );
-            }
-
-        itemIndex = i2ndRoundGenerateQueue.FindInOrder(aIDArray[i], Compare);               
-        if(itemIndex >= 0)
-            {
-            i2ndRoundGenerateQueue.Remove(itemIndex);
-            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - i2ndRoundGenerateQueue" );
-            }
-        
-        itemIndex = iModifyQueue.FindInOrder(aIDArray[i], Compare);       
-        if(itemIndex >= 0)
-            {
-            iModifyQueue.Remove(itemIndex);
-            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iModifyQueue" );
-			 
-            if( iModifyQueue.Count() == 0)
-			    {
-			    SetForceRun( EFalse );
-		        }
-            }
-            
-        itemIndex = iQueryQueue.FindInOrder(aIDArray[i], Compare);                    
+        itemIndex = iQueryQueue.FindInOrder(aIDArray[i], CompareId);                    
         if(itemIndex >= 0)
             {
             iQueryQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iQueryQueue" );
             }
-         
-        itemIndex = iPlaceholderQueue.FindInOrder(aIDArray[i], Compare); 
-        if(itemIndex >= 0)
-        	{
-            iPlaceholderQueue.Remove(itemIndex);
-            TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iPlaceholderQueue" );
-            }
         }
+    
+    ActivateAO();
     
     TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - end" );
     }
@@ -1627,13 +1865,13 @@ void CThumbAGProcessor::QueryAllItemsL()
     CMdELogicCondition& rootCondition = iQueryAllItems->Conditions();
     rootCondition.SetOperator( ELogicConditionOperatorOr );
     
-    CMdEObjectCondition& imagePHObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
+    CMdEObjectCondition& imageObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
     
-    CMdEObjectCondition& videoPHObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
+    CMdEObjectCondition& videoObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
     
-    CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
+    CMdEObjectCondition& audioObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
     
-    iQueryAllItems->FindL(KMaxTInt, KMaxQueryItems2);  
+    iQueryAllItems->FindL(KMaxTInt, KMaxQueryBatchSize);  
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - end" );
     }
@@ -1646,7 +1884,7 @@ void CThumbAGProcessor::QueryAllItemsL()
 //
 void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aError )
     {
-    if ( aError != KErrNone || !aMessage )
+    if ( aError != KErrNone || !aMessage || iShutdown )
         {
         return;
         }
@@ -1748,8 +1986,7 @@ void CThumbAGProcessor::ActivityChanged(const TBool aActive)
         {
         iIdle = ETrue; 
         
-        if(iAddQueue.Count() + iModifyQueue.Count() + iRemoveQueue.Count() + 
-           iQueryQueue.Count() + i2ndRoundGenerateQueue.Count() > 0 )
+        if(iGenerationQueue.Count() > 0 )
             {
             ActivateAO();
             }
@@ -1801,55 +2038,90 @@ void CThumbAGProcessor::RPropertyNotification(const TInt aError, const TUid aKey
 // Update KItemsleft PS value if changed
 // ---------------------------------------------------------------------------
 //
-void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
+void CThumbAGProcessor::UpdatePSValues(const TBool aDefine, const TBool aForce)
     {
-    TInt itemsLeft = iModifyQueue.Count() + iAddQueue.Count();
-    TBool daemonProcessing = EFalse;
+    TInt itemsLeft(KErrNotReady);
+    TBool daemonProcessing = ETrue;
     
-    if(itemsLeft + i2ndRoundGenerateQueue.Count() + iRemoveQueue.Count() > 0 )
+    if(iShutdown)
         {
-        daemonProcessing = ETrue;
+        RProperty::Set(KTAGDPSNotification, KDaemonProcessing, EFalse);
+        RProperty::Set(KTAGDPSNotification, KItemsleft, 0 );
+        return;
         }
-    
-    //adjust items left to containing also items not yet processed but removed from queue under processing
-    if((iLastQueue == &iModifyQueue || iLastQueue == &iAddQueue) && !i2ndRound)
-        {
-        itemsLeft +=iQueryQueue.Count();
-        }
-    
-    //cancel 2nd round generarion when there is items in 1st round queues
-    if(itemsLeft && i2ndRound)
-        {
-        DeleteAndCancelQuery(ETrue);
-        i2ndRound = EFalse;
-        }
-        
-    TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() KItemsleft == %d", itemsLeft);
-    
+   
     if(aDefine)
         {
-        TN_DEBUG1( "CThumbAGProcessor::UpdatePSValues() define");
-        RProperty::Define(KTAGDPSNotification, KDaemonProcessing, RProperty::EInt);
-        RProperty::Set(KTAGDPSNotification, KDaemonProcessing, 0);
-        daemonProcessing = EFalse;
-        RProperty::Define(KTAGDPSNotification, KItemsleft, RProperty::EInt);
-        RProperty::Set(KTAGDPSNotification, KItemsleft, 0);
-        iPreviousItemsLeft = 0;
+        TInt ret = RProperty::Define(KTAGDPSNotification, KDaemonProcessing, RProperty::EInt);
+        
+        if( ret != KErrNone )
+            {
+            TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() define KDaemonProcessing ret = %d", ret);
+            }
+
+        ret = RProperty::Define(KTAGDPSNotification, KItemsleft, RProperty::EInt);
+        
+        if( ret != KErrNone )
+            {
+            TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() define KItemsleft ret = %d", ret);
+            }
         }
     
-    if( daemonProcessing != iPreviousDaemonProcessing)
-        {
-        TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KDaemonProcessing == %d", daemonProcessing);
-        iPreviousDaemonProcessing = daemonProcessing;
-        RProperty::Set(KTAGDPSNotification, KDaemonProcessing, daemonProcessing);
-        }
+        // set itemsleft = KErrNotReady (-18) and daemonProcessing = ETrue if
+        // - key is initalized
+        // - mount timer is pending
+        // - harvester observer is not yet activated
+        // - single unknown item exists in processing queue
+        // - forced
+       if( iMountTimer->IsActive() || aForce || aDefine  || iUnknownItemCount
+               || !iHarvesterActivated  )
+           {
+           daemonProcessing = ETrue;
+           itemsLeft = KErrNotReady;
+           }
+       else
+           {
+           itemsLeft = iAddItemCount + iModifyItemCount;
+           }
+       
+       TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() KItemsleft == %d", itemsLeft);
+           
+       //cancel 2nd round generarion when there is items in 1st round queues
+       if(iAddItemCount && i2ndRound)
+           {
+           DeleteAndCancelQuery(ETrue);
+           i2ndRound = EFalse;
+           }
     
-    if( itemsLeft != iPreviousItemsLeft)
-        {
-        TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KItemsleft == %d", itemsLeft);
-        iPreviousItemsLeft = itemsLeft;
-        RProperty::Set(KTAGDPSNotification, KItemsleft, itemsLeft );
-        }
+        if( iGenerationQueue.Count() )
+            {
+            daemonProcessing = ETrue;
+            }
+        
+        if( daemonProcessing != iPreviousDaemonProcessing)
+            {
+            TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KDaemonProcessing == %d", daemonProcessing);
+            iPreviousDaemonProcessing = daemonProcessing;
+            TInt ret = RProperty::Set(KTAGDPSNotification, KDaemonProcessing, daemonProcessing);
+            
+            if(ret != KErrNone )
+                {
+                TN_DEBUG3( "CThumbAGProcessor::UpdatePSValues() set KDaemonProcessing %d failed %d", daemonProcessing, ret);
+                }
+            }
+        
+        if( itemsLeft != iPreviousItemsLeft)
+            {
+            TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KItemsleft == %d", itemsLeft);
+            iPreviousItemsLeft = itemsLeft;
+            TInt ret = RProperty::Set(KTAGDPSNotification, KItemsleft, itemsLeft );
+            
+            if(ret != KErrNone )
+                {
+                TN_DEBUG3( "CThumbAGProcessor::UpdatePSValues() set KItemsleft %d failed %d", itemsLeft, ret);
+                }
+            }
+        
     }
 
 // ---------------------------------------------------------------------------
@@ -1857,9 +2129,188 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine)
 // Comparison function for logaritmic use of queue arrays
 // ---------------------------------------------------------------------------
 //
-TInt CThumbAGProcessor::Compare(const TItemId& aLeft, const TItemId& aRight)
+
+TInt CThumbAGProcessor::Compare(const TThumbnailGenerationItem& aLeft, const TThumbnailGenerationItem& aRight)
+    {  
+    return (aLeft.iItemId - aRight.iItemId);
+    }
+
+TInt CThumbAGProcessor::CompareId(const TItemId& aLeft, const TItemId& aRight)
     {  
     return (aLeft - aRight);
+    }
+
+void CThumbAGProcessor::UpdateItemCounts()
+    {
+    TN_DEBUG1( "CThumbAGProcessor::UpdateItemCounts()");
+    iModifyItemCount = 0;
+    iDeleteItemCount = 0;
+    iAddItemCount = 0;
+    iUnknownItemCount = 0;
+    i2ndAddItemCount = 0;
+    iPlaceholderItemCount=0;
+    iCameraItemCount =0;
+    iImageItemCount=0;
+    iVideoItemCount=0;
+    iAudioItemCount=0;
+    
+    for(TInt i=0; i < iGenerationQueue.Count(); i++)
+    {
+    TThumbnailGenerationItem& item = iGenerationQueue[i];
+    
+        if(item.iItemAction == EGenerationItemActionModify)
+            {
+            iModifyItemCount++;
+            }
+        
+        if(item.iItemAction == EGenerationItemActionDelete)
+            {
+            iDeleteItemCount++;
+            }
+        
+        if(item.iItemType == EGenerationItemTypeUnknown)
+            {
+            iUnknownItemCount++;
+            }
+        if(item.iItemAction == EGenerationItemAction2ndAdd)
+            {
+            i2ndAddItemCount++;
+            }
+        if(item.iPlaceholder)
+            {
+            iPlaceholderItemCount++;
+            }
+        if(item.iItemType == EGenerationItemTypeCamera)
+            {
+            iCameraItemCount++;
+            }
+        if(item.iItemAction == EGenerationItemActionAdd )
+            {
+            iAddItemCount++;
+            }
+        if(item.iItemType == EGenerationItemTypeAudio)
+            {
+            iAudioItemCount++;
+            }
+        if(item.iItemType == EGenerationItemTypeVideo)
+            {
+            iVideoItemCount++;
+            }
+        if(item.iItemType == EGenerationItemTypeImage)
+            {
+            iImageItemCount++;
+            }
+    }
+    
+    TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iActiveCount = %d", 
+            iActiveCount);
+    TN_DEBUG5( "CThumbAGProcessor::UpdateItemCounts() iHarvesting == %d, iMMCHarvesting == %d, iPHHarvesting == %d, iMPXHarvesting == %d", 
+            iHarvesting, iMMCHarvesting, iPHHarvesting, iMPXHarvesting);
+    TN_DEBUG5( "CThumbAGProcessor::UpdateItemCounts() iIdle = %d, iForegroundRun = %d, timer = %d, iForceRun = %d", 
+            iIdle, iForegroundRun, iPeriodicTimer->IsActive(), iForceRun);
+    TN_DEBUG4( "CThumbAGProcessor::UpdateItemCounts() iModify = %d, iQueryReady = %d, iProcessingCount = %d", 
+            iModify, iQueryReady, iProcessingCount);
+    TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iMountTimer = %d", iMountTimer->IsActive());
+    TN_DEBUG3( "CThumbAGProcessor::UpdateItemCounts() ProcessingQueue = %d, iQueryQueue = %d", 
+            iGenerationQueue.Count(), iQueryQueue.Count());
+    TN_DEBUG5( "CThumbAGProcessor::UpdateItemCounts() iAddItemCount=%d, i2ndAddItemCount=%d, iModifyItemCount=%d, iDeleteItemCount=%d",
+            iAddItemCount, i2ndAddItemCount, iModifyItemCount, iDeleteItemCount );
+    TN_DEBUG3( "CThumbAGProcessor::UpdateItemCounts() iUnknownItemCount=%d, iPlaceholderItemCount=%d",
+            iUnknownItemCount, iPlaceholderItemCount);
+    TN_DEBUG4( "CThumbAGProcessor::UpdateItemCounts() iAudioItemCount=%d, iVideoItemCount=%d, iImageItemCount=%d",
+            iAudioItemCount, iVideoItemCount, iImageItemCount);
+    TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iCameraItemCount=%d", iCameraItemCount);
+    }
+
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::MountTimerCallBack()
+// ---------------------------------------------------------------------------
+//
+TInt CThumbAGProcessor::MountTimerCallBack(TAny* aAny)
+    {
+    TN_DEBUG1( "CThumbAGProcessor::MountTimerCallBack()");
+    CThumbAGProcessor* self = static_cast<CThumbAGProcessor*>( aAny );
+    
+    self->iMountTimer->Cancel();
+
+    return KErrNone; // Return value ignored by CPeriodic
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::SetGenerationItemAction()
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::SetGenerationItemAction( TThumbnailGenerationItem& aGenerationItem, TThumbnailGenerationItemType aItemType )
+    {
+    switch( aItemType )
+        {
+        case EGenerationItemTypeAudio:
+            aGenerationItem.iItemAction = EGenerationItemAction2ndAdd;
+            break;
+        case EGenerationItemTypeCamera:
+            aGenerationItem.iItemAction = EGenerationItemAction2ndAdd;
+            aGenerationItem.iPlaceholder = ETrue;
+            break;
+        case EGenerationItemTypeImage:
+            aGenerationItem.iItemAction = EGenerationItemActionAdd;
+            break;
+        case EGenerationItemTypeVideo:
+            //S^3 EGenerationItemActionAdd
+            //S^4 EGenerationItemAction2ndAdd
+            aGenerationItem.iItemAction = EGenerationItemAction2ndAdd;    
+            break;
+        default:
+            aGenerationItem.iItemAction = EGenerationItemActionResolveType;
+        }
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbAGProcessor::SetGenerationItemType()
+// ---------------------------------------------------------------------------
+//
+void CThumbAGProcessor::SetGenerationItemType( TThumbnailGenerationItem& aGenerationItem, const TDefId aDefId )
+    {
+        if(aDefId == iImageObjectDef->Id())
+          {
+            aGenerationItem.iItemType = EGenerationItemTypeImage;
+          }
+      else if(aDefId == iAudioObjectDef->Id())
+          {
+          aGenerationItem.iItemType = EGenerationItemTypeAudio;
+          }
+      else if(aDefId == iVideoObjectDef->Id())
+          {
+          aGenerationItem.iItemType = EGenerationItemTypeVideo;
+          }
+      else
+          {
+          aGenerationItem.iItemType = EGenerationItemTypeUnknown;
+          }
+        
+        SetGenerationItemAction( aGenerationItem, aGenerationItem.iItemType );
+    }
+
+
+// -----------------------------------------------------------------------------
+// CThumbAGProcessor::AppendProcessingQueue()
+// -----------------------------------------------------------------------------
+//
+void CThumbAGProcessor::AppendProcessingQueue( TThumbnailGenerationItem& item )
+    {
+
+    TInt itemIndex = iGenerationQueue.FindInOrder( item, Compare );
+           
+    if(itemIndex >= 0)
+       {
+       iGenerationQueue[itemIndex].iPlaceholder = item.iPlaceholder;
+       iGenerationQueue[itemIndex].iItemType = item.iItemType;
+       iGenerationQueue[itemIndex].iItemAction = item.iItemAction;
+       }
+    else
+       {
+       iGenerationQueue.InsertInOrder(item, Compare);
+       }
     }
 
 

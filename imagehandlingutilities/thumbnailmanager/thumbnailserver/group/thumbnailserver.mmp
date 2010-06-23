@@ -82,6 +82,7 @@ LIBRARY                 ihl.lib
 LIBRARY                 centralrepository.lib
 LIBRARY                 platformenv.lib
 LIBRARY			imageconversion.lib 
+LIBRARY 		iclextjpegapi.lib
 LIBRARY       		caf.lib
 LIBRARY         	cafutils.lib
 LIBRARY         	mdeclient.lib

@@ -137,8 +137,7 @@ void CThumbnailImageDecoderv3::DecodeL( const TDisplayMode aDisplayMode )
     TInt err = iBitmap->Create( loadSize, aDisplayMode );
     if (err != KErrNone)
         {
-        delete iBitmap;
-        iBitmap = NULL;
+        Release();
         User::Leave(err);
         }
     
@@ -240,9 +239,7 @@ void CThumbnailImageDecoderv3::CreateDecoderL()
             TRAPD( decErr, iDecoder = CImageDecoder::DataNewL( iFs, *iBuffer, options ) );
             if ( decErr != KErrNone )
                 {
-                delete iBuffer;
-                iBuffer = NULL;
-                
+                Release();
                 TN_DEBUG2( "CThumbnailImageDecoderv3::CreateDecoderL() - CImageDecoder error %d", decErr );
                 
                 User::Leave( decErr );
@@ -282,6 +279,7 @@ void CThumbnailImageDecoderv3::LeaveIfCorruptL(const TInt aError )
     //no sense to try other codecs if image is corrupted
     if( aError == KErrCorrupt || aError == KErrUnderflow)
         {
+        Release();
         User::Leave( aError );
         }
     }
