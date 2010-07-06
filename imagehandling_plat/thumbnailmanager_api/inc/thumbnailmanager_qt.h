@@ -46,7 +46,6 @@ class ThumbnailManager : public QObject
 
 public:
 
-
     /** Thumbnail size. */
     enum ThumbnailSize
     {
@@ -259,6 +258,25 @@ public:
      */    
     TNM_EXPORT int setThumbnail( const QImage& source, const QString& fileName,
             void * clientData = NULL, int priority = tnmWrapperPriorityIdle );
+    
+    /**
+     * Set a thumbnail for an object file generated from source file.
+     * thumbnailReady() signal will be emited when the operation is complete. 
+     * 
+     * @param sourceFileName     Source file name from which the thumbnail will be created
+     * @param targetFileName     Target file name
+     * @param clientData         Pointer to arbitrary client data.
+     *                           This pointer is not used by the API for
+     *                           anything other than returning it in the
+     *                           ThumbnailReady callback.
+     * @param priority           Priority for this operation
+     * @return                   Thumbnail request ID or -1 if request failed. This can be used to
+     *                           cancel the request or change priority. 
+     *                           
+     */    
+    TNM_EXPORT int setThumbnail( const QString& sourceFileName, const QString& targetFileName,
+            const QString& mimeType = QString(""), void * clientData = NULL, 
+            int priority = tnmWrapperPriorityIdle );
 
     /**
      * Delete all thumbnails for a given object. This is an asynchronous

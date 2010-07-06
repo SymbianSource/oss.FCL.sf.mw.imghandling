@@ -67,6 +67,7 @@ TInt CThumbnailManagerTest::RunMethodL( CStifItemParser& aItem )
         ENTRY( "CheckThumbnailSizeL", CThumbnailManagerTest::CheckThumbnailSizeL ),
         ENTRY( "SetThumbnailEnumSizeL", CThumbnailManagerTest::SetThumbnailEnumSizeL ),
         ENTRY( "CreateSourceInstancePathL", CThumbnailManagerTest::CreateSourceInstancePathL ),
+        ENTRY( "CreateSourceInstancePathTargetL", CThumbnailManagerTest::CreateSourceInstancePathTargetL ),
         ENTRY( "CreateSourceInstanceHandleL", CThumbnailManagerTest::CreateSourceInstanceHandleL ),
         ENTRY( "CreateSourceInstanceBufferL", CThumbnailManagerTest::CreateSourceInstanceBufferL ),
         ENTRY( "CreateSourceInstanceBitmapL", CThumbnailManagerTest::CreateSourceInstanceBitmapL ),
@@ -87,7 +88,7 @@ TInt CThumbnailManagerTest::RunMethodL( CStifItemParser& aItem )
         ENTRY( "SetDisplayModeL", CThumbnailManagerTest::SetDisplayModeL ),
         ENTRY( "CheckDisplayModeL", CThumbnailManagerTest::CheckDisplayModeL ),
         ENTRY( "DeleteThumbnails", CThumbnailManagerTest::DeleteThumbnails ),
-        ENTRY( "DeleteThumbnailsByIdL", CThumbnailManagerTest::DeleteThumbnailsByIdL ),
+        ENTRY( "CreateThumbnailsByUrlL", CThumbnailManagerTest::CreateThumbnailsByUrlL ),
         ENTRY( "CreateThumbnails", CThumbnailManagerTest::CreateThumbnails ),
         ENTRY( "UpdatePathL", CThumbnailManagerTest::UpdatePathL ),
         ENTRY( "GetSupportedMimeTypesL", CThumbnailManagerTest::GetSupportedMimeTypesL )
@@ -297,6 +298,53 @@ TInt CThumbnailManagerTest::CreateSourceInstancePathL( CStifItemParser& aItem )
     iObjectSource = NULL;
     
     iObjectSource = CThumbnailObjectSource::NewL( filePath, id );
+    return KErrNone;
+    }
+
+TInt CThumbnailManagerTest::CreateSourceInstancePathTargetL( CStifItemParser& aItem )
+    {
+    _LIT( KPanicTxt, "CreateSrcPathTarget" );
+    __ASSERT_ALWAYS( !iObjectSource, User::Panic( KPanicTxt, 0 ));
+
+    TPtrC path;
+    User::LeaveIfError( aItem.GetNextString( path ));
+
+    TPtrC target;
+    User::LeaveIfError( aItem.GetNextString( target ));
+    
+    TPtrC mimeType;
+    User::LeaveIfError( aItem.GetNextString( mimeType ));
+    
+    TInt virtual1 = 0;
+    aItem.GetNextInt( virtual1 );
+    
+    TInt virtual2 = 0;
+    aItem.GetNextInt( virtual2 );
+    
+    TFileName filePath( iDataPath );
+    filePath.Append( path );
+    filePath.ZeroTerminate();
+    
+    if (virtual1)
+        {
+        filePath.Delete(2,1);
+        }
+    
+    TFileName targetPath( iDataPath );
+    targetPath.Append( target );
+    targetPath.ZeroTerminate();
+    
+    if (virtual2)
+        {
+        targetPath.Delete(2,1);
+        }
+    
+    iLog->Log( _L( "CreateSourceInstancePathTargetL - path = %S, target = %S" ), &filePath );
+    
+    delete iObjectSource;
+    iObjectSource = NULL;
+    
+    iObjectSource = CThumbnailObjectSource::NewL( filePath, targetPath, mimeType );
     return KErrNone;
     }
 
@@ -627,6 +675,7 @@ TInt CThumbnailManagerTest::CheckThumbnailL( CStifItemParser& aItem )
 TInt CThumbnailManagerTest::CheckThumbnailCenrepL( CStifItemParser& aItem )
     {
     TInt err = KErrNone;
+    TBool full = EFalse;
     
     TInt sizeType;
     TInt displaymode = 0;
@@ -634,6 +683,12 @@ TInt CThumbnailManagerTest::CheckThumbnailCenrepL( CStifItemParser& aItem )
     User::LeaveIfError( aItem.GetNextInt( displaymode ));
     
     TThumbnailSize size = (TThumbnailSize)sizeType;
+    if (size == EImageFullScreenThumbnailSize ||
+        size == EVideoFullScreenThumbnailSize ||
+        size == EAudioFullScreenThumbnailSize)
+        {
+        full = ETrue;
+        }
     
     if ( iThumbnail )
         {
@@ -662,6 +717,10 @@ TInt CThumbnailManagerTest::CheckThumbnailCenrepL( CStifItemParser& aItem )
              thumbSize.iWidth <= width && thumbSize.iHeight <= height)
             {
             iLog->Log( _L( "CheckThumbnailCenrepL - ok" ));
+            }
+        else if (full && (thumbSize.iWidth <= width && thumbSize.iHeight <= height))
+            {
+            iLog->Log( _L( "CheckThumbnailCenrepL - fullscreen ok, not upscaled" ));
             }
         else
             {
@@ -724,12 +783,42 @@ TInt CThumbnailManagerTest::DeleteThumbnails( CStifItemParser&  /*aItem*/ )
     return KErrNone;
     }
 
-TInt CThumbnailManagerTest::DeleteThumbnailsByIdL( CStifItemParser&  aItem )
+TInt CThumbnailManagerTest::CreateThumbnailsByUrlL( CStifItemParser&  aItem )
     {
+    _LIT( KPanicTxt, "CreateSrcPath" );
+    __ASSERT_ALWAYS( !iObjectSource, User::Panic( KPanicTxt, 0 ));
+
+    TPtrC path;
+    User::LeaveIfError( aItem.GetNextString( path ));
+
     TInt id = 0;
-    User::LeaveIfError( aItem.GetNextInt( id ));
+    aItem.GetNextInt( id );
     
-    iEngine->DeleteThumbnails( id );
+    TFileName filePath( iDataPath );
+    filePath.Append( path );
+    filePath.ZeroTerminate();
+    
+    iLog->Log( _L( "CreateSourceInstancePathL - path = %S" ), &filePath );
+    
+    delete iObjectSource;
+    iObjectSource = NULL;
+    
+    iObjectSource = CThumbnailObjectSource::NewL( filePath, id );
+    
+    id = iEngine->CreateThumbnails( *iObjectSource );
+    if (id < 0)
+        {
+        iLog->Log( _L( "CreateThumbnails - error %d" ), id );
+        return id;  
+        }
+    else
+        {
+        iPreviousRequestId = id;
+        iLog->Log( _L( "CreateThumbnails - request id %d" ), iPreviousRequestId );
+        }
+    
+    iCreateThumbnails = ETrue;
+    
     return KErrNone;
     }
     

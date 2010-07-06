@@ -123,6 +123,7 @@ int ThumbnailManagerPrivate::getThumbnail( const QString& fileName, void* client
         CleanupClosePushL( buf );
         buf.CreateL( symbFileName.length() );
         buf.Copy( symbFileName.utf16(), symbFileName.length() );
+        
         CThumbnailObjectSource* objSrc = CThumbnailObjectSource::NewLC( buf, KNullDesC );
         result = iThumbnailManager->GetThumbnailL( *objSrc, clientData, priority );
         CleanupStack::PopAndDestroy( 2, &buf );
@@ -211,6 +212,53 @@ int ThumbnailManagerPrivate::setThumbnail( const QImage& source, const QString& 
         CThumbnailObjectSource* objSrc = CThumbnailObjectSource::NewLC( ptr, *mimetype, file );
         result = iThumbnailManager->SetThumbnailL( *objSrc, clientData, priority );
         CleanupStack::PopAndDestroy( 3, &file );
+    );
+    
+    return result;
+}
+
+int ThumbnailManagerPrivate::setThumbnail( const QString& sourceFileName, const QString& targetFileName,
+        const QString& mimeType, void * clientData, int priority )
+{
+    int result( -1 );
+    QString symbSourceFile( sourceFileName );
+    QString symbTargetFile( targetFileName );
+    RBuf sourceFile;
+    RBuf targetFile;
+    RBuf mime;
+
+    priority = convertPriority(priority);
+    
+    if( symbSourceFile.contains( "/" ) )
+        symbSourceFile.replace( "/", "\\", Qt::CaseSensitive );
+    
+    if( symbTargetFile.contains( "/" ) )
+        symbTargetFile.replace( "/", "\\", Qt::CaseSensitive );
+    
+    TRAP_IGNORE( 
+        CleanupClosePushL( sourceFile );
+        sourceFile.CreateL( symbSourceFile.length() );
+        sourceFile.Copy( symbSourceFile.utf16(), symbSourceFile.length() );
+        
+        CleanupClosePushL( targetFile );
+        targetFile.CreateL( symbTargetFile.length() );
+        targetFile.Copy( symbTargetFile.utf16(), symbTargetFile.length() );
+        
+        CleanupClosePushL( mime );
+        
+        if (mimeType.length())
+            {
+            mime.CreateL( mimeType.length() );
+            mime.Copy( mimeType.utf16(), mimeType.length() );
+            }
+        else
+            {
+            mime.Assign(KNullDesC().AllocL());
+            }
+                
+        CThumbnailObjectSource* objSrc = CThumbnailObjectSource::NewLC( sourceFile, targetFile, mime );
+        result = iThumbnailManager->SetThumbnailL( *objSrc, clientData, priority );
+        CleanupStack::PopAndDestroy( 4, &sourceFile );
     );
     
     return result;

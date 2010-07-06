@@ -69,6 +69,7 @@ CThumbnailManagerImpl::~CThumbnailManagerImpl()
         }
 
     delete iMimeTypeList;
+    iMimeTypeList = NULL;
 	
 	TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - end" );
     }
@@ -306,13 +307,20 @@ TThumbnailRequestId CThumbnailManagerImpl::SetThumbnailL( CThumbnailObjectSource
     CleanupStack::PushL( getThumbnailActive );
     
     if (aObjectSource.Uri().Length() &&
-        aObjectSource.Bitmap() != NULL)
+        aObjectSource.TargetUri().Length())
+        {
+        // from path
+        getThumbnailActive->SetThumbnailL( aObjectSource.Uri(),
+            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
+            priority, aClientData, ETrue, aObjectSource.TargetUri(), iThumbnailSize, ETrue);
+        } 
+    else if (aObjectSource.Uri().Length() &&
+             aObjectSource.Bitmap() != NULL)
         {
         // from bitmap
         getThumbnailActive->SetThumbnailL( aObjectSource.GetBitmapOwnership(),
-                     aObjectSource.Id(), KBmpMime, iFlags, iQualityPreference,
-                     iSize, iDisplayMode, priority, aClientData, ETrue,
-                     aObjectSource.Uri(), iThumbnailSize, ETrue);
+            aObjectSource.Id(), KBmpMime, iFlags, iQualityPreference, iSize, iDisplayMode,
+            priority, aClientData, ETrue, aObjectSource.Uri(), iThumbnailSize, ETrue);
         } 
     else if (aObjectSource.Uri().Length() &&
              aObjectSource.Buffer() != NULL &&

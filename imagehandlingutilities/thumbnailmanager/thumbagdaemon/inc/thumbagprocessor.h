@@ -205,8 +205,9 @@ protected:
      * QueryPlaceholdersL
      *
      * @since S60 v5.0
+	 * @param aPresent item should not be present item
      */
-    void QueryPlaceholdersL();
+    void QueryPlaceholdersL(const TBool aPresent);
 
    	 /**
      * DeleteAndCancelQuery

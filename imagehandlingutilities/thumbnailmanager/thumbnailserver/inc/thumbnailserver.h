@@ -168,9 +168,8 @@ public:
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap, const TSize&
         aOriginalSize, const TBool aCropped, const TThumbnailSize aThumbnailSize,
-        const TInt64 aModified,
-        const TBool aThumbFromPath = ETrue,
-        const TBool aCheckExist = ETrue);
+        const TInt64 aModified, const TBool aThumbFromPath,
+        const TBool aCheckExist);
 
     /**
      * Fetch thumbnail image.

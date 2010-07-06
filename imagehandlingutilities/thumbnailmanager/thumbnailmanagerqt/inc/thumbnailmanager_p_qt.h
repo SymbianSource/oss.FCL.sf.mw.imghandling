@@ -116,7 +116,14 @@ public:
      * thumbnailReady() signal will be emited when the operation is complete.                           
      */    
     int setThumbnail( const QImage& source, const QString& fileName,
-            void * clientData, int priority );    
+            void * clientData, int priority );
+    
+    /**
+     * Set a thumbnail for an object file generated from source file.
+     * thumbnailReady() signal will be emited when the operation is complete.                           
+     */    
+    int setThumbnail( const QString& sourceFileName, const QString& targetFileName,
+            const QString& mimeType, void * clientData, int priority );   
     
     /**
      * Delete all thumbnails for a given object. This is an asynchronous

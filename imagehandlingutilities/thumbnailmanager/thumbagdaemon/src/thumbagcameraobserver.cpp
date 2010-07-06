@@ -263,7 +263,7 @@ void CThumbAGCameraObserver::HandleObjectNotification( CMdESession& /*aSession*/
         }
     
 #ifdef _DEBUG
-    TN_DEBUG3( "CThumbAGImageObserver::IN-COUNTERS---------- Add = %d Modify = %d", iAddCounter, iModCounter );
+    TN_DEBUG3( "CThumbAGCameraObserver::IN-COUNTERS---------- Add = %d Modify = %d", iAddCounter, iModCounter );
     iModCounter = 0;
     iAddCounter = 0;
 #endif

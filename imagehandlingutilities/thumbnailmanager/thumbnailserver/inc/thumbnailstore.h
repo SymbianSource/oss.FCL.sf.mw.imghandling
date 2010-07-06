@@ -232,9 +232,7 @@ public:
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aThumbnail, const
         TSize& aOriginalSize, TBool aCropped, const TThumbnailSize aThumbnailSize, 
-        const TInt64 aModified,
-        const TBool aThumbFromPath = ETrue,
-        TBool aBlackListed = EFalse );
+        const TInt64 aModified, const TBool aThumbFromPath, TBool aBlackListed);
 
     /**
      * Fetches thumbnail image.
@@ -442,7 +440,7 @@ private:
     void StoreThumbnailL( const TDesC& aPath, const TDes8& aData, const TSize&
         aSize, const TSize& aOriginalSize, const TThumbnailFormat& aFormat, TInt aFlags, 
         const TThumbnailSize& aThumbnailSize, const TInt64 aModified,
-        const TBool aThumbFromPath = ETrue);
+        const TBool aThumbFromPath);
 
     /**
      * Finds possible existing duplicate thumbnail.

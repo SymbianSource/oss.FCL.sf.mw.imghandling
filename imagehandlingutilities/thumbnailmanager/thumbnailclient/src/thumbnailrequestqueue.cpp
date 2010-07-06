@@ -166,6 +166,11 @@ void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestA
              iRequests.Remove( i );
              }
          }
+    
+    if(!iRequests.Count())
+        {
+        iRequests.Compress();
+        }
      
      TN_DEBUG3( "CThumbnailRequestQueue::RemoveCompleted() end - requests: %d, active requests: %d",
                     iRequests.Count(), iActiveRequests );

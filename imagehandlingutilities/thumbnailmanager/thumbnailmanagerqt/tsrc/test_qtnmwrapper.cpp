@@ -62,6 +62,7 @@ private slots:
     void getThumbnailByName();
     void getThumbnailById();
     void setThumbnail();
+    void setThumbnailFromPath();
     void cancelRequest();
     void changePriority();
     void deleteThumbnailsByName();
@@ -243,6 +244,18 @@ void TestThumbnailManager::setThumbnail()
     img->fill(0);
     QVERIFY( wrapper->setThumbnail( *img, "c:\\tnmwrapper_tsrc.png" ) != -1 );
 	delete img;
+}
+
+void TestThumbnailManager::setThumbnailFromPath()
+{ 
+    // normal URI
+    QVERIFY( wrapper->setThumbnail( "c:\\tnmwrapper_tsrc.png", "c:\\tnmwrapper_tsrc.vcf", "contact/x-vcard" ) != -1 );
+    
+    // virtual URI
+    QVERIFY( wrapper->setThumbnail( "c:\\tnmwrapper_tsrc.png", "c:tnmwrapper_tsrc.vcf", "contact/x-vcard" ) != -1 );
+    
+    // no mime
+    QVERIFY( wrapper->setThumbnail( "c:\\tnmwrapper_tsrc.png", "c:tnmwrapper_tsrc.vcf" ) != -1 );
 }
 
 void TestThumbnailManager::cancelRequest()

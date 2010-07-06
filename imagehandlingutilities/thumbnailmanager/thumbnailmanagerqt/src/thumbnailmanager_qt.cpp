@@ -94,6 +94,12 @@ Q_DECL_EXPORT int ThumbnailManager::setThumbnail( const QImage& source, const QS
     return d->setThumbnail( source, filename, clientData, priority );
 }
 
+Q_DECL_EXPORT int ThumbnailManager::setThumbnail( const QString& sourceFileName, const QString& targetFileName,
+        const QString& mimeType, void * clientData , int priority )
+{
+    return d->setThumbnail( sourceFileName, targetFileName, mimeType, clientData, priority );
+}
+
 Q_DECL_EXPORT void ThumbnailManager::deleteThumbnails( const QString& fileName )
 {
     d->deleteThumbnails( fileName );

@@ -47,7 +47,6 @@ const TInt KStoreUnrecoverableErr = KErrCorrupt;
 //Symbian^4 v5
 _LIT( KThumbnailDatabaseName, ":[102830AB]thumbnail_v5.db" );
 
-_LIT( KDrv, ":");
 
 // Allow access to database only for the server process
 const TSecurityPolicy KThumbnailDatabaseSecurityPolicy( TSecureId(
@@ -548,13 +547,15 @@ TInt CThumbnailStore::CheckRowIDs()
     TInt column = 0;   
     TInt rowStatus = 0;
     TInt64 inforows = -1;
+    TInt64 infocount = -1;
     TInt64 datarows = -1;
+    TInt64 datacount = -1;
     
     TInt ret = stmt.Prepare( iDatabase, KGetInfoRowID );
     if(ret < 0)
         {
         stmt.Close();
-        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() failed 1 %d");
+        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetInfoRowID failed %d");
         return KErrNotSupported;
         }
     rowStatus = stmt.Next();
@@ -572,14 +573,39 @@ TInt CThumbnailStore::CheckRowIDs()
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
 #endif
-        return ret;
+        return KErrNotSupported;
+        }
+    
+    ret = stmt.Prepare( iDatabase, KGetInfoCount );
+    if(ret < 0)
+        {
+        stmt.Close();
+        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetInfoCount failed %d");
+        return KErrNotSupported;
+        }
+    rowStatus = stmt.Next();
+                
+    if ( rowStatus == KSqlAtRow)    
+        {        
+        infocount = stmt.ColumnInt64( column );  
+        }
+                
+    stmt.Close();
+    
+    if(rowStatus < 0)
+        {
+#ifdef _DEBUG
+        TPtrC errorMsg2 = iDatabase.LastErrorMessage();
+        TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
+#endif
+        return KErrNotSupported;
         }
             
     ret = stmt.Prepare( iDatabase, KGetDataRowID );
     if(ret < 0)
         {
         stmt.Close();
-        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() failed 2");
+        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetDataRowID failed");
         return KErrNotSupported;
         }
     rowStatus = stmt.Next();
@@ -597,10 +623,40 @@ TInt CThumbnailStore::CheckRowIDs()
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
 #endif
-        return ret;
+        return KErrNotSupported;
         }
+    
+    ret = stmt.Prepare( iDatabase, KGetInfoDataCount );
+    if(ret < 0)
+        {
+        stmt.Close();
+        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetInfoDataCount failed %d");
+        return KErrNotSupported;
+        }
+    rowStatus = stmt.Next();
+                
+    if ( rowStatus == KSqlAtRow)    
+        {        
+        datacount = stmt.ColumnInt64( column );  
+        }
+                
+    stmt.Close();
+    
+    if(rowStatus < 0)
+        {
+#ifdef _DEBUG
+        TPtrC errorMsg2 = iDatabase.LastErrorMessage();
+        TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
+#endif
+        return KErrNotSupported;
+        }
+    
+    TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - inforows %Ld", inforows );
+    TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - infocount %Ld", infocount );
+    TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - datarows %Ld", datarows );
+    TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - datacount %Ld", datacount );
             
-    if( inforows != datarows)
+    if( inforows != datarows || datacount != infocount)
         {
         TN_DEBUG1( "CThumbnailStore::CheckRowIDsL() - tables out of sync" );
         return KErrNotSupported;
@@ -1355,7 +1411,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
             
                 StoreThumbnailL( *path, buf->Ptr( 0 ), aThumbnail->SizeInPixels(),
                                  aOriginalSize, EThumbnailFormatFbsBitmap, flags, 
-                                 aThumbnailSize, aModified);
+                                 aThumbnailSize, aModified, aThumbFromPath);
   
                 CleanupStack::PopAndDestroy( buf );
                 }
@@ -2613,11 +2669,21 @@ TInt CThumbnailStore::FileExistenceCheckL()
 void CThumbnailStore::StripDriveLetterL( TDes& aPath )
     {
     TInt pos = aPath.Find(KDrv);
+    TInt pos2 = aPath.Find(KBackSlash);
     
     // if URI contains drive letter
     if ( pos == 1 )
         {
-        aPath.Delete(0,pos+1);
+        // normal URI
+        if ( pos2 == 2 )
+            {
+            aPath.Delete(0,pos+1);
+            }
+        // virtual URI
+        else
+            {
+            aPath.Replace(0,2,KBackSlash);
+            }
         }
     }
 

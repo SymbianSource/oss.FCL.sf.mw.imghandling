@@ -117,6 +117,7 @@ NONSHARABLE_CLASS(CThumbnailManagerTest): public CScriptBase,
         virtual TInt DeleteInstance( CStifItemParser& aItem );
         
         virtual TInt CreateSourceInstancePathL( CStifItemParser& aItem );
+        virtual TInt CreateSourceInstancePathTargetL( CStifItemParser& aItem );
         virtual TInt CreateSourceInstanceHandleL( CStifItemParser& aItem );
         virtual TInt CreateSourceInstanceBufferL( CStifItemParser& aItem );
         virtual TInt CreateSourceInstanceBitmapL( CStifItemParser& aItem );
@@ -146,7 +147,7 @@ NONSHARABLE_CLASS(CThumbnailManagerTest): public CScriptBase,
         virtual TInt CheckDisplayModeL( CStifItemParser& aItem );
 
         virtual TInt DeleteThumbnails( CStifItemParser& aItem );
-        virtual TInt DeleteThumbnailsByIdL( CStifItemParser& aItem );
+        virtual TInt CreateThumbnailsByUrlL( CStifItemParser& aItem );
         
         virtual TInt CreateThumbnails( CStifItemParser& aItem );
         virtual TInt UpdatePathL( CStifItemParser& aItem );
