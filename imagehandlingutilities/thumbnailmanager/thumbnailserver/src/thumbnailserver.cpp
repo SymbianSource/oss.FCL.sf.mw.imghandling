@@ -570,7 +570,7 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     
     if( iFetchedChecker )    
         {
-        iFetchedChecker->SetFetchResult( aPath, KErrNone );
+        iFetchedChecker->SetFetchResult( aPath, aThumbnailSize, KErrNone );
         }
     }
 
@@ -585,7 +585,7 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     TN_DEBUG3( "CThumbnailServer::FetchThumbnailL(aPath=%S aThumbnailSize=%d)", &aPath, aThumbnailSize );
     if( iFetchedChecker )
         {
-        TInt err( iFetchedChecker->LastFetchResult( aPath ) );
+        TInt err( iFetchedChecker->LastFetchResult( aPath, aThumbnailSize ) );
         if ( err == KErrNone ) // To avoid useless sql gets that fails for sure
             {
             // custom sizes are not stored to db, skip fetching
@@ -597,7 +597,7 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
             TRAP( err, StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize) );
             if ( err != KErrNone )
                 {
-                iFetchedChecker->SetFetchResult( aPath, err );
+                iFetchedChecker->SetFetchResult( aPath, aThumbnailSize, err );
                 }
             }
         User::LeaveIfError( err );
@@ -666,7 +666,7 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     
     if( iFetchedChecker ) 
         {
-        iFetchedChecker->SetFetchResult( aPath, KErrNone );
+        iFetchedChecker->DeleteFetchResult( aPath );
         }
     }
 
@@ -944,7 +944,7 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
         }
     else
         {
-        if(iFormatting)
+        if( iFormatting )
            {
            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - FORMATTING! - ABORT");
            User::Leave( KErrNotSupported );
@@ -953,17 +953,31 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
         TVolumeInfo volumeInfo;
         TInt err = iFs.Volume( volumeInfo, aDrive );
         
-        if ( err || volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
-            volumeInfo.iDrive.iDriveAtt& KDriveAttRemote ||
-            volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected ||
-            volumeInfo.iDrive.iMediaAtt& KMediaAttLocked )
+        if ( err )
             {
-            // We don't support ROM disks or remote mounts. Media
-            // must be read-write and not locked.
-            User::Leave( KErrAccessDenied);
+            // Locked
+            TN_DEBUG2( "CThumbnailServer::StoreForDriveL() - err %d", err);
+            User::Leave( err);
             }
-        
-        res = CThumbnailStore::NewL( iFs, aDrive, iImei, this );
+        else if( volumeInfo.iDrive.iMediaAtt& KMediaAttLocked )
+            {
+            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - locked");
+            User::Leave( KErrAccessDenied );
+            }
+		else if ( volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
+            volumeInfo.iDrive.iDriveAtt& KDriveAttRemote ||
+            volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected )
+            {
+            // We support ROM disks and remote disks in read only mode.
+            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - rom/remote/write protected");
+            res = CThumbnailStore::NewL( iFs, aDrive, iImei, this, ETrue );
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - normal");
+            res = CThumbnailStore::NewL( iFs, aDrive, iImei, this, EFalse );
+            }
+			
         CleanupStack::PushL( res );
         iStores.InsertL( aDrive, res );
         res->SetPersistentSizes(iPersistentSizes);
@@ -1295,7 +1309,7 @@ TBool CThumbnailServer::UpdateThumbnailsL( const TDesC& aPath,
             
             if( iFetchedChecker ) 
                 {
-                iFetchedChecker->SetFetchResult( aPath, KErrNone );
+                iFetchedChecker->DeleteFetchResult( aPath );
                 }
             
             // need to create new thumbs
@@ -1327,8 +1341,7 @@ void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC
     
     if( iFetchedChecker ) 
         {
-        iFetchedChecker->SetFetchResult( aNewPath, iFetchedChecker->LastFetchResult(aCurrentPath) );
-        iFetchedChecker->SetFetchResult( aCurrentPath, KErrNone );
+        iFetchedChecker->RenameFetchResultL( aNewPath, aCurrentPath );
         }
     }
 

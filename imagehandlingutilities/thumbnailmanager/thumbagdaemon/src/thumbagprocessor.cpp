@@ -1288,6 +1288,52 @@ void CThumbAGProcessor::RunL()
 
         QueryL( EGenerationItemActionResolveType );
        }
+    else if ( iDeleteItemCount > 0 )
+       {
+       TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
+       // delete thumbs by URI
+       __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
+       if(iTMSession)
+           {
+           TInt itemIndex(KErrNotFound);
+                               
+           for(TInt i=0;i<iGenerationQueue.Count() || itemIndex == KErrNotFound;i++)
+               {
+               if(iGenerationQueue[i].iItemAction == EGenerationItemActionDelete)
+                   {
+                   itemIndex = i;
+                   }
+               }
+       
+           if(itemIndex >= 0)
+               {
+               if(!iGenerationQueue[itemIndex].iUri)
+                   {
+                   //URI is invalid
+                   TN_DEBUG1( "void CThumbAGProcessor::RunL() unable to delete URI inbalid");
+                   iGenerationQueue.Remove( itemIndex );
+                   ActivateAO();
+                   return;
+                   }
+
+               TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  iGenerationQueue[itemIndex].iUri);
+               CThumbnailObjectSource* source = NULL;                
+               TRAPD(err,  source = CThumbnailObjectSource::NewL( *iGenerationQueue[itemIndex].iUri, KNullDesC));
+                  
+               if(err == KErrNone)
+                   {
+                   iTMSession->DeleteThumbnails( *source );
+                   }
+               delete source;
+               
+               delete iGenerationQueue[itemIndex].iUri;
+               iGenerationQueue[itemIndex].iUri = NULL;
+               iGenerationQueue.Remove( itemIndex );
+               
+               iActiveCount++;
+               }
+           }
+       }
     // no items in query queue, start new
     // select queue to process, priority by type
     else if ( iModifyItemCount > 0 )
@@ -1312,54 +1358,6 @@ void CThumbAGProcessor::RunL()
         iQueryActive = ETrue;
         
         QueryL( EGenerationItemActionAdd );     
-        }
-    else if ( iDeleteItemCount > 0 )
-        {
-        TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
-        i2ndRound = EFalse;
-        iUnknown = EFalse;
-        // delete thumbs by URI
-        __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
-        if(iTMSession)
-            {
-            TInt itemIndex(KErrNotFound);
-                                
-            for(TInt i=0;i<iGenerationQueue.Count() || itemIndex == KErrNotFound;i++)
-                {
-                if(iGenerationQueue[i].iItemAction == EGenerationItemActionDelete)
-                    {
-                    itemIndex = i;
-                    }
-                }
-        
-            if(itemIndex >= 0)
-                {
-                if(!iGenerationQueue[itemIndex].iUri)
-                    {
-                    //URI is invalid
-                    TN_DEBUG1( "void CThumbAGProcessor::RunL() unable to delete URI inbalid");
-                    iGenerationQueue.Remove( itemIndex );
-                    ActivateAO();
-                    return;
-                    }
-
-                TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  iGenerationQueue[itemIndex].iUri);
-                CThumbnailObjectSource* source = NULL;                
-                TRAPD(err,  source = CThumbnailObjectSource::NewL( *iGenerationQueue[itemIndex].iUri, KNullDesC));
-                   
-                if(err == KErrNone)
-                    {
-                    iTMSession->DeleteThumbnails( *source );
-                    }
-                delete source;
-                
-                delete iGenerationQueue[itemIndex].iUri;
-                iGenerationQueue[itemIndex].iUri = NULL;
-                iGenerationQueue.Remove( itemIndex );
-                
-                iActiveCount++;
-                }
-            }
         }
     else if( i2ndAddItemCount > 0)
         {
@@ -1687,8 +1685,9 @@ void CThumbAGProcessor::ActivateAO()
         }
     
     //check if forced run needs to continue
-    if ( iModifyItemCount || iUnknownItemCount > 0 )
+    if ( iModifyItemCount > 0 || iUnknownItemCount > 0 || iDeleteItemCount > 0 )
         {
+        TN_DEBUG1( "CThumbAGProcessor::ActivateAO() -  iModifyItemCount > 0 || iUnknownItemCount > 0 || iDeleteItemCount > 0");
         SetForceRun( ETrue );
         }
     else

@@ -16,6 +16,7 @@
 */
 
 #include "thumbnailfetchedchecker.h"
+#include "thumbnaillog.h"
 
 const int KMaxStoredEntries = 100;
 
@@ -49,13 +50,28 @@ CThumbnailFetchedChecker::~CThumbnailFetchedChecker()
 // CThumbnailFetchedChecker::LastFetchResult()
 // -----------------------------------------------------------------------------
 //
-TInt CThumbnailFetchedChecker::LastFetchResult( const TDesC& aUri )
+TInt CThumbnailFetchedChecker::LastFetchResult( const TDesC& aUri, const TThumbnailSize aThumbnailSize )
     {
-    TInt i = iNotFetched.FindInOrder( aUri, CEntry::FindCB );
-    if ( i >= 0 && i < iNotFetched.Count() )
+    TN_DEBUG3( "CThumbnailFetchedChecker::LastFetchResult(aUri=%S aThumbnailSize=%d)", &aUri, aThumbnailSize);
+
+    CEntry* entry = NULL;
+    TRAPD( err, entry = CEntry::NewL( aUri, aThumbnailSize, KErrNone ) );
+    if ( !err && entry )
         {
-        return iNotFetched[ i ]->iError;
+        TInt ret = iNotFetched.FindInOrder( entry, CEntry::FindCB );
+        if ( ret != KErrNotFound )
+            {
+            TN_DEBUG1( "CThumbnailFetchedChecker::LastFetchResult() -> error found");
+            entry = NULL;
+            delete entry;
+
+            return iNotFetched[ ret ]->iError;
+            }
         }
+
+    delete entry;        
+    entry = NULL;
+        
     return KErrNone;
     }
 
@@ -63,31 +79,43 @@ TInt CThumbnailFetchedChecker::LastFetchResult( const TDesC& aUri )
 // CThumbnailFetchedChecker::SetFetchResult()
 // -----------------------------------------------------------------------------
 //
-void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, TInt aError )
+void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, const TThumbnailSize aThumbnailSize, TInt aError )
     {
+    TN_DEBUG4( "CThumbnailFetchedChecker::SetFetchResult(aUri=%S aThumbnailSize=%d aError=%d)", &aUri, aThumbnailSize, aError);
     if ( aError == KErrNone )
         {
-        // Do not store successful results
-        TInt i = iNotFetched.FindInOrder( aUri, CEntry::FindCB );
-        if ( i >= 0 && i < iNotFetched.Count() )
+        // Remove successful results from store
+        CEntry* entry = NULL;
+        TRAPD( err, entry = CEntry::NewL( aUri, aThumbnailSize, aError ) );
+        if ( !err && entry )
             {
-            delete iNotFetched[ i ];
-            iNotFetched.Remove( i );
+            TInt i = iNotFetched.FindInOrder( entry, CEntry::FindCB );
+            if ( i >= 0 )
+                {
+                TN_DEBUG2( "CThumbnailFetchedChecker::LastFetchResult() -> Remove successful results from store %d",  iNotFetched.Count() );
+                delete iNotFetched[ i ];
+                iNotFetched.Remove( i );
+                }
             }
+        entry = NULL;
+        delete entry;
         }
     else
         {
+
         // Add or update
         CEntry* entry = NULL;
-        TRAPD( err, entry = CEntry::NewL( aUri, aError ) );
+        TRAPD( err, entry = CEntry::NewL( aUri, aThumbnailSize, aError ) );
         if ( !err && entry )
             {
             err = iNotFetched.Find( entry );
             if ( err != KErrNotFound )
                 {
-                TInt i = iNotFetched.FindInOrder( aUri, CEntry::FindCB );
-                if ( i >= 0 && i < iNotFetched.Count() )
+                // update existing fetch result
+                TInt i = iNotFetched.FindInOrder( entry, CEntry::FindCB );
+                if ( i >= 0 )
                     {
+                    TN_DEBUG1( "CThumbnailFetchedChecker::LastFetchResult() -> Update fetched tn error" );
                     iNotFetched[ i ]->iError = aError;
                     }
                 }
@@ -95,9 +123,11 @@ void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, TInt aError )
                 {
                 if( iNotFetched.Count() < KMaxStoredEntries )
                     {
+                    // insert new fetch result
                     TInt err = iNotFetched.InsertInOrder( entry, CEntry::InsertCB );
                     if ( err == KErrNone )
                         {
+                        TN_DEBUG2( "CThumbnailFetchedChecker::LastFetchResult() -> Inserted new fetched tn error %d", iNotFetched.Count());	
                         entry = NULL; // owned by array now
                         }
                     }
@@ -110,25 +140,76 @@ void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, TInt aError )
     }
 
 // -----------------------------------------------------------------------------
+// CThumbnailFetchedChecker::DeleteFetchResult()
+// -----------------------------------------------------------------------------
+//
+void CThumbnailFetchedChecker::DeleteFetchResult( const TDesC& aUri )
+    {
+    TN_DEBUG2( "CThumbnailFetchedChecker::DeleteFetchResult(%S)", &aUri);
+    // delete all entries of passed uri
+    TInt ret;
+    do
+        {
+        ret = iNotFetched.FindInOrder( aUri, CEntry::FindCBUri );
+        if ( ret >= 0 )
+            {
+            TN_DEBUG1( "CThumbnailFetchedChecker::DeleteFetchResult() -> Deteled URI from fetched list" );	
+            delete iNotFetched[ ret ];
+            iNotFetched.Remove( ret );
+            }
+        }
+    while(ret != KErrNotFound );
+    
+    }
+
+// -----------------------------------------------------------------------------
+// CThumbnailFetchedChecker::LastFetchResult()
+// -----------------------------------------------------------------------------
+//
+void CThumbnailFetchedChecker::RenameFetchResultL( const TDesC& aNewUri, const TDesC& aOldUri )
+    {
+    TN_DEBUG3( "CThumbnailFetchedChecker::RenameFetchResult(aNewUri=%S aOldUri=%S)", &aNewUri, &aOldUri);
+    // change every occurence of passed uri
+    TInt ret;
+    do
+        {
+        ret = iNotFetched.FindInOrder( aOldUri, CEntry::FindCBUri );
+        if ( ret >= 0 )
+            {
+            delete iNotFetched[ ret ]->iUri;
+            iNotFetched[ ret ]->iUri = NULL;
+
+            iNotFetched[ ret ]->iUri = aNewUri.AllocL();
+            TN_DEBUG1( "CThumbnailFetchedChecker::RenameeFetchResult() -> Renamed URI in fetched list" );	
+            }
+        }
+    while(ret != KErrNotFound );
+    
+    }
+
+// -----------------------------------------------------------------------------
 // CThumbnailFetchedChecker::Reset()
 // -----------------------------------------------------------------------------
 //
 void CThumbnailFetchedChecker::Reset()
     {
+    TN_DEBUG1( "CThumbnailFetchedChecker::Reset()");
     iNotFetched.ResetAndDestroy();
     }
 
 // -----------------------------------------------------------------------------
-// CThumbnailFetchedChecker::CEntry::New()
+// CThumbnailFetchedChecker::CEntry::NewL()
 // -----------------------------------------------------------------------------
 //
 CThumbnailFetchedChecker::CEntry* CThumbnailFetchedChecker::CEntry::NewL(
-        const TDesC& aUri, TInt aError )
+        const TDesC& aUri, const TThumbnailSize aThumbnailSize, TInt aError )
     {
+    TN_DEBUG4( "CThumbnailFetchedChecker::CEntry::NewL(aUri=%S aThumbnailSize=%d aError=%d)", &aUri, aThumbnailSize, aError);
     CEntry* self  = new (ELeave) CEntry();
     if ( self )
         {
-        self->iUri = aUri.Alloc();
+        self->iUri = aUri.AllocL();
+        self->iSize = aThumbnailSize;
         self->iError = aError;
         if ( !self->iUri )
             {
@@ -144,8 +225,28 @@ CThumbnailFetchedChecker::CEntry* CThumbnailFetchedChecker::CEntry::NewL(
 // -----------------------------------------------------------------------------
 //
 TInt CThumbnailFetchedChecker::CEntry::FindCB(
-    const TDesC* aUri, const CThumbnailFetchedChecker::CEntry& aEntry )
+        const CThumbnailFetchedChecker::CEntry& aEntry, const CThumbnailFetchedChecker::CEntry& aEntry1 )
     {
+    TN_DEBUG1( "CThumbnailFetchedChecker::CEntry::FindCB");
+    if( aEntry1.iSize == aEntry.iSize)
+        {
+        // return index if size and uri matches
+        return aEntry.iUri->CompareF( *( aEntry1.iUri ) );
+        }
+    else 
+        {
+        return KErrNotFound;
+        }
+    }
+
+// -----------------------------------------------------------------------------
+// CThumbnailFetchedChecker::CEntry::FindCBUri()
+// -----------------------------------------------------------------------------
+//
+TInt CThumbnailFetchedChecker::CEntry::FindCBUri(
+        const TDesC* aUri, const CThumbnailFetchedChecker::CEntry& aEntry )
+    {
+    TN_DEBUG2( "CThumbnailFetchedChecker::CEntry::FindCBUri(aUri=%S", &aUri);
     return aUri->CompareF( *( aEntry.iUri ) );
     }
 
@@ -157,7 +258,16 @@ TInt CThumbnailFetchedChecker::CEntry::InsertCB(
         const CThumbnailFetchedChecker::CEntry& aEntry1,
         const CThumbnailFetchedChecker::CEntry& aEntry2 )
     {
-    return aEntry1.iUri->CompareF( *( aEntry2.iUri ) );
+    TN_DEBUG1( "CThumbnailFetchedChecker::CEntry::InsertCB");
+    if( aEntry1.iSize == aEntry2.iSize)
+        {
+        // return index if size and uri matches
+        return aEntry1.iUri->CompareF( *( aEntry2.iUri ) );
+        }
+    else 
+        {
+        return KErrNotFound;
+        }
     }
 
 // -----------------------------------------------------------------------------
