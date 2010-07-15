@@ -183,6 +183,11 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
         TaskComplete(NULL);
         }
     
+    if(!iTasks.Count())
+        {
+        iTasks.Compress();
+        }
+    
     TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - remaining task count: %d", iTasks.Count());
     
     return res;

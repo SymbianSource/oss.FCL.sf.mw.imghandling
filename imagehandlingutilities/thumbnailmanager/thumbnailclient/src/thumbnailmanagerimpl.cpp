@@ -69,6 +69,7 @@ CThumbnailManagerImpl::~CThumbnailManagerImpl()
         }
 
     delete iMimeTypeList;
+    iMimeTypeList = NULL;
 	
 	TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - end" );
     }

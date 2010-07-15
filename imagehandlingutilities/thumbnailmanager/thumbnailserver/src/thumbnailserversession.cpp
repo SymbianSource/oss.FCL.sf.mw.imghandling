@@ -55,6 +55,10 @@ CThumbnailServerSession::CThumbnailServerSession(): CSession2()
 CThumbnailServerSession::~CThumbnailServerSession()
     {
     Server()->DropSession(this);
+    delete iBitmap;
+    iBitmap = NULL;
+    delete iBuffer;
+    iBuffer = NULL;
     }
 
 
@@ -1383,12 +1387,20 @@ void CThumbnailServerSession::ResolveMimeTypeL( RFile64* aFile )
 TInt CThumbnailServerSession::ConvertSqlErrToE32Err( TInt aReason )
     {
     TN_DEBUG2("CThumbnailServerSession::ConvertSqlErrToE32Err(%d)", aReason);
-    TInt e32Err;
+    TInt e32Err(aReason);
+	
     if ( aReason >=  - 144 )
     // magic: [-1..-144] is E32 error range 
         {
         // E32 error value or non-negative value
-        e32Err = aReason;
+        switch ( aReason )
+            {
+            case KErrServerTerminated:
+                e32Err = KErrCorrupt;
+                break;
+            default:
+                e32Err = aReason;
+            }
         }
     else
         {

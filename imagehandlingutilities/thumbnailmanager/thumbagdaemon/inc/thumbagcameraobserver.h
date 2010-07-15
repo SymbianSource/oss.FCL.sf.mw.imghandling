@@ -16,8 +16,8 @@
 */
 
 
-#ifndef THUMBAGDAEMON_H
-#define THUMBAGDAEMON_H
+#ifndef THUMBAGCAMERAOBSERVER_H
+#define THUMBAGCAMERAOBSERVER_H
 
 #include <e32base.h>
 #include <w32std.h>
@@ -27,10 +27,6 @@
 #include "thumbagprocessor.h"
 #include "tmshutdownobserver.h"
 #include "thumbnaillog.h"
-#include "thumbagimageobserver.h"
-#include "thumbagcameraobserver.h"
-#include "thumbagaudioobserver.h"
-#include "thumbagvideoobserver.h"
 
 
 /**
@@ -38,15 +34,10 @@
  *
  *  @since S60 v5.0
  */
-NONSHARABLE_CLASS( CThumbAGDaemon ): public CServer2, 
+NONSHARABLE_CLASS( CThumbAGCameraObserver ): public CBase, 
                                      public MMdESessionObserver,
                                      public MMdEObjectObserver,
-                                     public MTMShutdownObserver,
-                                     public MMdEObjectPresentObserver
-#ifdef MDS_URI_OBSERVER
-                                     ,public MMdEObjectObserverWithUri
-#endif
-                                     
+                                     public MTMShutdownObserver
     {
 public:
 
@@ -54,44 +45,25 @@ public:
      * Two-phased constructor
      *
      * @since S60 v5.0
-     * @return New CThumbAGDaemon server.
+     * @return New CThumbAGCameraObserver server.
      */
-    static CThumbAGDaemon* NewLC();
+    static CThumbAGCameraObserver* NewLC(CThumbAGProcessor* aProcessor);
 
     /**
      * Two-phased constructor
      *
      * @since S60 v5.0
-     * @return New CThumbAGDaemon server.
+     * @return New CThumbAGCameraObserver server.
      */
-    static CThumbAGDaemon* NewL();
+    static CThumbAGCameraObserver* NewL(CThumbAGProcessor* aProcessor);
     
     /**
      * Destructor
      *
      * @since S60 v5.0
      */
-    virtual ~CThumbAGDaemon();
+    virtual ~CThumbAGCameraObserver();
 
-public:
-
-    /**
-     * Creates new server session.
-     *
-     * @since S60 v5.0
-     * @param aVersion Version info.
-     * @param aMessage Message to be passed.
-     * @return New session.
-     */
-    CSession2* NewSessionL( const TVersion& aVersion,
-                            const RMessage2& aMessage ) const;    
-    
-    /**
-     * ThreadFunctionL
-     *
-     * @since S60 v5.0
-     */
-    static void ThreadFunctionL();    
 
 public:
     
@@ -103,17 +75,7 @@ public:
     void HandleObjectNotification(CMdESession& aSession, 
                                   TObserverNotificationType aType,
                                   const RArray<TItemId>& aObjectIdArray);
-    
-#ifdef MDS_URI_OBSERVER
-    void HandleUriObjectNotification(CMdESession& aSession, 
-                            TObserverNotificationType aType,
-                            const RArray<TItemId>& aObjectIdArray,
-                            const RPointerArray<HBufC>& aObjectUriArray);
-#endif
-    
-    void HandleObjectPresentNotification(CMdESession& aSession, 
-                TBool aPresent, const RArray<TItemId>& aObjectIdArray);
-    
+        
     // from MTMShutdownObserver
     void ShutdownNotification();
     
@@ -126,12 +88,6 @@ protected:
      */
     void AddObserversL();    
     
-    /**
-     * Check if daemon needs to run
-     *
-     * @since S60 v5.0
-     */
-    TBool DaemonEnabledL();
     
 private:
 
@@ -139,9 +95,9 @@ private:
      * C++ default constructor
      *
      * @since S60 v5.0
-     * @return New CThumbAGDaemon instance.
+     * @return New CThumbAGCameraObserver instance.
      */
-    CThumbAGDaemon();
+    CThumbAGCameraObserver(CThumbAGProcessor* aProcessor);
 
     /**
      * Symbian 2nd phase constructor can leave.
@@ -170,6 +126,7 @@ private:
     CTMShutdownObserver* iShutdownObserver;
     CTMShutdownObserver* iMDSShutdownObserver;
     CMdESession* iMdESession;
+    //not owned
     CThumbAGProcessor* iProcessor;
     
     TBool iShutdown;
@@ -181,14 +138,8 @@ private:
     
 #ifdef _DEBUG
     TUint32 iAddCounter;
-    TUint32 iDelCounter;
+    TUint32 iModCounter;
 #endif
-    
-    //observers
-    CThumbAGImageObserver* iImageObserver;
-    CThumbAGCameraObserver* iCameraObserver;
-    CThumbAGAudioObserver* iAudioObserver;
-    CThumbAGVideoObserver* iVideoObserver;
 };
 
 #endif // THUMBAGDAEMON_H

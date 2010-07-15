@@ -211,7 +211,6 @@ void CThumbnailTask::SetMessageData( const TThumbnailServerRequestId&
 void CThumbnailTask::ResetMessageData()
     {
     iMessage = RMessage2();
-    iRequestId = TThumbnailServerRequestId();
     }
 
 

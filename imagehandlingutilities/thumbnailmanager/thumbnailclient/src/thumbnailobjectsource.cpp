@@ -205,9 +205,13 @@ void CThumbnailObjectSource::ConstructL( const TDesC& aUri, const TDesC&
 CThumbnailObjectSource::~CThumbnailObjectSource()
     {
     delete iUri;
+    iUri = NULL;
     delete iMimeType;
+    iMimeType = NULL;
     delete iBuffer;
+    iBuffer = NULL;
     delete iBitmap;
+    iBitmap = NULL;
     }
 
 

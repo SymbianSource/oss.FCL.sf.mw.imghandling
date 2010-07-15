@@ -22,7 +22,7 @@
 #include <e32base.h>
 #include <gdi.h>
 #include <etel3rdparty.h>
-
+#include <mdccommon.h>
 #include <apmstd.h>
 
 #include "thumbnailmanager.h" // TThumbnailFlags
@@ -53,10 +53,10 @@ const TInt KDaemonProcessing = 0x00000040;
 //actual batch size will vary and will be between min...max batch size values below
 
 //minimum batch size
-const TUint KMInBatchItems = 3;
+const TUint KMInBatchItems = 6;
 //maximum batch size
 const TUint KMaxBatchItems = 60;
-//Max allowed flush time
+//Max allowed flush time ms
 const TUint KMaxFlushDelay = 3000; // 3 sec
 //Max allowed flush time on MTP/music collection refresh
 const TUint KMaxMTPFlushDelay = 15000; // 15 seconds
@@ -64,7 +64,7 @@ const TUint KMaxMTPFlushDelay = 15000; // 15 seconds
 //how many items daemon will query at once from MDS
 const TUint KMaxQueryItems = 100;
 // max items for PH & AllItems query
-const TUint KMaxQueryItems2 = 100;
+const TUint KMaxQueryBatchSize = 100;
 
 // maximum number of active client side queue requests
 const TUint KMaxClientRequests = 2;

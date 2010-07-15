@@ -285,8 +285,11 @@ CThumbnailServer::~CThumbnailServer()
 	iUnmountedDrives.Close();
     
     delete iFetchedChecker;
+    iFetchedChecker = NULL;
     delete iShutdownObserver;
+    iShutdownObserver = NULL;
     delete iProcessor;
+    iProcessor = NULL;
     
     if(iReconnect)
         {
@@ -306,7 +309,9 @@ CThumbnailServer::~CThumbnailServer()
     
     iUnmountObservers.ResetAndDestroy();
     delete iMMCObserver;
+    iMMCObserver = NULL;
     delete iFormatObserver;
+    iFormatObserver = NULL;
     
     THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
 
@@ -320,11 +325,13 @@ CThumbnailServer::~CThumbnailServer()
         }
     
     delete iScaler;
+    iScaler = NULL;
     iBitmapPool.Close();
     iFbsSession.Disconnect();
     iRecognizer.Close();
     iPluginInfoArray.ResetAndDestroy();
     delete iCenrep;
+    iCenrep = NULL;
     iFs.Close();
     REComSession::FinalClose();
     }
@@ -439,8 +446,7 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
     
     TN_DEBUG2( "CThumbnailServer::DropSession() aSession = 0x%08x", aSession );        
     
-    // clean-up bitmap pool
-    
+    // clean-up bitmap pool    
     THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
 
     // const pointer to a non-const object
@@ -457,8 +463,8 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
                         
             TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", iBitmapPool.Count());
             }
-        ref = bpiter.NextValue();
         
+        ref = bpiter.NextValue();        
         }
 
     if ( iSessionCount <= 0 )
@@ -796,7 +802,7 @@ CThumbnailProvider* CThumbnailServer::GetProviderL( const TUid& aImplUid )
 
 
 // -----------------------------------------------------------------------------
-// CThumbnailServer::GetProviderL()
+// CThumbnailServer::PreLoadProviders()
 // -----------------------------------------------------------------------------
 //
 void CThumbnailServer::PreLoadProviders(  )
@@ -806,7 +812,7 @@ void CThumbnailServer::PreLoadProviders(  )
     
     for(TInt i=0; i< iPluginInfoArray.Count(); i++)
         {
-            TRAP(err, GetProviderL( iPluginInfoArray[i]->ImplementationUid()));
+        TRAP(err, GetProviderL( iPluginInfoArray[i]->ImplementationUid()));
         }
     }
 
@@ -829,20 +835,17 @@ void CThumbnailServer::QueueTaskL( CThumbnailTask* aTask )
 // -----------------------------------------------------------------------------
 //
 TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
-    {
-    
+    {   
     TInt error = iProcessor->RemoveTask( aRequestId );
         
-    // clean-up bitmap pool        
-        
+    // clean-up bitmap pool               
     THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
 
     // const pointer to a non-const object
     const TThumbnailBitmapRef* ref = bpiter.NextValue();
 
     while ( ref )
-        {
-        
+        {       
         TN_DEBUG2( "CThumbnailServer::DequeTask() - ref->iRequestId = %d", ref->iRequestId );
 
         if ( ref->iSession == aRequestId.iSession && 
@@ -852,10 +855,10 @@ TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
             bpiter.RemoveCurrent();                        
                         
             TN_DEBUG2( "CThumbnailServer::DequeTask() - deleted bitmap, left=%d", 
-                                iBitmapPool.Count());
+                    iBitmapPool.Count());
             }
-        ref = bpiter.NextValue();
         
+        ref = bpiter.NextValue();        
         }
 
     return error;
@@ -1162,6 +1165,10 @@ void CThumbnailServer::MemoryCardStatusChangedL()
             
             // ignore errors
             TRAP_IGNORE( StoreForDriveL( drive ));
+            
+            TN_DEBUG2( "CThumbnailServer::MemoryCardStatusChangedL() update KItemsleft == %d", KErrNotReady);
+            RProperty::Set(KTAGDPSNotification, KItemsleft, KErrNotReady );
+			
             TInt index = iUnmountedDrives.Find( drive );
             
             if(index >= KErrNone)
@@ -1766,7 +1773,7 @@ void CThumbnailServer::StartUnmountTimeout( const TInt aDrive)
 
 
 // ---------------------------------------------------------------------------
-// CThumbnailServer::ReconnectCallBack()
+// CThumbnailServer::UnmountCallBack()
 // ---------------------------------------------------------------------------
 //
 TInt CThumbnailServer::UnmountCallBack(TAny* aAny)
