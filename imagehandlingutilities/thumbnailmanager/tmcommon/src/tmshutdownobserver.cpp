@@ -20,6 +20,7 @@
 
 #include "tmshutdownobserver.h"
 #include "thumbnailmanagerconstants.h"
+#include "thumbnaillog.h"
 
 // ---------------------------------------------------------------------------
 // CTMShutdownObserver::NewL()
@@ -60,19 +61,23 @@ CTMShutdownObserver::CTMShutdownObserver( MTMShutdownObserver& aObserver,
 //
 void CTMShutdownObserver::ConstructL()
     { 
+    TN_DEBUG1( "CTMShutdownObserver::ConstructL()" );
     // define P&S property types
     if (iDefineKey)
         {
+        TN_DEBUG1( "CTMShutdownObserver::ConstructL() define" );
         RProperty::Define(iKeyCategory,iPropertyKey,
                           RProperty::EInt,KAllowAllPolicy,KPowerMgmtPolicy);
         }
     
     // attach to the property
     TInt err = iProperty.Attach(iKeyCategory,iPropertyKey,EOwnerThread);
+    TN_DEBUG2( "CTMShutdownObserver::ConstructL() attach err = %d", err );
     User::LeaveIfError(err);
     
     // wait for the previously attached property to be updated
     iProperty.Subscribe(iStatus);
+    TN_DEBUG1( "CTMShutdownObserver::ConstructL() subscribe" );
     SetActive();
     }
 
@@ -82,6 +87,7 @@ void CTMShutdownObserver::ConstructL()
 //
 CTMShutdownObserver::~CTMShutdownObserver()
     {
+    TN_DEBUG1( "CTMShutdownObserver::~CTMShutdownObserver()" );
     Cancel();
     iProperty.Close();
     }
@@ -92,13 +98,16 @@ CTMShutdownObserver::~CTMShutdownObserver()
 //
 void CTMShutdownObserver::RunL()
     {
+    TN_DEBUG2( "CTMShutdownObserver::RunL(%d)", iStatus.Int() );
     // resubscribe before processing new value to prevent missing updates
     iProperty.Subscribe(iStatus);
     SetActive();
     
     // retrieve the value
     TInt value = 0;
-    iProperty.Get(value);
+    TInt err = iProperty.Get(value);
+    
+    TN_DEBUG2( "CTMShutdownObserver::RunL() Get err = %d", err );
 
     // observer callback
     if (value)
@@ -113,6 +122,7 @@ void CTMShutdownObserver::RunL()
 //
 void CTMShutdownObserver::DoCancel()
     {
+    TN_DEBUG1( "CTMShutdownObserver::DoCancel()" );
     iProperty.Cancel();
     }
 

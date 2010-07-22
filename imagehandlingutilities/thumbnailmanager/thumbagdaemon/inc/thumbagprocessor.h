@@ -32,9 +32,45 @@
 #include "tmactivitymanager.h"
 #include "tmformatobserver.h"
 #include "tmrpropertyobserver.h"
+#include "thumbnailmanagerconstants.h"
 
 //FORWARD DECLARATIONS
 class MMPXCollectionUtility;
+
+
+enum TThumbnailGenerationItemType
+      {
+      EGenerationItemTypeUnknown,
+      EGenerationItemTypeNotFound,
+      EGenerationItemTypeCamera,
+      EGenerationItemTypeAny,
+      EGenerationItemTypeAudio,
+      EGenerationItemTypeVideo,
+      EGenerationItemTypeImage,
+      EGenerationItemTypeItemCount
+      };
+
+  enum TThumbnailGenerationItemAction
+      {
+      EGenerationItemActionAdd,
+      EGenerationItemActionDelete,
+      EGenerationItemActionModify,
+      EGenerationItemAction2ndAdd,
+      EGenerationItemActionResolveType,
+      EGenerationItemActionCount
+      };
+
+  struct TThumbnailGenerationItem
+      {
+      inline TThumbnailGenerationItem(): iItemId( KErrNotFound ), iItemType(EGenerationItemTypeUnknown), iItemAction(EGenerationItemActionAdd), iPlaceholder(EFalse), iUri(NULL){}
+      inline ~TThumbnailGenerationItem(){delete iUri; iUri = NULL;}
+      
+      TItemId iItemId;
+      TThumbnailGenerationItemType iItemType;
+      TThumbnailGenerationItemAction iItemAction;
+      TBool iPlaceholder;
+      HBufC* iUri;
+      };
 
 /**
  *  Processor object for handling thumb generation
@@ -43,6 +79,7 @@ class MMPXCollectionUtility;
  */
 class CThumbAGProcessor: public CActive,
                          public MThumbnailManagerObserver,
+                         public MThumbnailManagerRequestObserver,
                          public MMdEQueryObserver,
                          public MHarvesterEventObserver,
                          public MMPXCollectionObserver,
@@ -78,6 +115,8 @@ public:
     // from MThumbnailManagerObserver
     void ThumbnailPreviewReady( MThumbnailData& aThumbnail, TThumbnailRequestId aId );
     void ThumbnailReady( TInt aError, MThumbnailData& aThumbnail, TThumbnailRequestId aId );
+    // from MThumbnailManagerRequestObserver
+    void ThumbnailRequestReady( TInt aError, TThumbnailRequestType aRequestType, TThumbnailRequestId aId  );
 
     // from MHarvesterEventObserver
     void HarvestingUpdated( 
@@ -116,17 +155,18 @@ public:
      * @since S60 v5.0
      * @param aMdESession MdE Session
      */
-    void SetMdESession( CMdESession* aMdESession );    
+    void SetMdESessionL( CMdESession* aMdESession );    
     
     /**
      * Adds new IDs to queue
      *
      * @since S60 v5.0
      * @param aType TObserverNotificationType
+	 * @param TThumbnailGenerationItemType
      * @param aIDArray IDs for thumbnail creation
      * @param aForce pass ETrue if processor is forced to run without waiting harvesting complete
      */
-    void AddToQueueL( TObserverNotificationType aType, const RArray<TItemId>& aIDArray, const RPointerArray<HBufC>& aObjectUriArray, TBool aPresent );
+    void AddToQueueL( TObserverNotificationType aType, TThumbnailGenerationItemType aItemType, const RArray<TItemId>& aIDArray, const RPointerArray<HBufC>& aObjectUriArray, TBool aPresent );
     
     /**
      * Calls Thumbnail Manager to create thumbnails
@@ -145,6 +185,9 @@ public:
     void RemoveFromQueues( const RArray<TItemId>& aIDArray, const TBool aRemoveFromDelete = EFalse);
     
     void SetForceRun( const TBool aForceRun );
+	
+	//prepare processor for shutdown
+	void Shutdown();
     
 protected:
     
@@ -154,16 +197,17 @@ protected:
      * QueryL
      *
      * @since S60 v5.0
-     * @param aIDArray Item IDs to query
+     * @param TThumbnailGenerationItemAction
      */
-    void QueryL( RArray<TItemId>& aIDArray );
+    void QueryL( TThumbnailGenerationItemAction aType);
     
 	 /**
      * QueryPlaceholdersL
      *
      * @since S60 v5.0
+	 * @param aPresent item should not be present item
      */
-    void QueryPlaceholdersL();
+    void QueryPlaceholdersL(const TBool aPresent);
 
    	 /**
      * DeleteAndCancelQuery
@@ -254,14 +298,58 @@ private:
      * @since S60 v5.0
  	 * @param aDefine (re)define PS key before setting value
      */
-    void UpdatePSValues(const TBool aDefine = EFalse);
+    void UpdatePSValues(const TBool aDefine, const TBool aForce);
        
     /**
      * Comparison function for logaritmic use of queue arrays
      * 
+     * @since S60 S^3
+     */
+    static TInt Compare(const TThumbnailGenerationItem& aLeft, const TThumbnailGenerationItem& aRight);
+	
+	 /**
+     * Comparison function for logaritmic use of queue arrays
+     * 
+     * @since S60 S^3
+     */
+    static TInt CompareId(const TItemId& aLeft, const TItemId& aRight);
+    
+	/**
+     * Recalculate item counts
+     * 
+     * @since S60 S^3
+     */
+    void UpdateItemCounts();
+	
+    /**
+     * Callback for mount timeout
+     *
      * @since S60 v5.0
      */
-    static TInt Compare(const TItemId& aLeft, const TItemId& aRight);
+    static TInt MountTimerCallBack(TAny* aAny);
+    
+	 /**
+     * Set item's action from type
+     *
+     * @since S^3
+     */
+    void SetGenerationItemAction( TThumbnailGenerationItem& aGenerationItem, const TThumbnailGenerationItemType aItemType );
+	
+     /**
+     * Set item type property from TDedIf
+     * @param aGenerationItem TThumbnailGenerationItem
+     * @param aItemType TThumbnailGenerationItemType
+     * @since S^3
+     */
+    void SetGenerationItemType( TThumbnailGenerationItem& aGenerationItem, const TDefId aDefId );
+ 
+     /**
+     * Append item to processing queue or update existing
+     * @param aGenerationItem modified TThumbnailGenerationItem
+     * @param aDefId items MDS object definition ID
+     * @since S^3
+     */
+    void AppendProcessingQueue(TThumbnailGenerationItem& item );
         
 private:
     
@@ -275,20 +363,19 @@ private:
     CMdEObjectQuery* iQueryAllItems;
     CMdEObjectQuery* iQueryPlaceholders;
     
-    RArray<TItemId> iAddQueue;
-    RArray<TItemId> iModifyQueue;
-    RPointerArray<HBufC> iRemoveQueue;
+    RArray<TThumbnailGenerationItem> iGenerationQueue;
+    //RPointerArray<HBufC> iRemoveQueue;
     RArray<TItemId> iQueryQueue;
-    RArray<TItemId> iPlaceholderQueue;
-    //not processing queue, used to keep KItemsLeft PS correct
-    RArray<TItemId> i2ndRoundGenerateQueue;
-	//reference to current processing queue
-    RArray<TItemId>* iLastQueue;
     
 	//background generation state
 	// EFalse = 1st round, create only grid size thumbnail for images and videos
 	// ETrue = 2nds round, create all missing sizes for all media items
     TBool i2ndRound;    
+	
+	// query state
+	// EFalse = normal mode
+	// ETrue = querying unknown items
+    TBool iUnknown;
     
 	//MDS query issues
     TBool iQueryActive;
@@ -297,7 +384,7 @@ private:
     
 	//Processing MDS itens which are modified
     TBool iModify;
-    TInt iProcessingCount;
+    TUint iProcessingCount;
 
     //MDS harvester's overall state
     TBool iHarvesting;
@@ -311,8 +398,8 @@ private:
     TBool iMMCHarvesting;
     TBool iMMCHarvestingTemp;
     
-    
     CPeriodic* iPeriodicTimer;
+    CPeriodic* iMountTimer;
 
 	//MDS Harvester client
     RHarvesterClient iHarvesterClient;
@@ -323,7 +410,7 @@ private:
     //2nd phase init after MDE session is open
     TBool iInit2;
     
-    // auto create
+    // auto create values from centrep
     TBool iAutoImage;
     TBool iAutoVideo;
     TBool iAutoAudio;
@@ -333,24 +420,26 @@ private:
     // controlled by Photos application to run TN generation on foreground
     TBool iForegroundRun;
 	//request pending in TNM side
-    TBool iActive;
    
     CTMFormatObserver* iFormatObserver;
    
+   //formating started
     TBool iFormatting;
+	//TNM server session died
     TBool iSessionDied;
    
-    TInt iActiveCount;
+   //pending request count
+    TUint iActiveCount;
     
     MMPXCollectionUtility* iCollectionUtility; // own
     
 	//Flag is MPX harvesting or MTP synchronisation in progress
     TBool iMPXHarvesting;
-    //inactivity polling timer
-    CPeriodic* iInactivityTimer;
+
     //overall status of device
     TBool iIdle;
     
+	//monitors device activity
     CTMActivityManager* iActivityManager;
     
 	//Observer foreground generation 
@@ -361,6 +450,30 @@ private:
     TBool iPreviousDaemonProcessing; 
 	//set ETrue when QueryAllItems needs to be run after placeholder query
     TBool iDoQueryAllItems;
-};
+    
+    TBool iShutdown;
+	
+	//item counts
+    TUint32 iModifyItemCount;
+    TUint32 iImageItemCount;
+    TUint32 iVideoItemCount;
+    TUint32 iAudioItemCount;
+    TUint32 iDeleteItemCount;
+    TUint32 iAddItemCount;
+    TUint32 iCameraItemCount;
+    TUint32 iUnknownItemCount;
+    TUint32 i2ndAddItemCount;
+    TUint32 iPlaceholderItemCount;
+    
+    //for book keeping previous items left count got from MDS harvester
+    TUint32 iMMCHarvestingItemsLeftTemp;
+    TUint32 iPHHarvestingItemsLeftTemp;
+    
+	//MdE object definitons used in query
+    CMdEObjectDef* iImageObjectDef;
+    CMdEObjectDef* iVideoObjectDef;
+    CMdEObjectDef* iAudioObjectDef;
+    TBool iHarvesterActivated;
+  };
 
 #endif // THUMBAGPROCESSOR_H

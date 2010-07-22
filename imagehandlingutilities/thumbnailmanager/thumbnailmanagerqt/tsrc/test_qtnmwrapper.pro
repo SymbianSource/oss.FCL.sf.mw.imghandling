@@ -44,7 +44,3 @@ icons.sources += tnmwrapper_tsrc.png
 icons.sources += tnmwrapper_tsrc.mbm
 icons.path = /
 DEPLOYMENT += icons
-#needed to make directory /shared/EUnit/logs/ so that test result can be written
-testres.sources += distribution.policy.s60
-testres.path = /shared/EUnit/logs/
-DEPLOYMENT += testres

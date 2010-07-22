@@ -67,6 +67,11 @@ TThumbnailPersistentSize::TThumbnailPersistentSize( TThumbnailSize aType,
         case EAudioFullScreenThumbnailSize:
             iSourceType = EAudio;
             break;
+        case EContactGridThumbnailSize:
+        case EContactListThumbnailSize:
+        case EContactFullScreenThumbnailSize:
+            iSourceType = EContact;
+            break;
         default:
             iSourceType = EUnknownSourceType;        
         }
@@ -80,7 +85,8 @@ TThumbnailPersistentSize::TThumbnailPersistentSize( TThumbnailSize aType,
 TThumbnailAutoCreate::TThumbnailAutoCreate()
     : iImageGrid(EFalse), iImageList(EFalse), iImageFullscreen(EFalse),
       iVideoGrid(EFalse), iVideoList(EFalse), iVideoFullscreen(EFalse),
-      iAudioGrid(EFalse), iAudioList(EFalse), iAudioFullscreen(EFalse)
+      iAudioGrid(EFalse), iAudioList(EFalse), iAudioFullscreen(EFalse),
+      iContactGrid(EFalse), iContactList(EFalse), iContactFullscreen(EFalse)
     {
     // No implementation required
     }
@@ -203,6 +209,28 @@ void CThumbnailCenRep::ConstructL()
     
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EAudioFullScreenThumbnailSize, TSize( xSize, ySize ),
                               flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));     
+
+    User::LeaveIfError( iRepository->Get( KSizeContactGridWidth, xSize ));
+    User::LeaveIfError( iRepository->Get( KSizeContactGridHeight, ySize ));
+    User::LeaveIfError( iRepository->Get( KAutoCreateContactGrid, autoCreate ));
+
+    iPersistentSizes.AppendL( TThumbnailPersistentSize( EContactGridThumbnailSize, TSize( xSize, ySize ),
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EGrid ));
+    
+    User::LeaveIfError( iRepository->Get( KSizeContactListWidth, xSize ));
+    User::LeaveIfError( iRepository->Get( KSizeContactListHeight, ySize ));
+    User::LeaveIfError( iRepository->Get( KAutoCreateContactList, autoCreate ));
+
+    iPersistentSizes.AppendL( TThumbnailPersistentSize( EContactListThumbnailSize, TSize( xSize, ySize ),
+            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EList ));
+    
+    User::LeaveIfError( iRepository->Get( KSizeContactFullscreenWidth, xSize ));
+    User::LeaveIfError( iRepository->Get( KSizeContactFullscreenHeight, ySize ));
+    User::LeaveIfError( iRepository->Get( KAutoCreateContactFullscreen, autoCreate ));
+    
+    iPersistentSizes.AppendL( TThumbnailPersistentSize( EContactFullScreenThumbnailSize, TSize( xSize, ySize ),
+                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));     
+    
     
     iAutoCreate = new (ELeave) TThumbnailAutoCreate();
     
@@ -215,6 +243,9 @@ void CThumbnailCenRep::ConstructL()
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioGrid, iAutoCreate->iAudioGrid ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioList, iAutoCreate->iAudioList ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioFullscreen, iAutoCreate->iAudioFullscreen ));    
+    User::LeaveIfError( iRepository->Get( KAutoCreateContactGrid, iAutoCreate->iContactGrid ));
+    User::LeaveIfError( iRepository->Get( KAutoCreateContactList, iAutoCreate->iContactList ));
+    User::LeaveIfError( iRepository->Get( KAutoCreateContactFullscreen, iAutoCreate->iContactFullscreen )); 
     }
 
 // ---------------------------------------------------------------------------

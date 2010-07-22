@@ -32,7 +32,7 @@ class RThumbnailSession;
 class CThumbnailDataImpl;
 class CThumbnailRequestQueue;
 
-enum TThumbnailRequestType
+enum TThumbnailReqType
     {
     EReqGetThumbnailHandle = 0, 
     EReqGetThumbnailPath = 1,
@@ -41,7 +41,8 @@ enum TThumbnailRequestType
     EReqUpdateThumbnails = 4,
     EReqGetThumbnailHandleLater = 5,
     EReqDeleteThumbnails = 6,
-    EReqRenameThumbnails = 7
+    EReqRenameThumbnails = 7,
+    EReqSetThumbnailPath = 8
 };
 
 /**
@@ -66,16 +67,17 @@ public:
      * @since S60 v5.0
      * @param aFs Fileserver used.
      * @param aThumbnailSession Session used.
-     * @param aObserver Observer to receive notifications about completed
-     *                  operations.
+     * @param aObserver Observer to receive notifications about completed operations.
+     * @param aRequestObserver Observer to receive notifications about completed requests.
      * @param aId Assigned ID of the request, session specific.
      * @param aPriority assigned processing priority
      * @param aQueue request processor
      * @return New CThumbnailRequestActive object.
      */
     static CThumbnailRequestActive* NewL( RFs& aFs, RThumbnailSession&
-        aThumbnailSession, MThumbnailManagerObserver& aObserver,
-        TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue );
+        aThumbnailSession, MThumbnailManagerObserver& aObserver, 
+        MThumbnailManagerRequestObserver* aRequestObserver, TThumbnailRequestId aId, 
+        TInt aPriority, CThumbnailRequestQueue* aQueue );
 
     /**
      * Get a thumbnail created from file object.
@@ -163,12 +165,13 @@ public:
      * @param aGeneratePersistentSizesOnly
      * @param aTargetUri         Target URI to which the imported thumbnail is linked.
      * @param aThumbnailSize Requested thumbnail size 
+     * @param aOverwrite Overwrite old existing thumbs
      */    
     void SetThumbnailL( TDesC8* aBuffer, TThumbnailId aThumbnailId, const TDesC8& aMimeType,
         CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
         ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
         TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
-        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize );
+        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize, TBool aOverwrite);
     
     /**
      * Set a thumbnail
@@ -187,12 +190,13 @@ public:
      * @param aGeneratePersistentSizesOnly
      * @param aTargetUri         Target URI to which the imported thumbnail is linked.
      * @param aThumbnailSize Requested thumbnail size 
+     * @param aOverwrite Overwrite old existing thumbs
      */    
     void SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId aThumbnailId, const TDesC8& aMimeType,
         CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
         ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
         TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
-        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize );    
+        const TDesC& aTargetUri, TThumbnailSize aThumbnailSize, TBool aOverwrite);    
     
     /**
      * Update thumbnails by Id.
@@ -233,6 +237,32 @@ public:
      */
     void RenameThumbnails( const TDesC& aCurrentPath, const TDesC& aNewPath, 
         const TInt aPriority );    
+    
+    /**
+     * Set thumbnail from file path.
+     *
+     * @param aPath Path to file from which the thumbnail is to be created.
+     * @param aFile File from which the thumbnail is to be created.
+     * @param aFlags Flags that control the creation of thumbnail.
+     * @param aQualityPreference Quality preference value
+     * @param aSize Requested size of the thumbnail.
+     * @param aDisplayMode Display mode.
+     * @param aPriority Priority of the request.
+     * @param aClientData Pointer to arbitrary client data.
+     *                    This pointer is not used by the API for
+     *                    anything other than returning it in the
+     *                    ThumbnailReady callback.
+     * @param aGeneratePersistentSizesOnly 
+     * @param aOverwrite Overwrite old existing thumbs
+     * @param aTargetUri         Target URI to which the imported thumbnail is linked.
+     * @param aThumbnailSize Relative thumbnail size
+     */
+    void SetThumbnailL( const TDesC& aPath, const TDesC8& aMimeType,
+        CThumbnailManager::TThumbnailFlags aFlags, 
+        CThumbnailManager::TThumbnailQualityPreference aQualityPreference, 
+        const TSize& aSize, const TDisplayMode aDisplayMode, const TInt aPriority, 
+        TAny* aClientData, TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, 
+        TThumbnailSize aThumbnailSize, TBool aOverwrite);    
     
     /**
      * Start active request.
@@ -294,16 +324,16 @@ private:
      * @since S60 v5.0
      * @param aFs Fileserver used.
      * @param aThumbnailSession Session used.
-     * @param aObserver Observer to receive notifications about completed
-     *                  operations.
+     * @param aObserver Observer to receive notifications about completed operations.
+     * @param aRequestObserver Observer to receive notifications about completed requests.
      * @param aId Assigned ID of the request, session specific.
      * @param aPriority assigned processing priority
      * @param aQueue request processor
      * @return New CThumbnailRequestActive object.
      */
     CThumbnailRequestActive( RFs& aFs, RThumbnailSession& aThumbnailSession,
-        MThumbnailManagerObserver& aObserver, TThumbnailRequestId aId, TInt aPriority,
-        CThumbnailRequestQueue* aQueue);
+        MThumbnailManagerObserver& aObserver, MThumbnailManagerRequestObserver* aRequestObserver, 
+        TThumbnailRequestId aId, TInt aPriority, CThumbnailRequestQueue* aQueue);
 
     /**
      * Symbian 2nd phase constructor can leave.
@@ -363,6 +393,11 @@ private:
      * @since S60 v5.0
      */
     static TInt TimerCallBack(TAny* aAny);
+    
+    /**
+     * Checks if URI is virtual.
+     */
+    TBool IsVirtualUri( const TDesC& aPath ); 
 
 private:
     // data
@@ -386,6 +421,11 @@ private:
      * Observer to receive notifications about completed operations.
      */
     MThumbnailManagerObserver& iObserver;
+    
+    /**
+     * Observer to receive notifications about completed requests.
+     */
+    MThumbnailManagerRequestObserver* iRequestObserver;
 
     /**
      * Fileserver, not own
@@ -454,7 +494,7 @@ private:
     // not own
     CThumbnailRequestQueue* iRequestQueue;
     
-    TThumbnailRequestType iRequestType;
+    TThumbnailReqType iRequestType;
     
     // request timeout timer
     CPeriodic* iTimer;
@@ -462,6 +502,11 @@ private:
     
     // request already canceled by client
     TBool iCanceled;
+    
+#ifdef __RETRY_ON_SERVERCRASH
+    //request retry count
+    TUint iRetry;
+#endif
     
 #ifdef _DEBUG
     TTime iStartExecTime;

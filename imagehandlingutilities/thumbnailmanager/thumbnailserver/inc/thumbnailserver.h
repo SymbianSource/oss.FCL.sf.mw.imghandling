@@ -168,9 +168,8 @@ public:
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap, const TSize&
         aOriginalSize, const TBool aCropped, const TThumbnailSize aThumbnailSize,
-        const TInt64 aModified,
-        const TBool aThumbFromPath = ETrue,
-        const TBool aCheckExist = ETrue);
+        const TInt64 aModified, const TBool aThumbFromPath,
+        const TBool aCheckExist);
 
     /**
      * Fetch thumbnail image.
@@ -234,6 +233,14 @@ public:
      * @return Thumbnail provider.
      */
     CThumbnailProvider* ResolveProviderL( const TDesC8& aMimeType );
+    
+    /**
+     * Preload provider plugins
+     *
+     * @since S^3
+     */
+    void PreLoadProviders();
+    
 
     /**
      * Add thumbnailtask to processor queue.
@@ -462,6 +469,15 @@ public:
     TBool IsFormatting();
   
     inline CThumbnailFetchedChecker& FetchedChecker() const { return *iFetchedChecker; }
+    
+    /**
+     * Check is path in public folder
+     *
+     * @param aPath
+     * @ret 
+     */
+    TBool IsPublicPath( const TDesC& aPath );
+    
 protected: // Functions from base classes
 
     /**
@@ -528,7 +544,21 @@ private:
      * @since S60 v5.0
      */
     static TInt ReconnectCallBack(TAny* aAny);
-
+    
+    /**
+     * Start unmount timer
+     *
+     * @since S60 S^3
+     */
+    void StartUnmountTimeout( const TInt aDrive);
+    
+    /**
+     * Callback for unmount timer
+     *
+     * @since S60 S^3
+     */
+    static TInt UnmountCallBack(TAny* aAny);
+    
 private:
 
     /**
@@ -681,15 +711,24 @@ private:
     
     // reconnect timer
     CPeriodic* iReconnect;
+
+    // unmount timer
+    CPeriodic* iUnmount;
+    
+    // array of unmounte
+    RArray < TInt > iUnmountedDrives;
     
 #ifdef _DEBUG
     TUint32 iPlaceholderCounter;
 #endif
+    
     /**
      * Fetched checker.
      * Own.
      */
     CThumbnailFetchedChecker* iFetchedChecker;
+    
+    TBool iSessionError;
 };
 
 #endif // THUMBNAILSERVER_H

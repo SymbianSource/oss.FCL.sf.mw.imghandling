@@ -93,7 +93,8 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     iQualityPreference = aQualityPreference;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
-    
+
+//Symbian^4 specific
     if ( KJpegMime() != iMimeType.Des8() ) 
         {
         iDisplayMode = EColor16M;
@@ -132,6 +133,8 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8* aBuffer, const
     iQualityPreference = aQualityPreference;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
+	
+//Symbian^4 specific
     if ( KJpegMime() != iMimeType.Des8() ) 
         {
         iDisplayMode = EColor16M;

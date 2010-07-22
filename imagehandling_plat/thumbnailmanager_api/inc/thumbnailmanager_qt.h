@@ -19,13 +19,16 @@
 #define THUMBNAILMANAGER_QT_H
 
 #include <QObject>
-#include <qpixmap>
+#include <QPixmap>
 #include <QImage>
+
 #include <QtGlobal>
 
-class ThumbnailManagerPrivate;
 class QString;
 class QSize;
+
+class ThumbnailManagerPrivate;
+class TestThumbnailManager;
 
 #ifdef TNMQT_DLL
 #  define TNM_EXPORT Q_DECL_EXPORT
@@ -42,7 +45,6 @@ class ThumbnailManager : public QObject
     Q_OBJECT
 
 public:
-
 
     /** Thumbnail size. */
     enum ThumbnailSize
@@ -256,6 +258,25 @@ public:
      */    
     TNM_EXPORT int setThumbnail( const QImage& source, const QString& fileName,
             void * clientData = NULL, int priority = tnmWrapperPriorityIdle );
+    
+    /**
+     * Set a thumbnail for an object file generated from source file.
+     * thumbnailReady() signal will be emited when the operation is complete. 
+     * 
+     * @param sourceFileName     Source file name from which the thumbnail will be created
+     * @param targetFileName     Target file name
+     * @param clientData         Pointer to arbitrary client data.
+     *                           This pointer is not used by the API for
+     *                           anything other than returning it in the
+     *                           ThumbnailReady callback.
+     * @param priority           Priority for this operation
+     * @return                   Thumbnail request ID or -1 if request failed. This can be used to
+     *                           cancel the request or change priority. 
+     *                           
+     */    
+    TNM_EXPORT int setThumbnail( const QString& sourceFileName, const QString& targetFileName,
+            const QString& mimeType = QString(""), void * clientData = NULL, 
+            int priority = tnmWrapperPriorityIdle );
 
     /**
      * Delete all thumbnails for a given object. This is an asynchronous
@@ -300,7 +321,7 @@ signals:
      * @param id         Request ID for the operation
      * @param errorCode  error code
      */
-    void thumbnailReady( QPixmap , void * , int , int );    
+    TNM_EXPORT void thumbnailReady( QPixmap , void * , int , int );    
 
     /**
      * Final thumbnail bitmap generation or loading is complete.
@@ -310,7 +331,7 @@ signals:
      * @param id         Request ID for the operation
      * @param errorCode  error code
      */
-    void thumbnailReady( QImage , void * , int , int );    
+    TNM_EXPORT void thumbnailReady( QImage , void * , int , int );    
 
 protected:
     
@@ -320,6 +341,9 @@ protected:
 
 private:
     ThumbnailManagerPrivate* d;
+    
+    friend class ThumbnailManagerPrivate;
+    friend class TestThumbnailManager;
 };
 
 #endif // THUMBNAILMANAGER_QT

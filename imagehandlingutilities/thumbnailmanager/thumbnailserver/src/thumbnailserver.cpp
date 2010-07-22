@@ -43,6 +43,7 @@ _LIT8( KThumbnailMimeWildCard, "*" );
 _LIT8( KThumbnailMimeImage, "image" );
 _LIT8( KThumbnailMimeVideo, "video" );
 _LIT8( KThumbnailMimeAudio, "audio" );
+_LIT8( KThumbnailMimeContact, "contact" );
 
 const TChar KThumbnailMimeSeparatorChar = '/';
 const TChar KThumbnailMimeWildCardChar = '*';
@@ -224,6 +225,7 @@ void CThumbnailServer::ConstructL()
     
     // connect to MDS
     iMdESession = CMdESession::NewL( *this );
+    iSessionError = EFalse;
     
     User::LeaveIfError( iFbsSession.Connect());
     User::LeaveIfError( Start( KThumbnailServerName ));
@@ -232,6 +234,9 @@ void CThumbnailServer::ConstructL()
     REComSession::FinalClose();
     REComSession::ListImplementationsL( TUid::Uid( THUMBNAIL_PROVIDER_IF_UID ),
         iPluginInfoArray );
+    
+	//preload provide plugins
+    PreLoadProviders();
     
     CTMGetImei * imeiGetter = CTMGetImei::NewLC();
    
@@ -251,10 +256,13 @@ void CThumbnailServer::ConstructL()
     
     iFormatting = EFalse;
     
-    //OpenStoresL();
+    OpenStoresL();
     
     AddUnmountObserversL();
     iFetchedChecker = CThumbnailFetchedChecker::NewL();
+    
+    // Unmount timeout timer
+    iUnmount = CPeriodic::NewL(CActive::EPriorityIdle);
     }
 
 
@@ -268,9 +276,21 @@ CThumbnailServer::~CThumbnailServer()
 
     iShutdown = ETrue;
     
+    if(iUnmount)
+        {
+        iUnmount->Cancel();
+        delete iUnmount;
+        iUnmount = NULL;
+        }
+		
+	iUnmountedDrives.Close();
+    
     delete iFetchedChecker;
+    iFetchedChecker = NULL;
     delete iShutdownObserver;
+    iShutdownObserver = NULL;
     delete iProcessor;
+    iProcessor = NULL;
     
     if(iReconnect)
         {
@@ -290,7 +310,9 @@ CThumbnailServer::~CThumbnailServer()
     
     iUnmountObservers.ResetAndDestroy();
     delete iMMCObserver;
+    iMMCObserver = NULL;
     delete iFormatObserver;
+    iFormatObserver = NULL;
     
     THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
 
@@ -304,11 +326,13 @@ CThumbnailServer::~CThumbnailServer()
         }
     
     delete iScaler;
+    iScaler = NULL;
     iBitmapPool.Close();
     iFbsSession.Disconnect();
     iRecognizer.Close();
     iPluginInfoArray.ResetAndDestroy();
     delete iCenrep;
+    iCenrep = NULL;
     iFs.Close();
     REComSession::FinalClose();
     }
@@ -317,9 +341,13 @@ CThumbnailServer::~CThumbnailServer()
 // CThumbnailServer::HandleSessionOpened
 // -----------------------------------------------------------------------------
 //
+#ifdef _DEBUG
+void CThumbnailServer::HandleSessionOpened( CMdESession& /* aSession */, TInt aError )
+#else
 void CThumbnailServer::HandleSessionOpened( CMdESession& /* aSession */, TInt /*aError*/ )
+#endif
     {
-    TN_DEBUG1( "CThumbnailServer::HandleSessionOpened");
+    TN_DEBUG2( "CThumbnailServer::HandleSessionOpened error == %d", aError );
     }
 
 // -----------------------------------------------------------------------------
@@ -329,8 +357,10 @@ void CThumbnailServer::HandleSessionOpened( CMdESession& /* aSession */, TInt /*
 void CThumbnailServer::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbnailServer::HandleSessionError == %d", aError );
-    if (aError != KErrNone && !iShutdown)
+    if (aError != KErrNone && !iShutdown && !iSessionError)
         {
+        iSessionError = ETrue;
+    
         if (!iReconnect->IsActive())
             {
             iReconnect->Start( KMdEReconnect, KMdEReconnect, 
@@ -417,38 +447,35 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
     
     TN_DEBUG2( "CThumbnailServer::DropSession() aSession = 0x%08x", aSession );        
     
-    // clean-up bitmap pool
-    
+    // clean-up bitmap pool    
     THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
 
     // const pointer to a non-const object
     const TThumbnailBitmapRef* ref = bpiter.NextValue();
 
     while ( ref )
-        {
-        
-        TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
-        
+        {        
         if ( ref->iSession == aSession )
-            {            
+            {
+            TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
+        
             delete ref->iBitmap;            
             bpiter.RemoveCurrent();
                         
-            TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", 
-                                iBitmapPool.Count());
+            TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", iBitmapPool.Count());
             }
-        ref = bpiter.NextValue();
         
+        ref = bpiter.NextValue();        
         }
 
     if ( iSessionCount <= 0 )
         {
-        // rename thread
-        User::RenameThread( KThumbnailServerShutdown );
-        
         // server shutdown
         if (!iShutdown)
             {
+            // rename thread
+            User::RenameThread( KThumbnailServerShutdown );
+        
             CActiveScheduler::Stop();
             iShutdown = ETrue;
             }
@@ -461,8 +488,10 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
 //
 void CThumbnailServer::ShutdownNotification()
     {
+    TN_DEBUG1( "CThumbnailServer::ShutdownNotification()");
     if (!iShutdown)
         {
+        TN_DEBUG1( "CThumbnailServer::ShutdownNotification() shutdown");
         CActiveScheduler::Stop();
         iShutdown = ETrue;
         }
@@ -527,12 +556,12 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     if (!aCheckExist)
         {
         StoreForPathL( aPath )->StoreThumbnailL( aPath, aBitmap, aOriginalSize,
-                       aCropped, aThumbnailSize, aModified, aThumbFromPath );
+                       aCropped, aThumbnailSize, aModified, aThumbFromPath, EFalse );
         }    
     else if(BaflUtils::FileExists( iFs, aPath))
         {
         StoreForPathL( aPath )->StoreThumbnailL( aPath, aBitmap, aOriginalSize,
-                       aCropped, aThumbnailSize, aModified, aThumbFromPath );
+                       aCropped, aThumbnailSize, aModified, aThumbFromPath, EFalse );
         }
     else
         {
@@ -774,6 +803,22 @@ CThumbnailProvider* CThumbnailServer::GetProviderL( const TUid& aImplUid )
 
 
 // -----------------------------------------------------------------------------
+// CThumbnailServer::PreLoadProviders()
+// -----------------------------------------------------------------------------
+//
+void CThumbnailServer::PreLoadProviders(  )
+    {
+    TN_DEBUG1( "CThumbnailServer::PreLoadProvidersL()" );
+    TInt err(KErrNone);
+    
+    for(TInt i=0; i< iPluginInfoArray.Count(); i++)
+        {
+        TRAP(err, GetProviderL( iPluginInfoArray[i]->ImplementationUid()));
+        }
+    }
+
+
+// -----------------------------------------------------------------------------
 // CThumbnailServer::QueueTaskL()
 // Adds thumbnailtask to processor queue.
 // -----------------------------------------------------------------------------
@@ -791,20 +836,17 @@ void CThumbnailServer::QueueTaskL( CThumbnailTask* aTask )
 // -----------------------------------------------------------------------------
 //
 TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
-    {
-    
+    {   
     TInt error = iProcessor->RemoveTask( aRequestId );
         
-    // clean-up bitmap pool        
-        
+    // clean-up bitmap pool               
     THashMapIter < TInt, TThumbnailBitmapRef > bpiter( iBitmapPool );
 
     // const pointer to a non-const object
     const TThumbnailBitmapRef* ref = bpiter.NextValue();
 
     while ( ref )
-        {
-        
+        {       
         TN_DEBUG2( "CThumbnailServer::DequeTask() - ref->iRequestId = %d", ref->iRequestId );
 
         if ( ref->iSession == aRequestId.iSession && 
@@ -814,10 +856,10 @@ TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
             bpiter.RemoveCurrent();                        
                         
             TN_DEBUG2( "CThumbnailServer::DequeTask() - deleted bitmap, left=%d", 
-                                iBitmapPool.Count());
+                    iBitmapPool.Count());
             }
-        ref = bpiter.NextValue();
         
+        ref = bpiter.NextValue();        
         }
 
     return error;
@@ -886,9 +928,15 @@ CThumbnailTaskProcessor& CThumbnailServer::Processor()
 CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
     {
     TN_DEBUG2( "CThumbnailServer::StoreForDriveL() drive=%d", aDrive );
+    
+    if(iUnmountedDrives.Find( aDrive ) >= KErrNone)
+        {
+        TN_DEBUG1( "CThumbnailServer::StoreForDriveL() unmount in progress, skip!");
+        User::Leave( KErrDisMounted );
+        }
+    
     CThumbnailStore** resPtr = iStores.Find( aDrive );
     CThumbnailStore* res = NULL;
-
 
     if ( resPtr )
         {
@@ -901,8 +949,10 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - FORMATTING! - ABORT");
            User::Leave( KErrNotSupported );
            } 
+        
         TVolumeInfo volumeInfo;
         TInt err = iFs.Volume( volumeInfo, aDrive );
+        
         if ( err || volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
             volumeInfo.iDrive.iDriveAtt& KDriveAttRemote ||
             volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected ||
@@ -912,14 +962,14 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
             // must be read-write and not locked.
             User::Leave( KErrAccessDenied);
             }
-
+        
         res = CThumbnailStore::NewL( iFs, aDrive, iImei, this );
         CleanupStack::PushL( res );
         iStores.InsertL( aDrive, res );
         res->SetPersistentSizes(iPersistentSizes);
         CleanupStack::Pop( res );
         
-        for(TInt i = 0; i<iUnmountObservers.Count(); i++)
+        for(TInt i = 0; i < iUnmountObservers.Count(); i++)
             {
             iUnmountObservers[i]->StartNotify();
             }
@@ -1001,6 +1051,8 @@ void CThumbnailServer::CloseStoreForDriveL( const TInt aDrive )
     {
     TN_DEBUG2( "CThumbnailServer::CloseStoreForDriveL drive=%d", aDrive);
     CThumbnailStore** store = iStores.Find( aDrive );
+    
+    StartUnmountTimeout( aDrive);
     
     if (store)
         {
@@ -1098,15 +1150,44 @@ void CThumbnailServer::MemoryCardStatusChangedL()
         TInt err_drive = iFs.Drive(driveInfo, drive);    
         
         // mount -- if removable drive, add new store
-        if (!err && !err_drive && driveInfo.iDriveAtt& KDriveAttRemovable)
+        if (!err && !err_drive 
+                && driveInfo.iType != EMediaNotPresent
+                && driveInfo.iDriveAtt& KDriveAttRemovable )
             {
+            TN_DEBUG2( "CThumbnailServer::MemoryCardStatusChangedL mount drive==%d", drive);
+            
+            CThumbnailStore** resPtr = iStores.Find( drive );
+
+            if ( resPtr )
+                {
+                TN_DEBUG2( "CThumbnailServer::MemoryCardStatusChangedL() already mounted, skip %d", drive);
+                continue;
+                }
+            
             // ignore errors
-            //TRAP_IGNORE( StoreForDriveL( drive ));
+            TRAP_IGNORE( StoreForDriveL( drive ));
+            
+            TN_DEBUG2( "CThumbnailServer::MemoryCardStatusChangedL() update KItemsleft == %d", KErrNotReady);
+            RProperty::Set(KTAGDPSNotification, KItemsleft, KErrNotReady );
+			
+            TInt index = iUnmountedDrives.Find( drive );
+            
+            if(index >= KErrNone)
+                {
+                iUnmountedDrives.Remove( index );
+                }
+            
+            if(!iUnmountedDrives.Count()&& iUnmount && iUnmount->IsActive())
+                {
+                TN_DEBUG1( "CThumbnailServer::MemoryCardStatusChangedL() cancel unmount timer");
+                iUnmount->Cancel();
+                }
             }
         
         //dismount -- if removable drive, close store
-        else if(err && !err_drive && driveInfo.iDriveAtt& KDriveAttRemovable)
+        else if(err && !err_drive && driveInfo.iDriveAtt& KDriveAttRemovable )
             {
+            TN_DEBUG2( "CThumbnailServer::MemoryCardStatusChangedL() unmount drive==%d", drive);
             CloseStoreForDriveL( drive);
             }
         }
@@ -1258,8 +1339,7 @@ void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC
 TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& aMimeType )
     {
     TBool found = ETrue;
-    TParsePtrC parse( aFileName );
-    TPtrC ext( parse.Ext() );
+    TPtrC ext( aFileName.Right(KExtLength) ); // tparse panics with virtual URI
     
     if ( ext.CompareF( KJpegExt ) == 0 || ext.CompareF( KJpgExt ) == 0)
         {
@@ -1321,6 +1401,10 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
         {
         aMimeType = TDataType( KVideo3gppMime );
         } 
+    else if ( ext.CompareF( K3gppExt ) == 0 )
+        {
+        aMimeType = TDataType( KVideo3gppMime );
+        }
     else if ( ext.CompareF( KAmrExt ) == 0 )
         {
         aMimeType = TDataType( KAudioAmrMime );
@@ -1365,6 +1449,10 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
         {
         aMimeType = TDataType( KMatroskaVideoMime );
         } 
+    else if ( ext.CompareF( KContactExt ) == 0 )
+        {
+        aMimeType = TDataType( KContactMime );
+        } 
     else
         {
         aMimeType = TDataType( KNullDesC8 );
@@ -1402,6 +1490,10 @@ TInt CThumbnailServer::SourceTypeFromMimeType( const TDataType& aMimeType )
         {
         return TThumbnailPersistentSize::EAudio;
         }
+    else if (mediaType.Compare(KThumbnailMimeContact) == 0)
+        {
+        return TThumbnailPersistentSize::EContact;
+        }
 
     return TThumbnailPersistentSize::EUnknownSourceType;        
     }
@@ -1431,6 +1523,11 @@ TInt CThumbnailServer::SourceTypeFromSizeType( const TInt aSizeType )
         case EAudioFullScreenThumbnailSize:
             sourceType = TThumbnailPersistentSize::EAudio;
             break;
+        case EContactListThumbnailSize:
+        case EContactGridThumbnailSize:
+        case EContactFullScreenThumbnailSize:
+            sourceType = TThumbnailPersistentSize::EContact;
+            break;
         default:
             sourceType = TThumbnailPersistentSize::EUnknownSourceType;  
         }
@@ -1450,24 +1547,29 @@ TBool CThumbnailServer::SupportedMimeType( const TDataType& aMimeType )
          mimeType.CompareF( KJpeg2000Mime ) == 0 ||
          mimeType.CompareF( KGifMime ) == 0 ||
          mimeType.CompareF( KPngMime ) == 0 ||
-         mimeType.CompareF( KBmpMime ) == 0 ||
+         mimeType.CompareF( KSvgMime ) == 0 ||
          mimeType.CompareF( KMpgMime1 ) == 0 ||
          mimeType.CompareF( KMpeg4Mime ) == 0 ||
          mimeType.CompareF( KMp4Mime ) == 0 ||
          mimeType.CompareF( KAviMime ) == 0 ||
-         mimeType.CompareF( KVideo3gppMime ) == 0 ||
-         mimeType.CompareF( KVideoWmvMime ) == 0 ||
-         mimeType.CompareF( KRealVideoMime ) == 0 ||
          mimeType.CompareF( KMp3Mime ) == 0 ||
+         mimeType.CompareF( KNonEmbeddArtMime ) == 0 ||
+         mimeType.CompareF( KM4aMime ) == 0  ||
          mimeType.CompareF( KAacMime ) == 0 ||
          mimeType.CompareF( KWmaMime ) == 0 ||
+         mimeType.CompareF( KBmpMime ) == 0 ||         
+         mimeType.CompareF( KAudio3gppMime ) == 0 ||
+         mimeType.CompareF( KVideo3gppMime ) == 0 ||
          mimeType.CompareF( KAudioAmrMime ) == 0 ||
+         mimeType.CompareF( KVideoWmvMime ) == 0 ||
          mimeType.CompareF( KRealAudioMime ) == 0 ||
-         mimeType.CompareF( KM4aMime ) == 0  ||
-         mimeType.CompareF( KFlashVideoMime ) == 0 ||
+         mimeType.CompareF( KPmRealAudioPluginMime ) == 0 ||
          mimeType.CompareF( KPmRealVideoPluginMime ) == 0 ||
          mimeType.CompareF( KPmRealVbVideoPluginMime ) == 0 ||
-         mimeType.CompareF( KPmRealAudioPluginMime ) == 0 )
+         mimeType.CompareF( KRealVideoMime ) == 0 ||
+         mimeType.CompareF( KFlashVideoMime ) == 0 ||
+         mimeType.CompareF( KMatroskaVideoMime ) == 0 ||
+         mimeType.CompareF( KContactMime ) == 0 )
         {
         return ETrue;
         }
@@ -1629,9 +1731,80 @@ TInt CThumbnailServer::ReconnectCallBack(TAny* aAny)
     
     // reconnect to MDS
     TRAP_IGNORE( self->iMdESession = CMdESession::NewL( *self ) );
+    self->iSessionError = EFalse;
     
     TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - done");
     
     return KErrNone;
     }
 
+// -----------------------------------------------------------------------------
+// CThumbnailServer::IsPublicPath
+// -----------------------------------------------------------------------------
+//
+
+TBool CThumbnailServer::IsPublicPath( const TDesC& aPath )
+    {
+    TInt pos = aPath.FindF(KPrivateFolder);
+    
+    if ( pos == 1 )
+        {
+        TN_DEBUG1( "CThumbnailServer::IsPublicPath() NO");
+        return EFalse;
+        }
+    
+    pos = aPath.FindF(KSysFolder);
+    if ( pos == 1 )
+        {
+        TN_DEBUG1( "CThumbnailServer::IsPublicPath() NO");
+        return EFalse;
+        }
+    
+    return ETrue;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailServer::StartUnmount()
+// ---------------------------------------------------------------------------
+//
+void CThumbnailServer::StartUnmountTimeout( const TInt aDrive)
+    {
+    TN_DEBUG2( "CThumbnailServer::StartUnmountTimeout(%d)", aDrive);
+    
+    if(iUnmount )
+        {
+        if(iUnmountedDrives.Find( aDrive ) == KErrNotFound)
+            {
+            iUnmountedDrives.Append( aDrive );
+            }
+        
+       if(iUnmount->IsActive())
+           {
+           iUnmount->Cancel();
+           }
+       
+       TN_DEBUG1( "CThumbnailServer::StartUnmountTimeout() start unmount timer");
+       iUnmount->Start( KUnmountTimerTimeout, KUnmountTimerTimeout, TCallBack(UnmountCallBack, this));
+       }
+       __ASSERT_DEBUG(( iUnmount ), ThumbnailPanic( EThumbnailNullPointer ));
+    }
+
+
+// ---------------------------------------------------------------------------
+// CThumbnailServer::UnmountCallBack()
+// ---------------------------------------------------------------------------
+//
+TInt CThumbnailServer::UnmountCallBack(TAny* aAny)
+    {
+    TN_DEBUG1( "CThumbnailServer::UnmountCallBack() - unmount finished");
+    
+    CThumbnailServer* self = static_cast<CThumbnailServer*>( aAny );
+    
+    self->iUnmount->Cancel();
+    
+    self->iUnmountedDrives.Reset();
+    
+    TN_DEBUG1( "CThumbAGDaemon::UnmountCallBack() - done");
+    
+    return KErrNone;
+    }

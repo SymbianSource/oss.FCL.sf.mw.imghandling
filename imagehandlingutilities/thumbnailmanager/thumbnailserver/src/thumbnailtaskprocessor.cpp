@@ -183,6 +183,11 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
         TaskComplete(NULL);
         }
     
+    if(!iTasks.Count())
+        {
+        iTasks.Compress();
+        }
+    
     TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - remaining task count: %d", iTasks.Count());
     
     return res;
@@ -351,13 +356,13 @@ void CThumbnailTaskProcessor::RunL()
                     }
                 }
             
-            if ( processingDaemonTasksOnly && task->GetMessageData().Handle())
+            if ( processingDaemonTasksOnly && task->ClientThreadAlive() )
                 {
-                    if(task->GetMessageData().Identity() != KDaemonUid )
-                        {
-                        TN_DEBUG1( "CThumbnailTaskProcessor::RunL() processingDaemonTasksOnly = EFalse" );
-                        processingDaemonTasksOnly = EFalse; 
-                        }
+                if(task->GetMessageData().Identity() != KDaemonUid )
+                    {
+                    TN_DEBUG1( "CThumbnailTaskProcessor::RunL() processingDaemonTasksOnly = EFalse" );
+                    processingDaemonTasksOnly = EFalse; 
+                    }
                 }
             }
         }

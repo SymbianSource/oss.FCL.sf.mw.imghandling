@@ -33,7 +33,7 @@ class CThumbnailServer;
  *  @since S60 v5.0
  */
 class CThumbnailGenerateTask: public CThumbnailTask,
-    public MThumbnailProviderObserver
+                              public MThumbnailProviderObserver
     {
 public:
 
@@ -56,7 +56,8 @@ public:
             TDisplayMode aDisplayMode, TInt aPriority,
             RArray < TThumbnailPersistentSize >* aMissingSizes, const TDesC& aTargetUri,
             TThumbnailSize aThumbnailSize, const TInt64 aModified,
-            const CThumbnailManager::TThumbnailQualityPreference aQualityPreference );
+            const CThumbnailManager::TThumbnailQualityPreference aQualityPreference,
+            TBool aImportVirtual );
 
     /**
      * Destructor.
@@ -143,7 +144,7 @@ private:
      * @param aOriginalSize Original size of bitmap.
      */
     void DoBlacklisting( const TInt aError, const TSize& aOriginalSize );
-
+    
 private:
     // Data
 
@@ -233,6 +234,9 @@ private:
     TBool iPortrait;
     
     TInt iBitmapHandle;
+    
+    // virtual uri
+    TBool iVirtualUri;
 };
 
 #endif // THUMBNAILGENERATETASK_H

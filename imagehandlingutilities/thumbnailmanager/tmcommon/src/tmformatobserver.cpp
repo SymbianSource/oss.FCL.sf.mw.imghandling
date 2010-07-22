@@ -81,6 +81,7 @@ CTMFormatObserver::~CTMFormatObserver()
         }
     
     delete iBackupSession;
+    iBackupSession = NULL;
     }
 
 // ---------------------------------------------------------------------------

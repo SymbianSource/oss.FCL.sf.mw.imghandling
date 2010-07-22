@@ -95,6 +95,8 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     TPtrC8 ptr = metaCont.Field8( EMetaDataJpeg );
     HBufC8* data = ptr.AllocL();
     
+    CleanupStack::PopAndDestroy(&wantedFields);
+    CleanupStack::PopAndDestroy(metaDataUtil);
     CleanupStack::PushL( data );
     
     if(data->Length() == 0)
@@ -102,10 +104,6 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
       User::Leave( KErrNotFound );            
       }
     
-    CleanupStack::Pop( data );
-    CleanupStack::PopAndDestroy(&wantedFields);
-    CleanupStack::PopAndDestroy(metaDataUtil);
-
     if ( !iImageDecoderv3 )
         {
         iImageDecoderv3 = new( ELeave )CThumbnailImageDecoderv3( aFs );
@@ -115,13 +113,19 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     iFlags = aFlags;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
-	
-//TODO currently only ARM platforms supports MAP mode
-#if !(defined(__CC_ARM) || defined(__ARMCC__))
-    iDisplayMode = EColor16M;
-#endif		
+    TRAPD( err, iImageDecoderv3->CreateL( data, *iObserver, iFlags, iMimeType, iTargetSize ) );
+    if (err == KErrNone)
+        {
+        CleanupStack::Pop( data );
+        }
+    else
+        {
+        // this is because data buffer is already released in CreateDecoderL
+        // and we must prevent automatic PopAndDestroy
+        CleanupStack::Pop( data );
+        User::Leave(err);
+        } 
     
-    iImageDecoderv3->CreateL( data, *iObserver, iFlags, iMimeType, iTargetSize );
     iOriginalSize = iImageDecoderv3->OriginalSize();
     iImageDecoderv3->DecodeL( iDisplayMode );
     }

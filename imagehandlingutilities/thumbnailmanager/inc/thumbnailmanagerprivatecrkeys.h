@@ -44,6 +44,12 @@ const TUint32 KSizeAudioListWidth = 0x14;
 const TUint32 KSizeAudioListHeight = 0x15;
 const TUint32 KSizeAudioFullscreenWidth = 0x16;
 const TUint32 KSizeAudioFullscreenHeight = 0x17;
+const TUint32 KSizeContactListWidth = 0x18;
+const TUint32 KSizeContactListHeight = 0x19;
+const TUint32 KSizeContactGridWidth = 0x20;
+const TUint32 KSizeContactGridHeight = 0x21;
+const TUint32 KSizeContactFullscreenWidth = 0x22;
+const TUint32 KSizeContactFullscreenHeight = 0x23;
 
 const TUint32 KAutoCreateImageGrid = 0x100;
 const TUint32 KAutoCreateImageList = 0x101;
@@ -54,6 +60,9 @@ const TUint32 KAutoCreateVideoFullscreen = 0x105;
 const TUint32 KAutoCreateAudioGrid = 0x106;
 const TUint32 KAutoCreateAudioList = 0x107;
 const TUint32 KAutoCreateAudioFullscreen = 0x108;
+const TUint32 KAutoCreateContactGrid = 0x109;
+const TUint32 KAutoCreateContactList = 0x110;
+const TUint32 KAutoCreateContactFullscreen = 0x111;
 
 const TUint32 KColorDepthGrid = 0x200;
 const TUint32 KColorDepthList = 0x201;

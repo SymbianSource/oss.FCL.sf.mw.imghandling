@@ -27,6 +27,10 @@
 #include "thumbagprocessor.h"
 #include "tmshutdownobserver.h"
 #include "thumbnaillog.h"
+#include "thumbagimageobserver.h"
+#include "thumbagcameraobserver.h"
+#include "thumbagaudioobserver.h"
+#include "thumbagvideoobserver.h"
 
 
 /**
@@ -173,11 +177,18 @@ private:
     // reconnect timer
     CPeriodic* iReconnect;
     
+    TBool iSessionError;
+    
 #ifdef _DEBUG
     TUint32 iAddCounter;
-    TUint32 iModCounter;
     TUint32 iDelCounter;
 #endif
+    
+    //observers
+    CThumbAGImageObserver* iImageObserver;
+    CThumbAGCameraObserver* iCameraObserver;
+    CThumbAGAudioObserver* iAudioObserver;
+    CThumbAGVideoObserver* iVideoObserver;
 };
 
 #endif // THUMBAGDAEMON_H

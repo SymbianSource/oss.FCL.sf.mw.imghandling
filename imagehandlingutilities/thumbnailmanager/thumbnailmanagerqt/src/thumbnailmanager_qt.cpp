@@ -23,19 +23,12 @@ Q_DECL_EXPORT ThumbnailManager::ThumbnailManager( QObject* parentPtr ) :
 QObject( parentPtr ),
 d( new ThumbnailManagerPrivate() )
 {
-    QObject::connect( d, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ),
-            this, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ) );
-    QObject::connect( d, SIGNAL( thumbnailReady( QImage , void * , int , int ) ),
-            this, SIGNAL( thumbnailReady( QImage , void * , int , int ) ) );
+    d->q_ptr = this; 
 }
 
 
 Q_DECL_EXPORT ThumbnailManager::~ThumbnailManager()
 {
-    QObject::disconnect( d, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ),
-            this, SIGNAL( thumbnailReady( QPixmap , void * , int , int ) ) );
-    QObject::disconnect( d, SIGNAL( thumbnailReady( QImage , void * , int , int ) ),
-            this, SIGNAL( thumbnailReady( QImage , void * , int , int ) ) );
     if( NULL != d ){
         delete d;
     }
@@ -101,6 +94,12 @@ Q_DECL_EXPORT int ThumbnailManager::setThumbnail( const QImage& source, const QS
     return d->setThumbnail( source, filename, clientData, priority );
 }
 
+Q_DECL_EXPORT int ThumbnailManager::setThumbnail( const QString& sourceFileName, const QString& targetFileName,
+        const QString& mimeType, void * clientData , int priority )
+{
+    return d->setThumbnail( sourceFileName, targetFileName, mimeType, clientData, priority );
+}
+
 Q_DECL_EXPORT void ThumbnailManager::deleteThumbnails( const QString& fileName )
 {
     d->deleteThumbnails( fileName );
@@ -138,3 +137,4 @@ void ThumbnailManager::disconnectNotify(const char *signal)
         d->connectionCounterImage--;
     }
 }
+

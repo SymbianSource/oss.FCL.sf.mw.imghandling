@@ -33,8 +33,8 @@
 // C++ default constructor can NOT contain any code, that might leave.
 // ---------------------------------------------------------------------------
 //
-CThumbnailImageDecoderv2::CThumbnailImageDecoderv2( RFs& aFs): CActive(
-    EPriorityStandard ), iFs( aFs )
+CThumbnailImageDecoderv2::CThumbnailImageDecoderv2( RFs& aFs): 
+    CActive(EPriorityStandard ), iBitmap( NULL ), iFs( aFs ), iBuffer( NULL )
     {
     CActiveScheduler::Add( this );
     }
@@ -93,10 +93,7 @@ void CThumbnailImageDecoderv2::DecodeL( )
         }
     
     iDecoder->Convert( &iStatus, * iBitmap );
-    while ( iStatus == KErrUnderflow )
-        {
-        iDecoder->ContinueConvert( &iStatus );
-        }
+
     SetActive();  
     
     TN_DEBUG1( "CThumbnailImageDecoderv2::DecodeL() end" );
@@ -111,8 +108,14 @@ void CThumbnailImageDecoderv2::DecodeL( )
 void CThumbnailImageDecoderv2::Release()
     {
     Cancel();
+    
     delete iDecoder;
     iDecoder = NULL;
+    
+    delete iBitmap;
+    iBitmap = NULL;
+    
+    iBuffer = NULL; // we don't own the buffer
     }
 
 
@@ -128,6 +131,11 @@ void CThumbnailImageDecoderv2::DoCancel()
         delete iDecoder;
         iDecoder = NULL;
         }
+    
+    delete iBitmap;
+    iBitmap = NULL;
+    
+    iBuffer = NULL; // we don't own the buffer
     }
 
 
@@ -143,7 +151,8 @@ void CThumbnailImageDecoderv2::RunL()
     iObserver->ThumbnailProviderReady( iStatus.Int(), iBitmap, iOriginalSize, EFalse, EFalse);
 
     iBitmap = NULL; // owned by server now
-    iBuffer = NULL;
+    iBuffer = NULL; // we don't own the buffer
+    
     Release();
     }
 

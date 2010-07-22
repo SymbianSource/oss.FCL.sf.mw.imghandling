@@ -43,5 +43,11 @@ PRJ_TESTEXPORTS
 ../data/mmc/ThumbnailManagerTest/WIDE_800x400.gif /epoc32/winscw/c/data/ThumbnailManagerTest/WIDE_800x400.gif
 ../data/mmc/ThumbnailManagerTest/TestMBM.mbm /epoc32/winscw/c/data/ThumbnailManagerTest/TestMBM.mbm
 ../data/mmc/ThumbnailManagerTest/mp3.mp3 /epoc32/winscw/c/data/ThumbnailManagerTest/mp3.mp3
-
+../data/mmc/ThumbnailManagerTest/camera.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/camera.jpg
+../data/mmc/ThumbnailManagerTest/mp3_png.mp3 /epoc32/winscw/c/data/ThumbnailManagerTest/mp3_png.mp3
+../data/mmc/ThumbnailManagerTest/no_exif.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/no_exif.jpg
+../data/mmc/ThumbnailManagerTest/wma.wma /epoc32/winscw/c/data/ThumbnailManagerTest/wma.wma
+../data/mmc/ThumbnailManagerTest/wma_empty.wma /epoc32/winscw/c/data/ThumbnailManagerTest/wma_empty.wma
+../data/mmc/ThumbnailManagerTest/wma_png.wma /epoc32/winscw/c/data/ThumbnailManagerTest/wma_png.wma
+../data/mmc/ThumbnailManagerTest/exif.jpg /epoc32/winscw/c/data/ThumbnailManagerTest/exif.jpg
 //  End of File
