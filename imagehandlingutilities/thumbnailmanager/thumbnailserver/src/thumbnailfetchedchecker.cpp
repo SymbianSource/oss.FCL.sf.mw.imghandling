@@ -62,9 +62,8 @@ TInt CThumbnailFetchedChecker::LastFetchResult( const TDesC& aUri, const TThumbn
         if ( ret != KErrNotFound )
             {
             TN_DEBUG1( "CThumbnailFetchedChecker::LastFetchResult() -> error found");
-            entry = NULL;
             delete entry;
-
+            entry = NULL;
             return iNotFetched[ ret ]->iError;
             }
         }
@@ -94,6 +93,7 @@ void CThumbnailFetchedChecker::SetFetchResult( const TDesC& aUri, const TThumbna
                 {
                 TN_DEBUG2( "CThumbnailFetchedChecker::LastFetchResult() -> Remove successful results from store %d",  iNotFetched.Count() );
                 delete iNotFetched[ i ];
+                iNotFetched[ i ] = NULL;
                 iNotFetched.Remove( i );
                 }
             }
@@ -155,6 +155,7 @@ void CThumbnailFetchedChecker::DeleteFetchResult( const TDesC& aUri )
             {
             TN_DEBUG1( "CThumbnailFetchedChecker::DeleteFetchResult() -> Deteled URI from fetched list" );	
             delete iNotFetched[ ret ];
+            iNotFetched[ ret ] = NULL;
             iNotFetched.Remove( ret );
             }
         }

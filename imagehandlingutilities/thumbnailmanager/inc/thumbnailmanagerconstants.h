@@ -178,7 +178,11 @@ _LIT8( KRealVideoMime, "video/vnd.rn-realvideo" ); _LIT( KRealVideoExt, ".rv" );
 _LIT8( KFlashVideoMime, "video/x-flv" ); _LIT( KFlashVideoExt, ".flv" );
 _LIT8( KMatroskaVideoMime, "video/x-matroska" ); _LIT( KMatroskaVideoExt, ".mkv" );
 _LIT8( KContactMime, "contact/x-vcard" ); _LIT( KContactExt, ".vcf" );
+
 _LIT( KNonEmbeddedArtExt, ".alb" );
+
+_LIT8( KAlbumArtMime, "audio/albumart" ); _LIT( KAlbumArtExt, ".maa" );
+
 _LIT( KImageMime, "image/*" );
 _LIT( KVideoMime, "video/*" );
 _LIT( KAudioMime, "audio/*" );

@@ -416,6 +416,7 @@ void CThumbnailServer::ThreadFunctionL()
             "CThumbnailServer::ThreadFunctionL() -- CActiveScheduler::Start() out" );
         // Comes here if server gets shut down
         delete server;
+        server = NULL;
         CleanupStack::PopAndDestroy( scheduler );
         }
     }
@@ -443,7 +444,10 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
         iSessionCount );
     iSessionCount--;
     
-    iProcessor->RemoveTasks(aSession);
+    if(iProcessor)
+        {
+        iProcessor->RemoveTasks(aSession);
+        }
     
     TN_DEBUG2( "CThumbnailServer::DropSession() aSession = 0x%08x", aSession );        
     
@@ -459,7 +463,7 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
             {
             TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
         
-            delete ref->iBitmap;            
+            delete ref->iBitmap;
             bpiter.RemoveCurrent();
                         
             TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", iBitmapPool.Count());
@@ -852,7 +856,7 @@ TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
         if ( ref->iSession == aRequestId.iSession && 
              ref->iRequestId == aRequestId.iRequestId )
             {            
-            delete ref->iBitmap;            
+            delete ref->iBitmap;
             bpiter.RemoveCurrent();                        
                         
             TN_DEBUG2( "CThumbnailServer::DequeTask() - deleted bitmap, left=%d", 
@@ -1071,6 +1075,7 @@ void CThumbnailServer::CloseStoreForDriveL( const TInt aDrive )
     if (store)
         {
         delete *store;
+        *store = NULL;
         iStores.Remove( aDrive );
         }
     }
@@ -1159,7 +1164,7 @@ void CThumbnailServer::MemoryCardStatusChangedL()
           // If drive-list entry is zero, drive is not available
             continue;
            }
-            
+
         TInt err = iFs.Volume(volumeInfo, drive);
         TInt err_drive = iFs.Drive(driveInfo, drive);    
         
@@ -1466,6 +1471,10 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
         {
         aMimeType = TDataType( KContactMime );
         } 
+    else if ( ext.CompareF( KAlbumArtExt ) == 0 )
+        {
+        aMimeType = TDataType( KAlbumArtMime );
+        }
     else
         {
         aMimeType = TDataType( KNullDesC8 );
@@ -1582,7 +1591,8 @@ TBool CThumbnailServer::SupportedMimeType( const TDataType& aMimeType )
          mimeType.CompareF( KRealVideoMime ) == 0 ||
          mimeType.CompareF( KFlashVideoMime ) == 0 ||
          mimeType.CompareF( KMatroskaVideoMime ) == 0 ||
-         mimeType.CompareF( KContactMime ) == 0 )
+         mimeType.CompareF( KContactMime ) == 0 ||
+         mimeType.CompareF( KAlbumArtMime ) == 0 )
         {
         return ETrue;
         }
@@ -1616,6 +1626,7 @@ TInt E32Main()
             "CThumbnailServer::E32Main() -- thread function out, result=%d",
             result );
         delete cleanup;
+        cleanup = NULL;
         }
     if ( result != KErrNone )
         {

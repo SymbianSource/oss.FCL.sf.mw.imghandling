@@ -44,12 +44,12 @@ EVideoFullScreenThumbnailSize,
 EAudioGridThumbnailSize,
 EAudioListThumbnailSize,
 EAudioFullScreenThumbnailSize,
-EContactGridThumbnailSize,
-EContactListThumbnailSize,
-EContactFullScreenThumbnailSize,
 EGridThumbnailSize,
 EListThumbnailSize,
 EFullScreenThumbnailSize,
+EContactGridThumbnailSize,
+EContactListThumbnailSize,
+EContactFullScreenThumbnailSize,
 EThumbnailSizeCount //last item, don't remove
 } TThumbnailSize;
 /**

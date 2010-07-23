@@ -1183,7 +1183,7 @@ void CThumbAGProcessor::RunL()
         }
 #endif
 	
-  	if( iForceRun || iForegroundRun )
+  	if( (iForceRun || iForegroundRun ) && !iMountTimer->IsActive() )
       	{
         TN_DEBUG1( "void CThumbAGProcessor::RunL() skip idle detection!");
       	CancelTimeout();
@@ -1685,9 +1685,9 @@ void CThumbAGProcessor::ActivateAO()
         }
     
     //check if forced run needs to continue
-    if ( iModifyItemCount > 0 || iUnknownItemCount > 0 || iDeleteItemCount > 0 )
+    if ( (iModifyItemCount > 0 || iDeleteItemCount > 0 ||  iUnknownItemCount > 0) && !iMountTimer->IsActive())
         {
-        TN_DEBUG1( "CThumbAGProcessor::ActivateAO() -  iModifyItemCount > 0 || iUnknownItemCount > 0 || iDeleteItemCount > 0");
+        TN_DEBUG1( "CThumbAGProcessor::ActivateAO() -  forced run");
         SetForceRun( ETrue );
         }
     else
@@ -1696,7 +1696,7 @@ void CThumbAGProcessor::ActivateAO()
         SetForceRun( EFalse );
         }
     
-    if( !IsActive() && !iShutdown && ((iActiveCount == 0 && !iQueryActive) || iForceRun ))
+    if( !IsActive() && !iShutdown && ((iActiveCount < KMaxDaemonRequests && !iQueryActive) || iForceRun ))
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - Activated");
         SetActive();
@@ -2017,8 +2017,11 @@ void CThumbAGProcessor::FormatNotification( TBool aFormat )
     TN_DEBUG2( "CThumbAGProcessor::FormatNotification(%d)", aFormat );
     
     iFormatting = aFormat;
+    
     if(!aFormat)
         {
+        //force update
+        UpdatePSValues(EFalse, ETrue);
         ActivateAO();
         }
     }
@@ -2127,9 +2130,11 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine, const TBool aForce)
                 }
             }
         
+        TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() iPreviousItemsLeft == %d", iPreviousItemsLeft);
+        
         if( itemsLeft != iPreviousItemsLeft)
             {
-            TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KItemsleft == %d", itemsLeft);
+            TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() Set KItemsleft == %d", itemsLeft);
             iPreviousItemsLeft = itemsLeft;
             TInt ret = RProperty::Set(KTAGDPSNotification, KItemsleft, itemsLeft );
             

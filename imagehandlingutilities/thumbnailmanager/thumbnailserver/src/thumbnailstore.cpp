@@ -555,9 +555,7 @@ TInt CThumbnailStore::CheckRowIDs()
     TInt column = 0;   
     TInt rowStatus = 0;
     TInt64 inforows = -1;
-    TInt64 infocount = -1;
     TInt64 datarows = -1;
-    TInt64 datacount = -1;
     
     TInt ret = stmt.Prepare( iDatabase, KGetInfoRowID );
     if(ret < 0)
@@ -583,32 +581,7 @@ TInt CThumbnailStore::CheckRowIDs()
 #endif
         return KErrNotSupported;
         }
-    
-    ret = stmt.Prepare( iDatabase, KGetInfoCount );
-    if(ret < 0)
-        {
-        stmt.Close();
-        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetInfoCount failed %d");
-        return KErrNotSupported;
-        }
-    rowStatus = stmt.Next();
-                
-    if ( rowStatus == KSqlAtRow)    
-        {        
-        infocount = stmt.ColumnInt64( column );  
-        }
-                
-    stmt.Close();
-    
-    if(rowStatus < 0)
-        {
-#ifdef _DEBUG
-        TPtrC errorMsg2 = iDatabase.LastErrorMessage();
-        TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
-#endif
-        return KErrNotSupported;
-        }
-            
+              
     ret = stmt.Prepare( iDatabase, KGetDataRowID );
     if(ret < 0)
         {
@@ -634,37 +607,10 @@ TInt CThumbnailStore::CheckRowIDs()
         return KErrNotSupported;
         }
     
-    ret = stmt.Prepare( iDatabase, KGetInfoDataCount );
-    if(ret < 0)
-        {
-        stmt.Close();
-        TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetInfoDataCount failed %d");
-        return KErrNotSupported;
-        }
-    rowStatus = stmt.Next();
-                
-    if ( rowStatus == KSqlAtRow)    
-        {        
-        datacount = stmt.ColumnInt64( column );  
-        }
-                
-    stmt.Close();
-    
-    if(rowStatus < 0)
-        {
-#ifdef _DEBUG
-        TPtrC errorMsg2 = iDatabase.LastErrorMessage();
-        TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
-#endif
-        return KErrNotSupported;
-        }
-    
     TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - inforows %Ld", inforows );
-    TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - infocount %Ld", infocount );
     TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - datarows %Ld", datarows );
-    TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - datacount %Ld", datacount );
             
-    if( inforows != datarows || datacount != infocount)
+    if( inforows != datarows )
         {
         TN_DEBUG1( "CThumbnailStore::CheckRowIDsL() - tables out of sync" );
         return KErrNotSupported;

@@ -147,7 +147,10 @@ CThumbAGImageObserver::~CThumbAGImageObserver()
     iShutdown = ETrue;    
     
     delete iMDSShutdownObserver;
+    iMDSShutdownObserver = NULL;
+    
     delete iShutdownObserver;
+    iShutdownObserver = NULL;
     
     if(iReconnect)
         {

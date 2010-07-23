@@ -907,6 +907,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
             // all thumbs already exist
             CleanupStack::PopAndDestroy( missingSizes );
             delete missingSizes;
+            missingSizes = NULL;
+            
             if( aFile )
                {
                aFile->Close();
@@ -1038,6 +1040,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
             // all thumbs already exist
             CleanupStack::PopAndDestroy( missingSizes );
             delete missingSizes;
+            missingSizes = NULL;
+            
             if ( aBuffer)
                {
                delete aBuffer;

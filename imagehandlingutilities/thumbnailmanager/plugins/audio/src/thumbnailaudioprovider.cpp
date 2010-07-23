@@ -69,6 +69,7 @@ CThumbnailAudioProvider::~CThumbnailAudioProvider()
     {
     TN_DEBUG1( "CThumbnailAudioProvider::~CThumbnailAudioProvider()" );
     delete iImageDecoderv3;
+    iImageDecoderv3 = NULL;
     REComSession::DestroyedImplementation( iDtor_ID_Key );
     }
 

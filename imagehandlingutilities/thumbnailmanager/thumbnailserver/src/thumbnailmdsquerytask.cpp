@@ -55,6 +55,7 @@ CThumbnailMDSQueryTask::~CThumbnailMDSQueryTask()
         {
         iQuery->Cancel();
         delete iQuery;
+        iQuery = NULL;
         }
     }
 

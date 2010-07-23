@@ -95,6 +95,7 @@ CThumbnailGenerateTask::~CThumbnailGenerateTask()
         {
         iMissingSizes->Reset();
         delete iMissingSizes;
+        iMissingSizes = NULL;
         }
 		
     if ( iBitmapHandle )
