@@ -286,4 +286,5 @@ CThumbnailFetchedChecker::CEntry::CEntry()
 CThumbnailFetchedChecker::CEntry::~CEntry()
     {
     delete iUri;
+    iUri = NULL;
     }

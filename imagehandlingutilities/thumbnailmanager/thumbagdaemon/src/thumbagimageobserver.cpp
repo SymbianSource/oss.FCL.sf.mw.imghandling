@@ -290,21 +290,28 @@ void CThumbAGImageObserver::AddObserversL()
     
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    addCondition->AddObjectConditionL( imageDef );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-    CleanupStack::Pop( addCondition );  
+
+    CMdEObjectCondition& addObjectCondition = addCondition->AddObjectConditionL( imageDef );
+	CleanupStack::PushL( &addObjectCondition );
+	
+	CMdEPropertyCondition& addPropertyCondition = addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+   	CleanupStack::PushL( &addPropertyCondition );
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    modifyCondition->AddObjectConditionL( imageDef );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-    CleanupStack::Pop( modifyCondition );
-   
+	CMdEObjectCondition& modifyObjectCondition = modifyCondition->AddObjectConditionL( imageDef );
+	CleanupStack::PushL( &modifyObjectCondition );
+	
+	CMdEPropertyCondition& modifyPropertyCondition = modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+   	CleanupStack::PushL( &modifyPropertyCondition );
+	
     // add observers
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
     // modify observer
     iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
-     
+	
+    CleanupStack::Pop( 6, addCondition );
+
     TN_DEBUG1( "CThumbAGImageObserver::AddObserversL() - end" );
     }
 

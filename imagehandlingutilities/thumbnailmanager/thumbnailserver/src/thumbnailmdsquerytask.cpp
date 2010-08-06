@@ -36,7 +36,8 @@
 //
 CThumbnailMDSQueryTask::CThumbnailMDSQueryTask(
         CThumbnailTaskProcessor& aProcessor, TInt aPriority, CMdESession* aMdESession, CThumbnailServer& aServer): 
-        CThumbnailTask( aProcessor, aPriority ), iMdESession( aMdESession ), iServer(aServer), iUpdateToDb(ETrue)
+        CThumbnailTask( aProcessor, aPriority ), iMdESession( aMdESession ), iQuery(NULL), 
+		iServer(aServer), iUpdateToDb(ETrue)
     {
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::CThumbnailMDSQueryTask()", this );
     }
@@ -183,14 +184,21 @@ void CThumbnailMDSQueryTask::QueryPathByIdL(TThumbnailId aId, TBool aDelete)
     CMdENamespaceDef* defNamespace = &iMdESession->GetDefaultNamespaceDefL();
     CMdEObjectDef& objDef = defNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );
     
-    iQuery = iMdESession->NewObjectQueryL( *defNamespace, objDef, this );
-    iQuery->SetResultMode( EQueryResultModeItem );
-
-    CMdELogicCondition& rootCondition = iQuery->Conditions();
-    rootCondition.SetOperator( ELogicConditionOperatorOr );
+    delete iQuery;
+    iQuery = NULL;
     
-    // add ID condition
-    rootCondition.AddObjectConditionL( aId );
+    iQuery = iMdESession->NewObjectQueryL( *defNamespace, objDef, this );
+	
+	if(iQuery)
+		{
+	    iQuery->SetResultMode( EQueryResultModeItem );
+
+    	CMdELogicCondition& rootCondition = iQuery->Conditions();
+	    rootCondition.SetOperator( ELogicConditionOperatorOr );
+    
+	    // add ID condition
+    	rootCondition.AddObjectConditionL( aId );
+		}
     }
 
 // ---------------------------------------------------------------------------

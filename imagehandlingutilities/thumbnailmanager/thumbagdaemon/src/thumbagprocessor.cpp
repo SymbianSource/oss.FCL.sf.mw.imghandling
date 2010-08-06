@@ -958,39 +958,47 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
     
     CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );
     iQuery = iMdESession->NewObjectQueryL( *iDefNamespace, objDef, this );
-    iQuery->SetResultMode( EQueryResultModeItem );
+	
+	if(iQuery)
+		{
+	    iQuery->SetResultMode( EQueryResultModeItem );
 
-    CMdELogicCondition& rootCondition = iQuery->Conditions();
-    rootCondition.SetOperator( ELogicConditionOperatorAnd );
+	    CMdELogicCondition& rootCondition = iQuery->Conditions();
+	    rootCondition.SetOperator( ELogicConditionOperatorAnd );
     
-    // add IDs
-    CleanupClosePushL( iQueryQueue );
-    rootCondition.AddObjectConditionL( iQueryQueue );
-    CleanupStack::Pop( &iQueryQueue );
+	    // add IDs
+	    CleanupClosePushL( iQueryQueue );
+	    rootCondition.AddObjectConditionL( iQueryQueue );
+	    CleanupStack::Pop( &iQueryQueue );
     
-    // add object type conditions 
-    if (!(iModify || iUnknown))
-        {
-        CMdELogicCondition& objDefCondition = rootCondition.AddLogicConditionL( ELogicConditionOperatorOr );
+	    // add object type conditions 
+	    if (!(iModify || iUnknown))
+	        {
+	        CMdELogicCondition& objDefCondition = rootCondition.AddLogicConditionL( ELogicConditionOperatorOr );
         
-        if (iAutoImage)
-            {
-            CMdEObjectDef& imageDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
-            objDefCondition.AddObjectConditionL( imageDef );
-            }
-        if (iAutoVideo)
-            {
-            CMdEObjectDef& videoDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
-            objDefCondition.AddObjectConditionL( videoDef );
-            }
-        if (iAutoAudio)
-            {
-            CMdEObjectDef& audioDef = iDefNamespace->GetObjectDefL( MdeConstants::Audio::KAudioObject );
-            objDefCondition.AddObjectConditionL( audioDef );
-            }    
-        }
+	        if (iAutoImage)
+	            {
+	            CMdEObjectDef& imageDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
+	            objDefCondition.AddObjectConditionL( imageDef );
+	            }
+	        if (iAutoVideo)
+	            {
+	            CMdEObjectDef& videoDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
+	            objDefCondition.AddObjectConditionL( videoDef );
+	            }
+	        if (iAutoAudio)
+	            {
+	            CMdEObjectDef& audioDef = iDefNamespace->GetObjectDefL( MdeConstants::Audio::KAudioObject );
+	            objDefCondition.AddObjectConditionL( audioDef );
+	            }    
+	        }
     
-    iQuery->FindL();
+	    iQuery->FindL();
+		}
+	else
+	    {
+        iQueryActive = EFalse;
+	    }
     
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - end" );
     }
@@ -1036,25 +1044,33 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
     CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject);
     iQueryPlaceholders = iMdESession->NewObjectQueryL( *iDefNamespace, objDef, this );
         
-    iQueryPlaceholders->SetResultMode( EQueryResultModeItem );
-    
-    CMdELogicCondition& rootCondition = iQueryPlaceholders->Conditions();
-    rootCondition.SetOperator( ELogicConditionOperatorOr );
-    
-    CMdEObjectCondition& imagePHObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
-    imagePHObjectCondition.SetPlaceholderOnly( ETrue );
-    imagePHObjectCondition.SetNotPresent( aPresent );
-    
-    CMdEObjectCondition& videoPHObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
-    videoPHObjectCondition.SetPlaceholderOnly( ETrue );
-    videoPHObjectCondition.SetNotPresent( aPresent );
-    
-    CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
-    audioPHObjectCondition.SetPlaceholderOnly( ETrue );
-    audioPHObjectCondition.SetNotPresent( aPresent );
-    
-    iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryBatchSize);   
-   
+    if(iQueryPlaceholders)
+        {
+        iQueryPlaceholders->SetResultMode( EQueryResultModeItem );
+        
+        CMdELogicCondition& rootCondition = iQueryPlaceholders->Conditions();
+        rootCondition.SetOperator( ELogicConditionOperatorOr );
+        
+        CMdEObjectCondition& imagePHObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
+        CleanupStack::PushL( &imagePHObjectCondition );
+        imagePHObjectCondition.SetPlaceholderOnly( ETrue );
+        imagePHObjectCondition.SetNotPresent( aPresent );
+        
+        CMdEObjectCondition& videoPHObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
+        CleanupStack::PushL( &videoPHObjectCondition );
+        videoPHObjectCondition.SetPlaceholderOnly( ETrue );
+        videoPHObjectCondition.SetNotPresent( aPresent );
+        
+        CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
+        CleanupStack::PushL( &audioPHObjectCondition );
+        audioPHObjectCondition.SetPlaceholderOnly( ETrue );
+        audioPHObjectCondition.SetNotPresent( aPresent );
+        
+        iQueryPlaceholders->FindL(KMdEQueryDefaultMaxCount, KMaxQueryBatchSize);   
+       
+        CleanupStack::Pop(3, &imagePHObjectCondition );
+        }
+	
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - end" );
     }
 
@@ -1879,12 +1895,17 @@ void CThumbAGProcessor::QueryAllItemsL()
     rootCondition.SetOperator( ELogicConditionOperatorOr );
     
     CMdEObjectCondition& imageObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
+	CleanupStack::PushL( &imageObjectCondition );
     
     CMdEObjectCondition& videoObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
+	CleanupStack::PushL( &videoObjectCondition );
     
     CMdEObjectCondition& audioObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
+	CleanupStack::PushL( &audioObjectCondition );
     
-    iQueryAllItems->FindL(KMaxTInt, KMaxQueryBatchSize);  
+    iQueryAllItems->FindL(KMdEQueryDefaultMaxCount, KMaxQueryBatchSize);  
+	
+	CleanupStack::Pop(3, &imageObjectCondition);
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - end" );
     }
