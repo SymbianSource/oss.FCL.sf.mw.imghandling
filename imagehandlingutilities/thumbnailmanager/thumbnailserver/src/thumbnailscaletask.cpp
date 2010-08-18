@@ -121,6 +121,7 @@ CThumbnailScaleTask::~CThumbnailScaleTask()
 
     // Scaled bitmap is owned by us, delete now
     delete iScaledBitmap;
+    iScaledBitmap = NULL;
     }
 
 

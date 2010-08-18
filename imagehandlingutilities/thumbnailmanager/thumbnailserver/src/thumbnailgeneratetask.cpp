@@ -95,6 +95,7 @@ CThumbnailGenerateTask::~CThumbnailGenerateTask()
         {
         iMissingSizes->Reset();
         delete iMissingSizes;
+        iMissingSizes = NULL;
         }
 		
     if ( iBitmapHandle )
@@ -494,14 +495,14 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
         iServer.StoreForPathL( iFilename )->StoreThumbnailL( 
             iFilename, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, !iVirtualUri, ETrue );
 		//remove result from fetched checker
-        iServer.FetchedChecker().SetFetchResult( iFilename, KErrNone );
+        iServer.FetchedChecker().SetFetchResult( iFilename,  iThumbnailSize, KErrNone );
         }
     else if(iTargetUri != KNullDesC)
         {
         iServer.StoreForPathL( iTargetUri )->StoreThumbnailL( 
             iTargetUri, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, !iVirtualUri, ETrue );
 		//remove result from fetched checker
-        iServer.FetchedChecker().SetFetchResult( iTargetUri, KErrNone );
+        iServer.FetchedChecker().SetFetchResult( iTargetUri, iThumbnailSize, KErrNone );
         }
 
     CleanupStack::PopAndDestroy( tempBitmap );

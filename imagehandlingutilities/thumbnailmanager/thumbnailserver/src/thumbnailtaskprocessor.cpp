@@ -105,7 +105,7 @@ CThumbnailTaskProcessor::~CThumbnailTaskProcessor()
        iPeriodicTimer->Cancel();
        }
     delete iPeriodicTimer;
-    
+    iPeriodicTimer = NULL;
     }
 
 
@@ -155,6 +155,7 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
                 {
                 // Remove task from queue
                 delete task;
+                task = NULL;
                 iTasks.Remove( i );
                 
                 TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - removed request ID: %d", aRequestId.iRequestId);
@@ -164,6 +165,7 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
                 // Task is already running, canceled first
                 task->Cancel();
                 delete task;
+                task = NULL;
                 iTasks.Remove( i );
                 cancel = ETrue;
                 
@@ -207,6 +209,7 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
     for ( TInt i = iTasks.Count(); --i >= 0; )
         {
         CThumbnailTask* task = iTasks[i];
+        
         if ( task->RequestId().iSession == aSession)
             {
             if ( task->State() != CThumbnailTask::ERunning )
@@ -215,6 +218,7 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
                 
                 // Remove task from queue
                 delete task;
+                task = NULL;
                 iTasks.Remove( i );
                 
                 TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - removed request ID: %d", id);
@@ -228,6 +232,7 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
                 // Task is already running, canceled first
                 task->Cancel();
                 delete task;
+                task = NULL;
                 iTasks.Remove( i );
                 cancel = ETrue;
                 
@@ -266,6 +271,7 @@ void CThumbnailTaskProcessor::RemoveAllTasks()
             
             // Remove task from queue
             delete task;
+            task = NULL;
             iTasks.Remove( i );
             
             TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - removed request ID: %d", id);
@@ -279,6 +285,7 @@ void CThumbnailTaskProcessor::RemoveAllTasks()
             // Task is already running, canceled first
             task->Cancel();
             delete task;
+            task = NULL;
             iTasks.Remove( i );
             cancel = ETrue;
             
@@ -342,6 +349,7 @@ void CThumbnailTaskProcessor::RunL()
             {
             // Delete completed task
             delete task;
+            task = NULL;
             iTasks.Remove( i );
             }
         else

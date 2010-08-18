@@ -69,6 +69,7 @@ CThumbnailAudioProvider::~CThumbnailAudioProvider()
     {
     TN_DEBUG1( "CThumbnailAudioProvider::~CThumbnailAudioProvider()" );
     delete iImageDecoderv3;
+    iImageDecoderv3 = NULL;
     REComSession::DestroyedImplementation( iDtor_ID_Key );
     }
 
@@ -152,6 +153,7 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8& /*aBuffer *
     {
     TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - buffer no mime" );
 	__ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbnailAudioProvider::GetThumbnailL"), KErrNotSupported));
+	User::Leave( KErrNotSupported );
     }
 
 // ---------------------------------------------------------------------------

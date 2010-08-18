@@ -63,7 +63,7 @@ template <class K, class V> void ResetAndDestroyHashMap( RHashMap<K, V* > &
 
     while ( item )
         {
-        delete * item;
+        delete *item;
         item = iter.NextValue();
         }
     aHashMap.Close();

@@ -208,9 +208,10 @@ public:
      * @param aFs File server.
      * @param aDrive Drive the store used for
      * @param aCenter Pointer to cenrep data handler
+	 * @param aReadOnly flag is store write protected
      * @return New CThumbnailStore instance.
      */
-    static CThumbnailStore* NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer );
+    static CThumbnailStore* NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer, const TBool aReadOnly );
 
     /**
      * Destructor
@@ -358,6 +359,11 @@ public:
      * @contains indication whether file modified
      */
     TBool CheckModifiedByPathL( const TDesC& aPath, const TInt64 aModified, TBool& modifiedChanged);
+    
+    /**
+     *  @return TBool is store write protected
+     */
+    TBool IsReadOnly();
 
 private:
     /**
@@ -366,9 +372,10 @@ private:
      * @since S60 v5.0
      * @param aFs File server.
      * @param aDrive Drive the store used for
+	 * @param aReadOnly set flag if store is write protected
      * @return New CThumbnailStore instance.
      */
-    CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer);
+    CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer, const TBool aReadOnly);
 
     /**
      * Symbian 2nd phase constructor can leave.
@@ -648,6 +655,11 @@ private:
      * How long previous flush took ms
      */
     TInt iPreviousFlushDelay;
+    
+    /**
+     * is store write protected
+     */
+    TBool iReadOnly;
 
 };
 // End of File

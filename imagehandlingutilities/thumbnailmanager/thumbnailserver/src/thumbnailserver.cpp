@@ -416,6 +416,7 @@ void CThumbnailServer::ThreadFunctionL()
             "CThumbnailServer::ThreadFunctionL() -- CActiveScheduler::Start() out" );
         // Comes here if server gets shut down
         delete server;
+        server = NULL;
         CleanupStack::PopAndDestroy( scheduler );
         }
     }
@@ -443,7 +444,10 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
         iSessionCount );
     iSessionCount--;
     
-    iProcessor->RemoveTasks(aSession);
+    if(iProcessor)
+        {
+        iProcessor->RemoveTasks(aSession);
+        }
     
     TN_DEBUG2( "CThumbnailServer::DropSession() aSession = 0x%08x", aSession );        
     
@@ -459,7 +463,7 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
             {
             TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
         
-            delete ref->iBitmap;            
+            delete ref->iBitmap;
             bpiter.RemoveCurrent();
                         
             TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", iBitmapPool.Count());
@@ -570,7 +574,7 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     
     if( iFetchedChecker )    
         {
-        iFetchedChecker->SetFetchResult( aPath, KErrNone );
+        iFetchedChecker->SetFetchResult( aPath, aThumbnailSize, KErrNone );
         }
     }
 
@@ -585,7 +589,7 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     TN_DEBUG3( "CThumbnailServer::FetchThumbnailL(aPath=%S aThumbnailSize=%d)", &aPath, aThumbnailSize );
     if( iFetchedChecker )
         {
-        TInt err( iFetchedChecker->LastFetchResult( aPath ) );
+        TInt err( iFetchedChecker->LastFetchResult( aPath, aThumbnailSize ) );
         if ( err == KErrNone ) // To avoid useless sql gets that fails for sure
             {
             // custom sizes are not stored to db, skip fetching
@@ -597,7 +601,7 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
             TRAP( err, StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize) );
             if ( err != KErrNone )
                 {
-                iFetchedChecker->SetFetchResult( aPath, err );
+                iFetchedChecker->SetFetchResult( aPath, aThumbnailSize, err );
                 }
             }
         User::LeaveIfError( err );
@@ -666,7 +670,7 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     
     if( iFetchedChecker ) 
         {
-        iFetchedChecker->SetFetchResult( aPath, KErrNone );
+        iFetchedChecker->DeleteFetchResult( aPath );
         }
     }
 
@@ -852,7 +856,7 @@ TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
         if ( ref->iSession == aRequestId.iSession && 
              ref->iRequestId == aRequestId.iRequestId )
             {            
-            delete ref->iBitmap;            
+            delete ref->iBitmap;
             bpiter.RemoveCurrent();                        
                         
             TN_DEBUG2( "CThumbnailServer::DequeTask() - deleted bitmap, left=%d", 
@@ -944,7 +948,7 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
         }
     else
         {
-        if(iFormatting)
+        if( iFormatting )
            {
            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - FORMATTING! - ABORT");
            User::Leave( KErrNotSupported );
@@ -953,17 +957,31 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
         TVolumeInfo volumeInfo;
         TInt err = iFs.Volume( volumeInfo, aDrive );
         
-        if ( err || volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
-            volumeInfo.iDrive.iDriveAtt& KDriveAttRemote ||
-            volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected ||
-            volumeInfo.iDrive.iMediaAtt& KMediaAttLocked )
+        if ( err )
             {
-            // We don't support ROM disks or remote mounts. Media
-            // must be read-write and not locked.
-            User::Leave( KErrAccessDenied);
+            // Locked
+            TN_DEBUG2( "CThumbnailServer::StoreForDriveL() - err %d", err);
+            User::Leave( err);
             }
-        
-        res = CThumbnailStore::NewL( iFs, aDrive, iImei, this );
+        else if( volumeInfo.iDrive.iMediaAtt& KMediaAttLocked )
+            {
+            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - locked");
+            User::Leave( KErrAccessDenied );
+            }
+		else if ( volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
+            volumeInfo.iDrive.iDriveAtt& KDriveAttRemote ||
+            volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected )
+            {
+            // We support ROM disks and remote disks in read only mode.
+            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - rom/remote/write protected");
+            res = CThumbnailStore::NewL( iFs, aDrive, iImei, this, ETrue );
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - normal");
+            res = CThumbnailStore::NewL( iFs, aDrive, iImei, this, EFalse );
+            }
+			
         CleanupStack::PushL( res );
         iStores.InsertL( aDrive, res );
         res->SetPersistentSizes(iPersistentSizes);
@@ -1057,6 +1075,7 @@ void CThumbnailServer::CloseStoreForDriveL( const TInt aDrive )
     if (store)
         {
         delete *store;
+        *store = NULL;
         iStores.Remove( aDrive );
         }
     }
@@ -1145,7 +1164,7 @@ void CThumbnailServer::MemoryCardStatusChangedL()
           // If drive-list entry is zero, drive is not available
             continue;
            }
-            
+
         TInt err = iFs.Volume(volumeInfo, drive);
         TInt err_drive = iFs.Drive(driveInfo, drive);    
         
@@ -1295,7 +1314,7 @@ TBool CThumbnailServer::UpdateThumbnailsL( const TDesC& aPath,
             
             if( iFetchedChecker ) 
                 {
-                iFetchedChecker->SetFetchResult( aPath, KErrNone );
+                iFetchedChecker->DeleteFetchResult( aPath );
                 }
             
             // need to create new thumbs
@@ -1327,8 +1346,7 @@ void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC
     
     if( iFetchedChecker ) 
         {
-        iFetchedChecker->SetFetchResult( aNewPath, iFetchedChecker->LastFetchResult(aCurrentPath) );
-        iFetchedChecker->SetFetchResult( aCurrentPath, KErrNone );
+        iFetchedChecker->RenameFetchResultL( aNewPath, aCurrentPath );
         }
     }
 
@@ -1453,6 +1471,10 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
         {
         aMimeType = TDataType( KContactMime );
         } 
+    else if ( ext.CompareF( KAlbumArtExt ) == 0 )
+        {
+        aMimeType = TDataType( KAlbumArtMime );
+        }
     else
         {
         aMimeType = TDataType( KNullDesC8 );
@@ -1569,7 +1591,8 @@ TBool CThumbnailServer::SupportedMimeType( const TDataType& aMimeType )
          mimeType.CompareF( KRealVideoMime ) == 0 ||
          mimeType.CompareF( KFlashVideoMime ) == 0 ||
          mimeType.CompareF( KMatroskaVideoMime ) == 0 ||
-         mimeType.CompareF( KContactMime ) == 0 )
+         mimeType.CompareF( KContactMime ) == 0 ||
+         mimeType.CompareF( KAlbumArtMime ) == 0 )
         {
         return ETrue;
         }
@@ -1603,6 +1626,7 @@ TInt E32Main()
             "CThumbnailServer::E32Main() -- thread function out, result=%d",
             result );
         delete cleanup;
+        cleanup = NULL;
         }
     if ( result != KErrNone )
         {

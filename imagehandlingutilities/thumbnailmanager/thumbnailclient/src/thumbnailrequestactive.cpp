@@ -47,6 +47,7 @@ CThumbnailRequestActive::~CThumbnailRequestActive()
         {
         iTimer->Cancel();
         }
+    
     delete iTimer;
     iTimer = NULL;
     
@@ -633,7 +634,7 @@ void CThumbnailRequestActive::HandleError()
                     }
 	            }
 #endif
-	        TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+	        TN_DEBUG3( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady req=%d err=%d", iParams.iRequestId, iError );
 	        iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
 	            
             }

@@ -216,7 +216,7 @@ void CThumbnailImageDecoderv3::CreateDecoderL()
     iDecoder = NULL;
 	
     CImageDecoder::TOptions options = ( CImageDecoder::TOptions )( 
-            CImageDecoder::EOptionNoDither | CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
+            CImageDecoder::EOptionNoDither );
  
     TRAPD( decErr, iDecoder = CExtJpegDecoder::DataNewL(
             CExtJpegDecoder::EHwImplementation, iFs, *iBuffer, options ));
