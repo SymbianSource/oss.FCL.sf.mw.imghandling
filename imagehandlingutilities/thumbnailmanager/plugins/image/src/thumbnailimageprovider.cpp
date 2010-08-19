@@ -67,7 +67,9 @@ CThumbnailImageProvider::~CThumbnailImageProvider()
     {
     TN_DEBUG1( "CThumbnailImageProvider::~CThumbnailImageProvider()" );
     delete iImageDecoder;
+    iImageDecoder = NULL;
     delete iImageDecoderv2;
+    iImageDecoderv2 = NULL;
     REComSession::DestroyedImplementation( iDtor_ID_Key );
     }
 

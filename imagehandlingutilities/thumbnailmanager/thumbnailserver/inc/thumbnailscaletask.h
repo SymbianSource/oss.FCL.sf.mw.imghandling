@@ -59,7 +59,7 @@ public:
         TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
         const TThumbnailSize aThumbnailSize, const TInt64 aModified,
         const TBool aBitmapToPool, const TBool aEXIF, 
-        const TThumbnailServerRequestId aRequestId);
+        const TThumbnailServerRequestId aRequestId, const TBool aImportVirtual);
 
     /**
      * Destructor
@@ -131,7 +131,7 @@ private:
         aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
         const TThumbnailSize aThumbnailSize, const TInt64 aModified,
         const TBool aBitmapToPool, const TBool aEXIF, 
-        const TThumbnailServerRequestId aRequestId);
+        const TThumbnailServerRequestId aRequestId, const TBool aImportVirtual);
 
     /**
      * Symbian 2nd phase constructor can leave.
@@ -278,6 +278,9 @@ private:
      * Is origin EXIF.
      */
     TBool iEXIF;
+    
+    // virtual uri
+    TBool iVirtualUri;
 };
 
 #endif // THUMBNAILSCALETASK_H

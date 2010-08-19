@@ -130,10 +130,6 @@ _LIT8( KThumbnailUpdateIMEI, "UPDATE ThumbnailVersion SET IMEI = :IMEI" );
 _LIT8 ( KGetInfoRowID, "SELECT MAX (ThumbnailInfo.rowID) FROM ThumbnailInfo" );
 _LIT8 ( KGetDataRowID, "SELECT MAX (ThumbnailInfoData.rowID) FROM ThumbnailInfoData" );
 
-// counts
-_LIT8 ( KGetInfoCount, "SELECT COUNT(*) FROM ThumbnailInfo" );
-_LIT8 ( KGetInfoDataCount, "SELECT COUNT(*) FROM ThumbnailInfoData" );
-
 // flush 
 _LIT8( KThumbnailMoveFromTempInfoToMainTable, "INSERT INTO ThumbnailInfo SELECT * FROM TempThumbnailInfo;");
 _LIT8( KThumbnailMoveFromTempDataToMainTable, "INSERT INTO ThumbnailInfoData SELECT * FROM TempThumbnailInfoData;");
@@ -214,6 +210,6 @@ _LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Flags = 4, Modi
 _LIT8( KThumbnailSelectAllPaths, "SELECT ThumbnailInfo.RowID,Path FROM ThumbnailInfo "
         "WHERE NOT EXISTS (SELECT Path FROM ThumbnailDeleted "
         "WHERE ThumbnailInfo.Path = ThumbnailDeleted.Path) "
-        "AND ThumbnailInfo.RowID > :RowID ORDER BY ThumbnailInfo.RowID ASC LIMIT :Limit;" );
+        "AND ThumbFromPath = 1 AND ThumbnailInfo.RowID > :RowID ORDER BY ThumbnailInfo.RowID ASC LIMIT :Limit;" );
 
 #endif // THUMBNAILSQL_H

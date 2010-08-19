@@ -67,6 +67,7 @@ TInt CThumbnailManagerTest::RunMethodL( CStifItemParser& aItem )
         ENTRY( "CheckThumbnailSizeL", CThumbnailManagerTest::CheckThumbnailSizeL ),
         ENTRY( "SetThumbnailEnumSizeL", CThumbnailManagerTest::SetThumbnailEnumSizeL ),
         ENTRY( "CreateSourceInstancePathL", CThumbnailManagerTest::CreateSourceInstancePathL ),
+        ENTRY( "CreateSourceInstancePathTargetL", CThumbnailManagerTest::CreateSourceInstancePathTargetL ),
         ENTRY( "CreateSourceInstanceHandleL", CThumbnailManagerTest::CreateSourceInstanceHandleL ),
         ENTRY( "CreateSourceInstanceBufferL", CThumbnailManagerTest::CreateSourceInstanceBufferL ),
         ENTRY( "CreateSourceInstanceBitmapL", CThumbnailManagerTest::CreateSourceInstanceBitmapL ),
@@ -297,6 +298,53 @@ TInt CThumbnailManagerTest::CreateSourceInstancePathL( CStifItemParser& aItem )
     iObjectSource = NULL;
     
     iObjectSource = CThumbnailObjectSource::NewL( filePath, id );
+    return KErrNone;
+    }
+
+TInt CThumbnailManagerTest::CreateSourceInstancePathTargetL( CStifItemParser& aItem )
+    {
+    _LIT( KPanicTxt, "CreateSrcPathTarget" );
+    __ASSERT_ALWAYS( !iObjectSource, User::Panic( KPanicTxt, 0 ));
+
+    TPtrC path;
+    User::LeaveIfError( aItem.GetNextString( path ));
+
+    TPtrC target;
+    User::LeaveIfError( aItem.GetNextString( target ));
+    
+    TPtrC mimeType;
+    User::LeaveIfError( aItem.GetNextString( mimeType ));
+    
+    TInt virtual1 = 0;
+    aItem.GetNextInt( virtual1 );
+    
+    TInt virtual2 = 0;
+    aItem.GetNextInt( virtual2 );
+    
+    TFileName filePath( iDataPath );
+    filePath.Append( path );
+    filePath.ZeroTerminate();
+    
+    if (virtual1)
+        {
+        filePath.Delete(2,1);
+        }
+    
+    TFileName targetPath( iDataPath );
+    targetPath.Append( target );
+    targetPath.ZeroTerminate();
+    
+    if (virtual2)
+        {
+        targetPath.Delete(2,1);
+        }
+    
+    iLog->Log( _L( "CreateSourceInstancePathTargetL - path = %S, target = %S" ), &filePath );
+    
+    delete iObjectSource;
+    iObjectSource = NULL;
+    
+    iObjectSource = CThumbnailObjectSource::NewL( filePath, targetPath, mimeType );
     return KErrNone;
     }
 
@@ -773,48 +821,7 @@ TInt CThumbnailManagerTest::CreateThumbnailsByUrlL( CStifItemParser&  aItem )
     
     return KErrNone;
     }
-
-/*
-TInt CThumbnailManagerTest::GetThumbnailsByUrlL( CStifItemParser&  aItem )
-    {
-    _LIT( KPanicTxt, "CreateSrcPath" );
-    __ASSERT_ALWAYS( !iObjectSource, User::Panic( KPanicTxt, 0 ));
-
-    TPtrC path;
-    User::LeaveIfError( aItem.GetNextString( path ));
-
-    TInt id = 0;
-    aItem.GetNextInt( id );
     
-    TFileName filePath( iDataPath );
-    filePath.Append( path );
-    filePath.ZeroTerminate();
-    
-    iLog->Log( _L( "CreateSourceInstancePathL - path = %S" ), &filePath );
-    
-    delete iObjectSource;
-    iObjectSource = NULL;
-    
-    iObjectSource = CThumbnailObjectSource::NewL( filePath, id );
-    
-    id = iEngine->GetThumbnailL( *iObjectSource );
-    if (id < 0)
-        {
-        iLog->Log( _L( "GetThumbnails - error %d" ), id );
-        return id;  
-        }
-    else
-        {
-        iPreviousRequestId = id;
-        iLog->Log( _L( "GetThumbnails - request id %d" ), iPreviousRequestId );
-        }
-    
-    iCreateThumbnails = ETrue;
-    
-    return KErrNone;
-    }
-
-*/
     
 TInt CThumbnailManagerTest::CreateThumbnails( CStifItemParser& aItem )
     {
@@ -843,7 +850,6 @@ TInt CThumbnailManagerTest::CreateThumbnails( CStifItemParser& aItem )
     
     return KErrNone;
     }
-
 
 TInt CThumbnailManagerTest::UpdatePathL( CStifItemParser& aItem )
     {

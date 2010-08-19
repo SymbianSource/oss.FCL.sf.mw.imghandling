@@ -117,6 +117,7 @@ NONSHARABLE_CLASS(CThumbnailManagerTest): public CScriptBase,
         virtual TInt DeleteInstance( CStifItemParser& aItem );
         
         virtual TInt CreateSourceInstancePathL( CStifItemParser& aItem );
+        virtual TInt CreateSourceInstancePathTargetL( CStifItemParser& aItem );
         virtual TInt CreateSourceInstanceHandleL( CStifItemParser& aItem );
         virtual TInt CreateSourceInstanceBufferL( CStifItemParser& aItem );
         virtual TInt CreateSourceInstanceBitmapL( CStifItemParser& aItem );

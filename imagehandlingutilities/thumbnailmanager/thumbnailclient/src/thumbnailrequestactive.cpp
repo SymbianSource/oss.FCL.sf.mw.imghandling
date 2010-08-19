@@ -47,6 +47,7 @@ CThumbnailRequestActive::~CThumbnailRequestActive()
         {
         iTimer->Cancel();
         }
+    
     delete iTimer;
     iTimer = NULL;
     
@@ -163,6 +164,14 @@ void CThumbnailRequestActive::StartL()
                 TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iPath );
                 
                 CleanupClosePushL( iFile );
+                
+                if ( iParams.iQualityPreference == CThumbnailManager::EOptimizeForQualityWithPreview )
+                    {
+                    // We may need the file handle later for the 2nd phase thumbnail
+                    iMyFileHandle.Close();
+                    User::LeaveIfError( iMyFileHandle.Duplicate( iFile ));
+                    }
+                
                 iSession.RequestThumbnailL( iFile, iPath, iParamsPckg, iStatus );
                 CleanupStack::PopAndDestroy( &iFile );   
                 }
@@ -197,6 +206,14 @@ void CThumbnailRequestActive::StartL()
             TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iTargetUri );
             
             CleanupClosePushL( iFile );
+            
+            if ( iParams.iQualityPreference == CThumbnailManager::EOptimizeForQualityWithPreview )
+                {
+                // We may need the file handle later for the 2nd phase thumbnail
+                iMyFileHandle.Close();
+                User::LeaveIfError( iMyFileHandle.Duplicate( iFile ));
+                }
+            
             iSession.RequestThumbnailL( iFile, iTargetUri, iParamsPckg, iStatus );
             CleanupStack::PopAndDestroy( &iFile );
             break;
@@ -220,6 +237,29 @@ void CThumbnailRequestActive::StartL()
             iSession.RenameThumbnails( iParamsPckg, iStatus );
             break;
             }  
+        case EReqSetThumbnailPath:
+            {
+            // open file handle
+            iFile.Close();
+            User::LeaveIfError( iFile.Open( iFs, iParams.iFileName, EFileShareReadersOrWriters ) );  
+            
+            TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iParams.iFileName );
+            
+            CleanupClosePushL( iFile );
+            
+            if ( iParams.iQualityPreference == CThumbnailManager::EOptimizeForQualityWithPreview )
+                {
+                // We may need the file handle later for the 2nd phase thumbnail
+                iMyFileHandle.Close();
+                User::LeaveIfError( iMyFileHandle.Duplicate( iFile ));
+                }
+            
+            iSession.RequestThumbnailL( iFile, iTargetUri, iParamsPckg, iStatus );
+            CleanupStack::PopAndDestroy( &iFile );
+
+            break;
+            } 
+            
         default:
             {
             break;
@@ -594,7 +634,7 @@ void CThumbnailRequestActive::HandleError()
                     }
 	            }
 #endif
-	        TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+	        TN_DEBUG3( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady req=%d err=%d", iParams.iRequestId, iError );
 	        iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
 	            
             }
@@ -651,10 +691,20 @@ void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId 
     iParams.iThumbnailSize = aThumbnailSize;
     iParams.iThumbnailId = aThumbnailId;
     iParams.iOverwrite = EFalse;
+    iParams.iImport = EFalse;
     
     User::LeaveIfError( iFile.Duplicate( aFile ));
     
     iTargetUri = aTargetUri;
+    
+    if (iParams.iFileName.Length() && IsVirtualUri(iParams.iFileName))
+        {
+        iParams.iVirtualUri = ETrue;
+        }
+    else
+        {
+        iParams.iVirtualUri = EFalse;
+        }
     }
 
 
@@ -687,8 +737,18 @@ void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
     iParams.iThumbnailSize = aThumbnailSize;
     iParams.iThumbnailId = aThumbnailId;
     iParams.iOverwrite = EFalse;
+    iParams.iImport = EFalse;
     
     iTargetUri = aTargetUri;
+    
+    if (iPath.Length() && IsVirtualUri(iPath))
+        {
+        iParams.iVirtualUri = ETrue;
+        }
+    else
+        {
+        iParams.iVirtualUri = EFalse;
+        }
     }
 
 
@@ -721,9 +781,19 @@ void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aT
     iParams.iThumbnailId = aThumbnailId;
     iParams.iFileName = aPath;
     iParams.iOverwrite = EFalse;
+    iParams.iImport = EFalse;
     
     iPath = aPath;
     iTargetUri = aTargetUri;
+    
+    if (iPath.Length() && IsVirtualUri(iPath))
+        {
+        iParams.iVirtualUri = ETrue;
+        }
+    else
+        {
+        iParams.iVirtualUri = EFalse;
+        }
     }
 
 // ---------------------------------------------------------------------------
@@ -757,8 +827,18 @@ void CThumbnailRequestActive::SetThumbnailL( TDesC8* aBuffer, TThumbnailId aThum
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailId = aThumbnailId;
     iParams.iOverwrite = aOverwrite;
+    iParams.iImport = EFalse;
     
     iTargetUri = aTargetUri;
+    
+    if (iTargetUri.Length() && IsVirtualUri(iTargetUri))
+        {
+        iParams.iVirtualUri = ETrue;
+        }
+    else
+        {
+        iParams.iVirtualUri = EFalse;
+        }
     }
 
 // ---------------------------------------------------------------------------
@@ -789,8 +869,18 @@ void CThumbnailRequestActive::SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId a
     iParams.iThumbnailId = aThumbnailId;
     iParams.iFileName = aTargetUri;
     iParams.iOverwrite = aOverwrite;
+    iParams.iImport = EFalse;
     
     iTargetUri = aTargetUri;
+    
+    if (iTargetUri.Length() && IsVirtualUri(iTargetUri))
+        {
+        iParams.iVirtualUri = ETrue;
+        }
+    else
+        {
+        iParams.iVirtualUri = EFalse;
+        }
     
     TInt memoryFree( 0 );
     HAL::Get( HALData::EMemoryRAMFree, memoryFree );
@@ -804,7 +894,7 @@ void CThumbnailRequestActive::SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId a
         iParams.iMimeType = TDataType( aMimeType );
         iRequestType = EReqSetThumbnailBitmap;
         }
-    else
+    else if (!iParams.iVirtualUri)
         {
         // memory low, create thumbs using filehandle
         TN_DEBUG1( "CThumbnaiRequestActive::SetThumbnailbyBitmap() - memory low, create thumbs using filehandle!" );
@@ -812,6 +902,10 @@ void CThumbnailRequestActive::SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId a
         aBitmap = NULL;
         iParams.iPriority = aPriority - 1;
         iRequestType = EReqGetThumbnailHandleLater;
+        }
+    else
+        {
+        User::Leave(KErrNoMemory);
         }
     }
 
@@ -838,6 +932,8 @@ void CThumbnailRequestActive::UpdateThumbnailsL( const TDesC& aPath,
     iParams.iQualityPreference = aQualityPreference;
     iParams.iThumbnailId = aThumbnailId;
     iParams.iOverwrite = EFalse;
+    iParams.iVirtualUri = EFalse;
+    iParams.iImport = EFalse;
     
     iPath = aPath;
     iOrientation = aOrientation;
@@ -875,6 +971,51 @@ void CThumbnailRequestActive::RenameThumbnails( const TDesC& aCurrentPath,
     iParams.iPriority = aPriority;
     iParams.iFileName = aCurrentPath;
     iParams.iTargetUri = aNewPath;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailRequestActive::SetThumbnailL()
+// Set thumbnail from file path.
+// ---------------------------------------------------------------------------
+//
+void CThumbnailRequestActive::SetThumbnailL( const TDesC& aPath, const TDesC8& aMimeType,
+    CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
+    ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
+    TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData,
+    TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, 
+    TThumbnailSize aThumbnailSize, TBool aOverwrite)
+    {
+    iRequestType = EReqSetThumbnailPath;
+    
+    iClientData = aClientData;
+    iParams.iControlFlags = (aGeneratePersistentSizesOnly ?
+                            EThumbnailGeneratePersistentSizesOnly :
+                            EThumbnailNoControlFlags);
+    iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
+    iParams.iBitmapHandle = 0;
+    iParams.iSize = aSize;
+    iParams.iDisplayMode = aDisplayMode;
+    iParams.iFileName = aPath;
+    iParams.iRequestId = iRequestId;
+    iParams.iPriority = aPriority;
+    iParams.iFlags = aFlags;
+    iParams.iQualityPreference = aQualityPreference;
+    iParams.iThumbnailSize = aThumbnailSize;
+    iParams.iOverwrite = aOverwrite;
+    
+    iTargetUri = aTargetUri;
+    
+    if (iTargetUri.Length() && IsVirtualUri(iTargetUri))
+        {
+        iParams.iVirtualUri = ETrue;
+        }
+    else
+        {
+        iParams.iVirtualUri = EFalse;
+        }
+    
+    iParams.iImport = ETrue;
     }
 
 // ---------------------------------------------------------------------------
@@ -968,6 +1109,28 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     TN_DEBUG1( "CThumbnailRequestActive::TimerCallBack() - end");
     
     return KErrNone;
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailRequestActive::IsVirtualUri()
+// Checks if URI is virtual.
+// ---------------------------------------------------------------------------
+//
+TBool CThumbnailRequestActive::IsVirtualUri( const TDesC& aPath )
+    {
+    TInt pos = aPath.Find(KBackSlash);
+    
+    // normal URI
+    if ( pos == 2 )
+        {
+        return EFalse;
+        }
+    // virtual URI
+    else
+        {
+        TN_DEBUG1( "CThumbnailRequestActive::IsVirtualUri() - yes");
+        return ETrue;
+        }    
     }
 
 // End of file

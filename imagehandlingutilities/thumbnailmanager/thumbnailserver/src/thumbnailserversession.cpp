@@ -462,6 +462,12 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
         ModifyThumbnailSize(sourceType);
         }
     
+    // delete existing
+    if(params.iImport && params.iOverwrite)
+        {
+        Server()->DeleteThumbnailsL( params.iTargetUri);
+        }
+    
     // CreateThumbnails
     if (params.iControlFlags == EThumbnailGeneratePersistentSizesOnly)
         {
@@ -619,23 +625,25 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	        TN_DEBUG2( 
 	            "CThumbnailServerSession::RequestThumbByPathAsyncL() - thumbnail not found, err = %d", err );
 	        
+	        // don't try to create from virtual URI
+	        if ( params.iVirtualUri )
+	            {
+                User::Leave(err);
+	            }
+	        
+            // disk space check only for stored sizes
+            if ( params.iThumbnailSize != ECustomThumbnailSize && 
+                 Server()->StoreForPathL(params.iFileName)->IsDiskFull() )
+                {
+                User::Leave( KErrDiskFull );
+                }
+	        
 	        if ( (err == KErrNotFound || err == KErrAccessDenied) && 
 	            !(params.iFlags& CThumbnailManager::EDoNotCreate) )
 	            {
 	            // Special error code so that the client side can open the file
 	            // and retry the request using file handle
 	            err = KThumbnailErrThumbnailNotFound;
-	            }
-	        else
-	            {
-                User::Leave(err);
-                }
-	        
-	        // disk space check only for stored sizes
-	        if ( params.iThumbnailSize != ECustomThumbnailSize && 
-	             Server()->StoreForPathL(params.iFileName)->IsDiskFull() )
-	            {
-	            User::Leave( KErrDiskFull );
 	            }
 
             User::Leave(err);
@@ -807,7 +815,8 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
                     *Server(), params.iTargetUri, bitmap, bitmapSize,
                     (*missingSizes)[i].iSize, (*missingSizes)[i].iCrop, params.iDisplayMode,
                     KMaxPriority, KNullDesC, (*missingSizes)[i].iType, params.iModified, EFalse, EFalse,
-                    reqId);
+                    reqId, params.iVirtualUri);
+            
             CleanupStack::PushL( scaleTask );
             scaleTask->SetDoStore( ETrue );
             Server()->Processor().AddTaskL( scaleTask );
@@ -855,7 +864,12 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
         "CThumbnailServerSession::CreateGenerateTaskFromFileHandleL() -- create thumbnail generation task for %S", &params.iFileName );
     
     // disk space check only for stored sizes
-    if ( params.iThumbnailSize != ECustomThumbnailSize && 
+    if ( params.iImport && 
+         Server()->StoreForPathL(params.iTargetUri)->IsDiskFull() )
+        {
+        User::Leave( KErrDiskFull );
+        }
+    else if ( params.iThumbnailSize != ECustomThumbnailSize && 
          Server()->StoreForPathL(params.iFileName)->IsDiskFull() )
         {
         User::Leave( KErrDiskFull );
@@ -873,19 +887,28 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
 		
 	    TBool gridSizeOnly(EFalse);
             
-	    if ( params.iQualityPreference == CThumbnailManager
-	                    ::EOptimizeForQualityWithPreview )
+	    if ( params.iQualityPreference == CThumbnailManager::EOptimizeForQualityWithPreview )
 	        {
 	        gridSizeOnly = ETrue;
 	        }
         
-        Server()->GetMissingSizesL( params.iFileName, sourceType, *missingSizes, gridSizeOnly);
+	    // import vs. normal
+	    if(params.iImport)
+	        {
+            Server()->GetMissingSizesL( params.iTargetUri, sourceType, *missingSizes, gridSizeOnly);
+	        }
+	    else
+	        {
+            Server()->GetMissingSizesL( params.iFileName, sourceType, *missingSizes, gridSizeOnly);
+	        }     
         
         if ( missingSizes->Count() == 0)
             {
             // all thumbs already exist
             CleanupStack::PopAndDestroy( missingSizes );
             delete missingSizes;
+            missingSizes = NULL;
+            
             if( aFile )
                {
                aFile->Close();
@@ -930,7 +953,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
     CThumbnailGenerateTask* task = new( ELeave )CThumbnailGenerateTask( Server()
         ->Processor(), * Server(), aFile, NULL, &params.iMimeType, params.iFlags,
         params.iSize, params.iDisplayMode, priority, missingSizes, params.iTargetUri,
-        params.iThumbnailSize, params.iModified, params.iQualityPreference );
+        params.iThumbnailSize, params.iModified, params.iQualityPreference,
+        params.iVirtualUri);
 
     // do not store bitmaps to server pool when generating only
     if( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly )
@@ -1016,6 +1040,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
             // all thumbs already exist
             CleanupStack::PopAndDestroy( missingSizes );
             delete missingSizes;
+            missingSizes = NULL;
+            
             if ( aBuffer)
                {
                delete aBuffer;
@@ -1042,7 +1068,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
     CThumbnailGenerateTask* task = new( ELeave )CThumbnailGenerateTask( Server()
         ->Processor(), * Server(), NULL, aBuffer, &params.iMimeType, params.iFlags,
         params.iSize, params.iDisplayMode, priority, missingSizes, params.iTargetUri,
-        params.iThumbnailSize, params.iModified, params.iQualityPreference );
+        params.iThumbnailSize, params.iModified, params.iQualityPreference,
+        params.iVirtualUri);
 
     // do not store bitmaps to server pool when generating only
     if( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly )
@@ -1336,6 +1363,21 @@ void CThumbnailServerSession::ModifyThumbnailSize( TInt aSourceType )
                params.iThumbnailSize = EAudioListThumbnailSize;
                }       
            }
+    else if(aSourceType == TThumbnailPersistentSize::EContact)
+           {
+           if(params.iThumbnailSize == EFullScreenThumbnailSize)
+               {
+               params.iThumbnailSize = EContactFullScreenThumbnailSize;
+               }
+           else if(params.iThumbnailSize == EGridThumbnailSize)
+               {
+               params.iThumbnailSize = EContactGridThumbnailSize;
+               }
+           else if(params.iThumbnailSize == EListThumbnailSize)
+               {
+               params.iThumbnailSize = EContactListThumbnailSize;
+               }       
+           }
     }
 
 //------------------------------------------------------------------------
@@ -1349,34 +1391,42 @@ void CThumbnailServerSession::ResolveMimeTypeL( RFile64* aFile )
         
     // mime type
     if ( params.iMimeType.Des8() == KNullDesC8 && !Server()->SupportedMimeType(params.iMimeType) )
-       {
-       // try parsing from file extension
-       res = Server()->MimeTypeFromFileExt( params.iFileName, params.iMimeType );
-       if ( res == KErrNotFound )
-           {
-          if( aFile )
-             {
-             // parsed type not in the list, resolve from file
-             params.iMimeType = Server()->ResolveMimeTypeL(*aFile);
-             }
-          else
-             {
-             Server()->Fs().ShareProtected();
-             RFile64 file;
-             CleanupClosePushL( file );
-             
-             User::LeaveIfError( file.Open( Server()->Fs(), params.iFileName, EFileShareReadersOrWriters )); 
-             TN_DEBUG2( "CThumbnailServerSession::ResolveMimeType - file handle opened for %S", &params.iFileName );
-             
-             params.iMimeType = Server()->ResolveMimeTypeL(file);
-             
-             file.Close();
-             TN_DEBUG1("CThumbnailServerSession::ResolveMimeType - file handle closed");
-             
-             CleanupStack::Pop( &file );    
-             }    
-          }        
-       }      
+        {
+        // try parsing from file extension
+        if (params.iImport)
+            {
+            res = Server()->MimeTypeFromFileExt( params.iTargetUri, params.iMimeType );
+            }
+        else
+            {
+            res = Server()->MimeTypeFromFileExt( params.iFileName, params.iMimeType );
+            }
+        
+        if ( res == KErrNotFound )
+            {
+            if( aFile )
+                {
+                // parsed type not in the list, resolve from file
+                params.iMimeType = Server()->ResolveMimeTypeL(*aFile);
+                }
+            else
+                {
+                Server()->Fs().ShareProtected();
+                RFile64 file;
+                CleanupClosePushL( file );
+              
+                User::LeaveIfError( file.Open( Server()->Fs(), params.iFileName, EFileShareReadersOrWriters )); 
+                TN_DEBUG2( "CThumbnailServerSession::ResolveMimeType - file handle opened for %S", &params.iFileName );
+              
+                params.iMimeType = Server()->ResolveMimeTypeL(file);
+              
+                file.Close();
+                TN_DEBUG1("CThumbnailServerSession::ResolveMimeType - file handle closed");
+              
+                CleanupStack::Pop( &file );    
+                }    
+            }        
+        }       
     }
 
 
@@ -1516,5 +1566,6 @@ TBool CThumbnailServerSession::ClientThreadAlive()
         return EFalse;
         }
     }
+
 
 // End of file

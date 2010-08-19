@@ -208,9 +208,10 @@ public:
      * @param aFs File server.
      * @param aDrive Drive the store used for
      * @param aCenter Pointer to cenrep data handler
+	 * @param aReadOnly flag is store write protected
      * @return New CThumbnailStore instance.
      */
-    static CThumbnailStore* NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer );
+    static CThumbnailStore* NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer, const TBool aReadOnly );
 
     /**
      * Destructor
@@ -232,9 +233,7 @@ public:
      */
     void StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aThumbnail, const
         TSize& aOriginalSize, TBool aCropped, const TThumbnailSize aThumbnailSize, 
-        const TInt64 aModified,
-        const TBool aThumbFromPath = ETrue,
-        TBool aBlackListed = EFalse );
+        const TInt64 aModified, const TBool aThumbFromPath, TBool aBlackListed);
 
     /**
      * Fetches thumbnail image.
@@ -360,6 +359,11 @@ public:
      * @contains indication whether file modified
      */
     TBool CheckModifiedByPathL( const TDesC& aPath, const TInt64 aModified, TBool& modifiedChanged);
+    
+    /**
+     *  @return TBool is store write protected
+     */
+    TBool IsReadOnly();
 
 private:
     /**
@@ -368,9 +372,10 @@ private:
      * @since S60 v5.0
      * @param aFs File server.
      * @param aDrive Drive the store used for
+	 * @param aReadOnly set flag if store is write protected
      * @return New CThumbnailStore instance.
      */
-    CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer);
+    CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer, const TBool aReadOnly);
 
     /**
      * Symbian 2nd phase constructor can leave.
@@ -442,7 +447,7 @@ private:
     void StoreThumbnailL( const TDesC& aPath, const TDes8& aData, const TSize&
         aSize, const TSize& aOriginalSize, const TThumbnailFormat& aFormat, TInt aFlags, 
         const TThumbnailSize& aThumbnailSize, const TInt64 aModified,
-        const TBool aThumbFromPath = ETrue);
+        const TBool aThumbFromPath);
 
     /**
      * Finds possible existing duplicate thumbnail.
@@ -650,6 +655,11 @@ private:
      * How long previous flush took ms
      */
     TInt iPreviousFlushDelay;
+    
+    /**
+     * is store write protected
+     */
+    TBool iReadOnly;
 
 };
 // End of File

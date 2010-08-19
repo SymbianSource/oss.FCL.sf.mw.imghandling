@@ -163,6 +163,7 @@ void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestA
              // delete completed task
              TN_DEBUG3( "CThumbnailRequestQueue::RemoveCompleted() - deleted id = %d (0x%08x)", request->RequestId(), request);
              delete request;
+             request = NULL;
              iRequests.Remove( i );
              }
          }
@@ -203,6 +204,7 @@ TInt CThumbnailRequestQueue::CancelRequest( const TThumbnailRequestId aRequestId
             else
                 {
                 delete request;
+                request = NULL;
                 iRequests.Remove( i );
                           
                 TN_DEBUG2( "CThumbnailRequestQueue::CancelRequest() - removed request ID: %d", aRequestId);

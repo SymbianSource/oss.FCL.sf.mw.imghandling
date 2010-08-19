@@ -41,7 +41,8 @@ enum TThumbnailReqType
     EReqUpdateThumbnails = 4,
     EReqGetThumbnailHandleLater = 5,
     EReqDeleteThumbnails = 6,
-    EReqRenameThumbnails = 7
+    EReqRenameThumbnails = 7,
+    EReqSetThumbnailPath = 8
 };
 
 /**
@@ -238,6 +239,32 @@ public:
         const TInt aPriority );    
     
     /**
+     * Set thumbnail from file path.
+     *
+     * @param aPath Path to file from which the thumbnail is to be created.
+     * @param aFile File from which the thumbnail is to be created.
+     * @param aFlags Flags that control the creation of thumbnail.
+     * @param aQualityPreference Quality preference value
+     * @param aSize Requested size of the thumbnail.
+     * @param aDisplayMode Display mode.
+     * @param aPriority Priority of the request.
+     * @param aClientData Pointer to arbitrary client data.
+     *                    This pointer is not used by the API for
+     *                    anything other than returning it in the
+     *                    ThumbnailReady callback.
+     * @param aGeneratePersistentSizesOnly 
+     * @param aOverwrite Overwrite old existing thumbs
+     * @param aTargetUri         Target URI to which the imported thumbnail is linked.
+     * @param aThumbnailSize Relative thumbnail size
+     */
+    void SetThumbnailL( const TDesC& aPath, const TDesC8& aMimeType,
+        CThumbnailManager::TThumbnailFlags aFlags, 
+        CThumbnailManager::TThumbnailQualityPreference aQualityPreference, 
+        const TSize& aSize, const TDisplayMode aDisplayMode, const TInt aPriority, 
+        TAny* aClientData, TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri, 
+        TThumbnailSize aThumbnailSize, TBool aOverwrite);    
+    
+    /**
      * Start active request.
      *
      * @since S60 v5.0
@@ -366,6 +393,11 @@ private:
      * @since S60 v5.0
      */
     static TInt TimerCallBack(TAny* aAny);
+    
+    /**
+     * Checks if URI is virtual.
+     */
+    TBool IsVirtualUri( const TDesC& aPath ); 
 
 private:
     // data
