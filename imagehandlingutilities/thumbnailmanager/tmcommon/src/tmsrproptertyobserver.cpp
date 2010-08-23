@@ -21,6 +21,11 @@
 #include "tmrpropertyobserver.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "tmsrproptertyobserverTraces.h"
+#endif
+
 
 // ---------------------------------------------------------------------------
 // CTMRPropertyObserver::NewL()
@@ -62,6 +67,7 @@ CTMRPropertyObserver::CTMRPropertyObserver( MTMRPropertyObserver& aObserver,
 void CTMRPropertyObserver::ConstructL()
     { 
     TN_DEBUG1( "CTMRPropertyObserver::ConstructL()");
+    OstTrace0( TRACE_NORMAL, CTMRPROPERTYOBSERVER_CONSTRUCTL, "CTMRPropertyObserver::ConstructL" );
     // define P&S property types
     if (iDefineKey)
         {
@@ -85,6 +91,7 @@ void CTMRPropertyObserver::ConstructL()
 CTMRPropertyObserver::~CTMRPropertyObserver()
     {
     TN_DEBUG1( "CTMRPropertyObserver::~CTMRPropertyObserver()");
+    OstTrace0( TRACE_NORMAL, CTMRPROPERTYOBSERVER_CTMRPROPERTYOBSERVER, "CTMRPropertyObserver::~CTMRPropertyObserver" );
     Cancel();
     iProperty.Close();
     }
@@ -96,6 +103,7 @@ CTMRPropertyObserver::~CTMRPropertyObserver()
 void CTMRPropertyObserver::RunL()
     {
     TN_DEBUG1( "CTMRPropertyObserver::RunL()");
+    OstTrace0( TRACE_NORMAL, CTMRPROPERTYOBSERVER_RUNL, "CTMRPropertyObserver::RunL" );
     // resubscribe before processing new value to prevent missing updates
     iProperty.Subscribe(iStatus);
     SetActive();
@@ -115,6 +123,7 @@ void CTMRPropertyObserver::RunL()
 void CTMRPropertyObserver::DoCancel()
     {
     TN_DEBUG1( "CTMRPropertyObserver::DoCancel()");
+    OstTrace0( TRACE_NORMAL, CTMRPROPERTYOBSERVER_DOCANCEL, "CTMRPropertyObserver::DoCancel" );
     iProperty.Cancel();
     }
 

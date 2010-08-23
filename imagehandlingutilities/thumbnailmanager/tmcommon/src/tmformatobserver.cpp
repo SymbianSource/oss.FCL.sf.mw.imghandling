@@ -20,6 +20,10 @@
  
 #include <e32base.h>
 #include <f32file.h>
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "tmformatobserverTraces.h"
+#endif
 
 
 // ======== MEMBER FUNCTIONS ========
@@ -28,6 +32,7 @@ CTMFormatObserver::CTMFormatObserver ( MTMFormatObserver& aObserver ):
     iObserver( aObserver )
     {
     TN_DEBUG1( "CTMFormatObserver::CTMFormatObserver()");
+    OstTrace0( TRACE_NORMAL, CTMFORMATOBSERVER_CTMFORMATOBSERVER, "CTMFormatObserver::CTMFormatObserver" );
     }
     
     
@@ -38,6 +43,7 @@ CTMFormatObserver::CTMFormatObserver ( MTMFormatObserver& aObserver ):
 void CTMFormatObserver::ConstructL()
     {
     TN_DEBUG1("CTMFormatObserver::ConstructL");
+    OstTrace0( TRACE_NORMAL, CTMFORMATOBSERVER_CONSTRUCTL, "CTMFormatObserver::ConstructL" );
 
     iBackupSession = CBaBackupSessionWrapper::NewL();
     iBackupSession->RegisterBackupOperationObserverL( *this );
@@ -91,6 +97,7 @@ CTMFormatObserver::~CTMFormatObserver()
 void CTMFormatObserver::PollStatus()
     { 
     TN_DEBUG1("CTMFormatObserver::PollStatus()");
+    OstTrace0( TRACE_NORMAL, CTMFORMATOBSERVER_POLLSTATUS, "CTMFormatObserver::PollStatus" );
     
     TBool formatting = iBackupSession->IsBackupOperationRunning();
     
@@ -109,6 +116,7 @@ void CTMFormatObserver::HandleBackupOperationEventL(
                   const TBackupOperationAttributes& aBackupOperationAttributes)
     {
     TN_DEBUG1("CTMFormatObserver::HandleBackupOperationEventL");
+    OstTrace0( TRACE_NORMAL, CTMFORMATOBSERVER_HANDLEBACKUPOPERATIONEVENTL, "CTMFormatObserver::HandleBackupOperationEventL" );
 
     if( aBackupOperationAttributes.iOperation == EStart )
         {

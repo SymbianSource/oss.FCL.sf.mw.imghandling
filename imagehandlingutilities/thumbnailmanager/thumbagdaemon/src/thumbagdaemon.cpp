@@ -28,6 +28,10 @@
 #include "thumbnaillog.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailmanagerprivatecrkeys.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbagdaemonTraces.h"
+#endif
 
 
 // ---------------------------------------------------------------------------
@@ -37,6 +41,7 @@
 CThumbAGDaemon* CThumbAGDaemon::NewLC()
     {
     TN_DEBUG1( "CThumbAGDaemon::NewLC() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_NEWLC, "CThumbAGDaemon::NewLC - begin" );
     
 	CThumbAGDaemon* self = new (ELeave) CThumbAGDaemon();
 	CleanupStack::PushL( self );
@@ -51,6 +56,7 @@ CThumbAGDaemon* CThumbAGDaemon::NewLC()
 CThumbAGDaemon* CThumbAGDaemon::NewL()
 	{
 	TN_DEBUG1( "CThumbAGDaemon::NewL() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGDAEMON_NEWL, "CThumbAGDaemon::NewL" );
     
 	CThumbAGDaemon* self = CThumbAGDaemon::NewLC();
 	CleanupStack::Pop( self );
@@ -75,6 +81,7 @@ CThumbAGDaemon::CThumbAGDaemon()
 void CThumbAGDaemon::ConstructL()
 	{
 	TN_DEBUG1( "CThumbAGDaemon::ConstructL() - begin" );
+	OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_CONSTRUCTL, "CThumbAGDaemon::ConstructL - begin" );
 	
 	StartL( KTAGDaemonName );
 	
@@ -86,6 +93,7 @@ void CThumbAGDaemon::ConstructL()
     InitializeL();
     	
 	TN_DEBUG1( "CThumbAGDaemon::ConstructL() - end" );
+	OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_CONSTRUCTL, "CThumbAGDaemon::ConstructL - end" );
 	}
 
 // ---------------------------------------------------------------------------
@@ -95,10 +103,12 @@ void CThumbAGDaemon::ConstructL()
 void CThumbAGDaemon::InitializeL()
     {
     TN_DEBUG1( "CThumbAGDaemon::InitializeL() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_INITIALIZEL, "CThumbAGDaemon::InitializeL - begin" );
     
     if (DaemonEnabledL())
         {
         TN_DEBUG1( "CThumbAGDaemon::InitializeL() - create observers" );
+        OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_INITIALIZEL, "CThumbAGDaemon::InitializeL - create observers" );
         
         // create shutdown observer
         if(iMDSShutdownObserver)
@@ -169,6 +179,7 @@ void CThumbAGDaemon::InitializeL()
         User::Leave(KErrNone);
         }
         TN_DEBUG1( "CThumbAGDaemon::InitializeL() - end" );
+        OstTrace0( TRACE_FATAL, DUP2_CTHUMBAGDAEMON_INITIALIZEL, "CThumbAGDaemon::InitializeL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +189,7 @@ void CThumbAGDaemon::InitializeL()
 CThumbAGDaemon::~CThumbAGDaemon()
     {
     TN_DEBUG1( "CThumbAGDaemon::~CThumbAGDaemon() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_CTHUMBAGDAEMON, "CThumbAGDaemon::~CThumbAGDaemon - begin" );
     
     iShutdown = ETrue;
     
@@ -228,6 +240,7 @@ CThumbAGDaemon::~CThumbAGDaemon()
         }
     
     TN_DEBUG1( "CThumbAGDaemon::~CThumbAGDaemon() - end" );
+    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_CTHUMBAGDAEMON, "CThumbAGDaemon::~CThumbAGDaemon - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -251,6 +264,7 @@ CSession2* CThumbAGDaemon::NewSessionL( const TVersion& /*aVersion*/,
 void CThumbAGDaemon::ThreadFunctionL()
     {
 	TN_DEBUG1( "CThumbAGDaemon::ThreadFunctionL() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_THREADFUNCTIONL, "CThumbAGDaemon::ThreadFunctionL - begin" );
     
     User::LeaveIfError( User::RenameThread( KTAGDaemonName ) );
 
@@ -276,6 +290,7 @@ void CThumbAGDaemon::ThreadFunctionL()
         }
     
     TN_DEBUG1( "CThumbAGDaemon::ThreadFunctionL() - end" );
+	OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_THREADFUNCTIONL, "CThumbAGDaemon::ThreadFunctionL - end" );
 	}
 
 // -----------------------------------------------------------------------------
@@ -285,6 +300,7 @@ void CThumbAGDaemon::ThreadFunctionL()
 void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aError )
     {
     TN_DEBUG1( "CThumbAGDaemon::HandleSessionOpened");
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_HANDLESESSIONOPENED, "CThumbAGDaemon::HandleSessionOpened" );
     
     if (aError == KErrNone)
         {
@@ -294,11 +310,13 @@ void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aErr
         if (err != KErrNone)
             {
             TN_DEBUG2( "CThumbAGDaemon::HandleSessionOpened, AddObserversL error == %d", err );
+            OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_HANDLESESSIONOPENED, "CThumbAGDaemon::HandleSessionOpened;err=%d", err );
             }
         }
     else
         {
         TN_DEBUG2( "CThumbAGDaemon::HandleSessionOpened error == %d", aError );
+        OstTrace1( TRACE_FATAL, DUP2_CTHUMBAGDAEMON_HANDLESESSIONOPENED, "CThumbAGDaemon::HandleSessionOpened;aError=%d", aError );
         }
     }
 
@@ -309,6 +327,7 @@ void CThumbAGDaemon::HandleSessionOpened( CMdESession& /* aSession */, TInt aErr
 void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbAGDaemon::HandleSessionError == %d", aError );
+    OstTrace1( TRACE_FATAL, CTHUMBAGDAEMON_HANDLESESSIONERROR, "CThumbAGDaemon::HandleSessionError;aError=%d", aError );
     if (aError != KErrNone && !iShutdown && !iSessionError)
         {
         iSessionError = ETrue;
@@ -339,6 +358,7 @@ void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError 
                                TCallBack(ReconnectCallBack, this));
             
             TN_DEBUG1( "CThumbAGDaemon::HandleSessionError() - reconnect timer started" );
+            OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_HANDLESESSIONERROR, "CThumbAGDaemon::HandleSessionError - reconnect timer started" );
             }
 
         }   
@@ -356,6 +376,7 @@ void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/,
         const RPointerArray<HBufC>& aObjectUriArray)
     {
     TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_HANDLEURIOBJECTNOTIFICATION, "CThumbAGDaemon::HandleUriObjectNotification - begin" );
     
     if(!iProcessor || iShutdown)
         {
@@ -365,6 +386,7 @@ void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/,
     if(aType == ENotifyRemove)
         {
         TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - removed");
+        OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_HANDLEURIOBJECTNOTIFICATION, "CThumbAGDaemon::HandleUriObjectNotification - removed" );
         TInt err(0);
         TRAP(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAny, aObjectIdArray, aObjectUriArray, EFalse));
         __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGDaemon::HandleUriObjectNotification()"), err));
@@ -372,6 +394,7 @@ void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/,
         err = KErrNone;
         }
     TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - end" );
+    OstTrace0( TRACE_FATAL, DUP2_CTHUMBAGDAEMON_HANDLEURIOBJECTNOTIFICATION, "CThumbAGDaemon::HandleUriObjectNotification - end" );
     }
 #endif
 
@@ -384,6 +407,7 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
                                                const RArray<TItemId>& aObjectIdArray )
     {
     TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::HandleObjectNotification - begin" );
 
     // no processor or shutting down
     if (!iProcessor || iShutdown)
@@ -395,6 +419,7 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
     if (aType == ENotifyRemove)
         {
         TN_DEBUG2( "CThumbAGDaemon::HandleObjectNotification() - ENotifyRemove %d", aObjectIdArray.Count() );
+        OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::HandleObjectNotification - ENotifyRemove;aObjectIdArray.Count()=%d", aObjectIdArray.Count() );
         iDelCounter = aObjectIdArray.Count();
         }
 #endif
@@ -402,6 +427,7 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
     if ( aType == ENotifyRemove && aObjectIdArray.Count() > 0 )
         {
         TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - AddToQueueL" );
+		OstTrace0( TRACE_FATAL, DUP2_CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::HandleObjectNotification - AddToQueueL" );
 		
         // If delete event, remove IDs from Modify and Add queues
         iProcessor->RemoveFromQueues( aObjectIdArray, EFalse);
@@ -412,19 +438,23 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - error adding to queue" );
+            OstTrace0( TRACE_FATAL, DUP3_CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::HandleObjectNotification - error adding to queue" );
             }
         }
     else
         {
         TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - bad notification" );
+        OstTrace0( TRACE_FATAL, DUP4_CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::HandleObjectNotification - bad notification" );
         }
     
 #ifdef _DEBUG
     TN_DEBUG2( "CThumbAGDaemon::IN-COUNTERS---------- Delete = %d", iDelCounter );
+    OstTrace1( TRACE_FATAL, DUP5_CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::IN-COUNTERS---------- Delete;iDelCounter=%u", iDelCounter );
     iDelCounter = 0;
 #endif
 
     TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - end" );
+    OstTrace0( TRACE_FATAL, DUP6_CTHUMBAGDAEMON_HANDLEOBJECTNOTIFICATION, "CThumbAGDaemon::HandleObjectNotification - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -435,6 +465,7 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
                TBool aPresent, const RArray<TItemId>& aObjectIdArray)
     {
     TN_DEBUG3( "CThumbAGDaemon::HandleObjectPresentNotification() - aPresent == %d count == %d", aPresent, aObjectIdArray.Count() );
+    OstTraceExt2( TRACE_FATAL, CTHUMBAGDAEMON_HANDLEOBJECTPRESENTNOTIFICATION, "CThumbAGDaemon::HandleObjectPresentNotification;aPresent=%d;aObjectIdArray.Count()=%d", aPresent, aObjectIdArray.Count() );
     
     // no processor or shutting down
     if (!iProcessor || iShutdown)
@@ -454,11 +485,13 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
             TRAP(err, iProcessor->AddToQueueL(ENotifyAdd, EGenerationItemTypeUnknown, aObjectIdArray, dummyArray, ETrue));
            
             TN_DEBUG2( "CThumbAGDaemon::HandleObjectPresentNotification() - ENotifyAdd unknown items %d", aObjectIdArray.Count() );     
+            OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_HANDLEOBJECTPRESENTNOTIFICATION, "CThumbAGDaemon::HandleObjectPresentNotification - ENotifyAdd unknown items;aObjectIdArray.Count()=%d", aObjectIdArray.Count() );
            #ifdef _DEBUG
            iAddCounter = aObjectIdArray.Count();
            if (err != KErrNone)
                {
                TN_DEBUG1( "CThumbAGDaemon::HandleObjectPresentNotification() - error adding to queue" );
+               OstTrace0( TRACE_FATAL, DUP2_CTHUMBAGDAEMON_HANDLEOBJECTPRESENTNOTIFICATION, "CThumbAGDaemon::HandleObjectPresentNotification - error adding to queue" );
                }
            #endif
            }
@@ -466,6 +499,7 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
     else
         {
         TN_DEBUG1( "CThumbAGDaemon::HandleObjectPresentNotification() - handle not present" );
+        OstTrace0( TRACE_FATAL, DUP3_CTHUMBAGDAEMON_HANDLEOBJECTPRESENTNOTIFICATION, "CThumbAGDaemon::HandleObjectPresentNotification - handle not present" );
 
         #ifdef _DEBUG    
         if( iAddCounter < aObjectIdArray.Count() )
@@ -486,11 +520,13 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
     
     #ifdef _DEBUG
     TN_DEBUG3( "CThumbAGDaemon::IN-COUNTERS---------- Add = %d Delete = %d", iAddCounter, iDelCounter );
+    OstTraceExt2( TRACE_FATAL, DUP4_CTHUMBAGDAEMON_HANDLEOBJECTPRESENTNOTIFICATION, "CThumbAGDaemon::::IN-COUNTERS---------- Add, Delete;iAddCounter=%u;iDelCounter=%u", iAddCounter, iDelCounter );
     iDelCounter = 0;
 	iAddCounter = 0;
     #endif
     
     TN_DEBUG1( "CThumbAGDaemon::HandleObjectPresentNotification() - end" );
+    OstTrace0( TRACE_FATAL, DUP5_CTHUMBAGDAEMON_HANDLEOBJECTPRESENTNOTIFICATION, "CThumbAGDaemon::HandleObjectPresentNotification - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -500,6 +536,7 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
 void CThumbAGDaemon::ShutdownNotification()
     {
     TN_DEBUG1( "CThumbAGDaemon::ShutdownNotification()" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_SHUTDOWNNOTIFICATION, "CThumbAGDaemon::ShutdownNotification" );
     
     if (!iShutdown)
         {
@@ -515,7 +552,7 @@ void CThumbAGDaemon::ShutdownNotification()
 void CThumbAGDaemon::AddObserversL()
     {
     TN_DEBUG1( "CThumbAGDaemon::AddObserversL() - begin" );
-    
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_ADDOBSERVERSL, "CThumbAGDaemon::AddObserversL - begin" );
  
 #ifdef MDS_URI_OBSERVER
     // remove observer with uri
@@ -526,6 +563,7 @@ void CThumbAGDaemon::AddObserversL()
     iMdESession->AddObjectPresentObserverL( *this );
     
     TN_DEBUG1( "CThumbAGDaemon::AddObserversL() - end" );
+    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_ADDOBSERVERSL, "CThumbAGDaemon::AddObserversL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -535,6 +573,7 @@ void CThumbAGDaemon::AddObserversL()
 TBool CThumbAGDaemon::DaemonEnabledL()
     {
     TN_DEBUG1( "CThumbAGDaemon::DaemonEnabledL() - begin" );
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_DAEMONENABLEDL, "CThumbAGDaemon::DaemonEnabledL - begin" );
     CRepository* rep = CRepository::NewL( TUid::Uid( THUMBNAIL_CENREP_UID ));
     
     // get value
@@ -545,6 +584,7 @@ TBool CThumbAGDaemon::DaemonEnabledL()
     rep = NULL;
     
     TN_DEBUG3( "CThumbAGDaemon::DaemonEnabledL() - val == %d, ret == %d", val, ret );
+    OstTraceExt2( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_DAEMONENABLEDL, "CThumbAGDaemon::DaemonEnabledL;val=%u;ret=%d", val, ret );
     return val;
     }
 
@@ -555,6 +595,7 @@ TBool CThumbAGDaemon::DaemonEnabledL()
 TInt CThumbAGDaemon::ReconnectCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - reinitialize");
+    OstTrace0( TRACE_FATAL, CTHUMBAGDAEMON_RECONNECTCALLBACK, "CThumbAGDaemon::ReconnectCallBack - reinitialize" );
     
     CThumbAGDaemon* self = static_cast<CThumbAGDaemon*>( aAny );
     
@@ -564,6 +605,7 @@ TInt CThumbAGDaemon::ReconnectCallBack(TAny* aAny)
     TRAP_IGNORE( self->InitializeL() );
     
     TN_DEBUG1( "CThumbAGDaemon::ReconnectCallBack() - done");
+    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGDAEMON_RECONNECTCALLBACK, "CThumbAGDaemon::ReconnectCallBack - done" );
     
     return KErrNone;
     }
@@ -575,6 +617,7 @@ TInt CThumbAGDaemon::ReconnectCallBack(TAny* aAny)
 TInt E32Main()
     {    
     TN_DEBUG1( "CThumbAGDaemon::E32Main() - begin" );
+    OstTrace0( TRACE_FATAL, _E32MAIN, "::E32Main - begin" );
 
     __UHEAP_MARK;
 
@@ -591,6 +634,7 @@ TInt E32Main()
     if ( result != KErrNone )
         {
         TN_DEBUG1( "CThumbAGDaemon::E32Main() - error" );
+        OstTrace0( TRACE_FATAL, DUP1__E32MAIN, "::E32Main - error" );
         
         // Signal the client that server creation failed
         RProcess::Rendezvous( result );
@@ -599,6 +643,7 @@ TInt E32Main()
     __UHEAP_MARKEND;
 
     TN_DEBUG1( "CThumbAGDaemon::E32Main() - end" );
+    OstTrace0( TRACE_FATAL, DUP2__E32MAIN, "::E32Main - end" );
     
     return result;
     }
