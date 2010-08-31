@@ -30,6 +30,10 @@
 #include "thumbnaillog.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailmanagerprivatecrkeys.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbagprocessorTraces.h"
+#endif
 
 // ---------------------------------------------------------------------------
 // CThumbAGProcessor::NewL()
@@ -38,6 +42,7 @@
 CThumbAGProcessor* CThumbAGProcessor::NewL()
     {
     TN_DEBUG1( "CThumbAGProcessor::NewL() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_NEWL, "CThumbAGProcessor::NewL - begin" );
     
     CThumbAGProcessor* self = new( ELeave )CThumbAGProcessor();
     CleanupStack::PushL( self );
@@ -54,6 +59,7 @@ CThumbAGProcessor::CThumbAGProcessor(): CActive( CActive::EPriorityStandard ), i
         iPHHarvestingItemsLeftTemp(0)
     {
     TN_DEBUG1( "CThumbAGProcessor::CThumbAGProcessor() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_CTHUMBAGPROCESSOR, "CThumbAGProcessor::CThumbAGProcessor- begin" );
     
     CActiveScheduler::Add( this );
     }
@@ -65,6 +71,7 @@ CThumbAGProcessor::CThumbAGProcessor(): CActive( CActive::EPriorityStandard ), i
 void CThumbAGProcessor::ConstructL()
     {
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_CONSTRUCTL, "CThumbAGProcessor::ConstructL - begin" );
     
     iShutdown = EFalse;
     
@@ -106,6 +113,7 @@ void CThumbAGProcessor::ConstructL()
     iForegroundGenerationObserver = CTMRPropertyObserver::NewL( *this, KTAGDPSNotification, KForceBackgroundGeneration, ETrue );  
     
     TN_DEBUG1( "CThumbAGProcessor::ConstructL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_CONSTRUCTL, "CThumbAGProcessor::ConstructL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +123,7 @@ void CThumbAGProcessor::ConstructL()
 CThumbAGProcessor::~CThumbAGProcessor()
     {
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - begin" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_CTHUMBAGPROCESSOR, "CThumbAGProcessor::~CThumbAGProcessor - begin" );
     
     Shutdown();
     
@@ -206,6 +215,7 @@ CThumbAGProcessor::~CThumbAGProcessor()
     iQueryQueue.Close();
     
     TN_DEBUG1( "CThumbAGProcessor::~CThumbAGProcessor() - end" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_CTHUMBAGPROCESSOR, "CThumbAGProcessor::~CThumbAGProcessor - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +225,7 @@ CThumbAGProcessor::~CThumbAGProcessor()
 void CThumbAGProcessor::Shutdown()
     {
     TN_DEBUG1( "CThumbAGProcessor::Shutdown()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_SHUTDOWN, "CThumbAGProcessor::Shutdown" );
     iShutdown = ETrue;
     UpdatePSValues(EFalse, EFalse);
     }
@@ -239,6 +250,7 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
         if(&aQuery == iQueryPlaceholders)
             {
             TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults - iQueryPlaceholders, %d new", aNewItemCount);
+            OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_HANDLEQUERYNEWRESULTS, "CThumbAGProcessor::HandleQueryNewResults - iQueryPlaceholders;aNewItemCount=%d", aNewItemCount );
             
             for(TInt i = aFirstNewItemIndex; i < iQueryPlaceholders->Count(); i++)
                 {    
@@ -252,6 +264,7 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
                 if(!object->Placeholder())
                     {
                     TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults %d not placeholder", object->Id());
+                    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_HANDLEQUERYNEWRESULTS, "CThumbAGProcessor::HandleQueryNewResults - not placeholder;object->Id()=%u", object->Id() );
                     continue;
                     }
                
@@ -268,6 +281,7 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
         else if(&aQuery == iQueryAllItems)
             {
             TN_DEBUG2( "CThumbAGProcessor::HandleQueryNewResults - QueryAllItems, %d new", aNewItemCount);
+            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_HANDLEQUERYNEWRESULTS, "CThumbAGProcessor::HandleQueryNewResults - QueryAllItems;aNewItemCount=%d", aNewItemCount );
             
             for(TInt i = aFirstNewItemIndex; i < iQueryAllItems->Count(); i++)
                 {    
@@ -294,6 +308,7 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
     else
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryNewResults - error, no new items");
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_HANDLEQUERYNEWRESULTS, "CThumbAGProcessor::HandleQueryNewResults - error, no new items" );
         }
     }
 
@@ -304,6 +319,7 @@ void CThumbAGProcessor::HandleQueryNewResults( CMdEQuery& aQuery,
 void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aError )
     {
     TN_DEBUG3( "CThumbAGProcessor::HandleQueryCompleted, aError == %d Count== %d", aError, aQuery.Count());
+    OstTraceExt2( TRACE_NORMAL, CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted;aError=%d;aQuery.Count()=%d", aError, aQuery.Count() );
     
     if(iShutdown)
         {
@@ -313,6 +329,7 @@ void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aErr
     if(&aQuery == iQueryPlaceholders)
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - iQueryPlaceholders completed");
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - iQueryPlaceholders completed" );
         
         //free query
         delete iQueryPlaceholders;
@@ -327,9 +344,11 @@ void CThumbAGProcessor::HandleQueryCompleted( CMdEQuery& aQuery, const TInt aErr
     else if(&aQuery == iQueryAllItems)
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - QueryAllItems completed");
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - QueryAllItems completed" );
 
 #ifdef _DEBUG
 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount: %d, Add",iQueryAllItems->Count());
+OstTrace1( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount;iQueryAllItems->Count()=%d", iQueryAllItems->Count() );
 #endif
        
         //free query
@@ -339,6 +358,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
     else if(&aQuery == iQuery ) 
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted - Query completed");
+        OstTrace0( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - Query completed" );
         
         if(iQueryActive)
             {
@@ -354,6 +374,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             if(iProcessingCount != iQueryQueue.Count() )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() some result items missing");
+                OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - some result items missing" );
                 
                 RArray<TItemId> queryQueueDelta;
                 
@@ -375,6 +396,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                          if(!found)
                              {
                              TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() %d missing from query results", iQueryQueue[queryItem] );
+                             OstTrace1( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted;iQueryQueue[queryItem]=%d", iQueryQueue[queryItem] );
                              
                              // ignore if fails
                              queryQueueDelta.InsertInOrder(iQueryQueue[queryItem], CompareId);
@@ -382,6 +404,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                          }
                      
                      TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() missing items found %d", queryQueueDelta.Count()); 
+                     OstTrace1( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - missing items found;queryQueueDelta.Count()=%d", queryQueueDelta.Count() );
                      //cleanup from previous queue it item is not found from MDS
                      while(queryQueueDelta.Count())
                          {
@@ -392,6 +415,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                          if(itemIndex >= 0)
                              {
                              TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove %d from iQueryQueue", queryQueueDelta[0]);
+                             OstTrace1( TRACE_NORMAL, DUP8_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - remove from iQueryQueue;queryQueueDelta[0]=%d", queryQueueDelta[0] );
                              iQueryQueue.Remove( itemIndex );
                              
                              //remove from procesing queue
@@ -403,12 +427,14 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                                  if( iUnknown )
                                      {
                                      TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() mark %d as EGenerationItemTypeNotFound in iGenerationQueue", queryQueueDelta[0]);
+                                     OstTrace1( TRACE_NORMAL, DUP9_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - mark as EGenerationItemTypeNotFound in iGenerationQueue;queryQueueDelta[0]=%d", queryQueueDelta[0] );
                                      //mark to be removed, cleanup is done below
                                      iGenerationQueue[itemIndex].iItemType = EGenerationItemTypeNotFound;
                                      }
                                  else
                                      {
                                      TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove %d from iGenerationQueue", queryQueueDelta[0]);
+                                     OstTrace1( TRACE_NORMAL, DUP10_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - remove from iGenerationQueue;queryQueueDelta[0]=%d", queryQueueDelta[0] );
                                      iGenerationQueue.Remove( itemIndex );
                                      }
                                  }
@@ -440,6 +466,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                             if(iGenerationQueue[itemIndex].iItemType == EGenerationItemTypeNotFound)
                                 {
                                 TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove EGenerationItemTypeNotFound %d item from iGenerationQueue", item.iItemId);
+                                OstTrace1( TRACE_NORMAL, DUP11_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - remove EGenerationItemTypeNotFound item from iGenerationQueue;item.iItemId=%u", item.iItemId );
                                 iGenerationQueue.Remove(itemIndex);
                                 continue;
                                 }
@@ -449,6 +476,7 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
                                 if(item.iItemType == EGenerationItemTypeUnknown )
                                   {
                                   TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted() remove unknown item %d", item.iItemId);
+                                  OstTrace1( TRACE_NORMAL, DUP12_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - remove unknown item;item.iItemId=%u", item.iItemId );
                                   iGenerationQueue.Remove(itemIndex);
                                   continue;
                                   }
@@ -476,11 +504,13 @@ TN_DEBUG2( "CThumbAGProcessor::HandleQueryCompleted IN-COUNTERS---------- Amount
             //Delete and cancel query, do not return items back to original queue
             DeleteAndCancelQuery( EFalse );
             TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() Query FAILED!"); 
+            OstTrace0( TRACE_NORMAL, DUP13_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - Query FAILED!" );
             }
         }
     else
         {
         TN_DEBUG1( "CThumbAGProcessor::HandleQueryCompleted() - NO QUERY ACTIVE"); 
+        OstTrace0( TRACE_NORMAL, DUP14_CTHUMBAGPROCESSOR_HANDLEQUERYCOMPLETED, "CThumbAGProcessor::HandleQueryCompleted - NO QUERY ACTIVE" );
         __ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbAGProcessor::HandleQueryCompleted()"), -1));
         }
     
@@ -495,6 +525,7 @@ void CThumbAGProcessor::ThumbnailPreviewReady( MThumbnailData& /*aThumbnail*/,
                                                TThumbnailRequestId /*aId*/)
     {
     TN_DEBUG1( "CThumbAGProcessor::ThumbnailPreviewReady()");
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_THUMBNAILPREVIEWREADY, "CThumbAGProcessor::ThumbnailPreviewReady" );
     // No implementation required
     }
 
@@ -506,6 +537,7 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
                                         TThumbnailRequestId /*aId*/ )
     {
     TN_DEBUG2( "CThumbAGProcessor::ThumbnailReady() aError == %d", aError );
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_THUMBNAILREADY, "CThumbAGProcessor::ThumbnailReady;aError=%d", aError );
     
     iActiveCount--;
     
@@ -513,6 +545,7 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
     if( aError == KErrServerTerminated )
         {
         TN_DEBUG1( "CThumbAGProcessor::ThumbnailReady() - **** THUMBNAIL SERVER DIED ****" );
+		OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_THUMBNAILREADY, "CThumbAGProcessor::ThumbnailReady - **** THUMBNAIL SERVER DIED ****" );
 		
         iSessionDied = ETrue;
         
@@ -524,13 +557,14 @@ void CThumbAGProcessor::ThumbnailReady( TInt aError, MThumbnailData& /*aThumbnai
         //reset PS idle so that RunL() can startup reopen TNM session and proceed
         TInt ret = RProperty::Set(KServerIdle, KIdle, ETrue);
         TN_DEBUG2( "CThumbAGProcessor::ThumbnailReady() set Idle ret = %d", ret );
-        
+        OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_THUMBNAILREADY, "CThumbAGProcessor::ThumbnailReady - set Idle ret;ret=%d", ret );
         return;
         }
     
     ActivateAO();
 	
     TN_DEBUG1( "CThumbAGProcessor::ThumbnailReady() - end" );
+    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_THUMBNAILREADY, "CThumbAGProcessor::ThumbnailReady - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -543,6 +577,7 @@ void CThumbAGProcessor::ThumbnailRequestReady( TInt /*aError*/, TThumbnailReques
     if (aRequestType == ERequestDeleteThumbnails)
         {
         TN_DEBUG1( "CThumbAGProcessor::ThumbnailRequestReady() - delete" );
+        OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_THUMBNAILREQUESTREADY, "CThumbAGProcessor::ThumbnailRequestReady - delete" );
     
         iActiveCount--;
         
@@ -557,6 +592,7 @@ void CThumbAGProcessor::ThumbnailRequestReady( TInt /*aError*/, TThumbnailReques
 void CThumbAGProcessor::SetMdESessionL( CMdESession* aMdESession )
     {
     TN_DEBUG1( "CThumbAGProcessor::SetMdESession() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_SETMDESESSIONL, "CThumbAGProcessor::SetMdESessionL - begin" );
     
     iMdESession = aMdESession;
     
@@ -566,6 +602,7 @@ void CThumbAGProcessor::SetMdESessionL( CMdESession* aMdESession )
     if (err != KErrNone)
         {
         TN_DEBUG2( "CThumbAGProcessor::SetMdESession() GetDefaultNamespaceDefL() err = %d", err );
+        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_SETMDESESSIONL, "CThumbAGProcessor::SetMdESessionL;err=%d", err );
         __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::SetMdESession() !iDefNamespace "), KErrBadHandle));
         }
     else
@@ -595,7 +632,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                                     TBool /*aPresent*/ )
     {
     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - begin" );
-    
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - begin" );
 
     // update queues
     if (aType == ENotifyAdd)
@@ -621,10 +658,12 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
     else if (aType == ENotifyModify)
         {
         TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyModify" );
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - ENotifyModify" );
         
         if(iPHHarvesting)
             {        
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - PH  harvesting active, treat like add" );
+            OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - PH  harvesting active, treat like add" );
             for (int i=0; i<aIDArray.Count(); i++)
                 {
                 TThumbnailGenerationItem item;
@@ -636,12 +675,13 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                 if (itemIndex >= 0)
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - set as non-placeholder");
+                    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - set as non-placeholder" );
                     iGenerationQueue[itemIndex].iPlaceholder = EFalse;
                     }
                 else
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append");
-
+                    OstTrace0( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - append" );
                      item.iPlaceholder = EFalse;
                      SetGenerationItemAction( item, aItemType );
                      AppendProcessingQueue( item );
@@ -651,6 +691,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         else
             {
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - PH  harvesting finished, check is real modify!" );
+            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - PH  harvesting finished, check is real modify!" );
             
             TInt itemIndex(KErrNotFound);
             
@@ -667,11 +708,13 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                     if( iGenerationQueue[itemIndex].iPlaceholder )
                         {
                         TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - placeholder modify");
+                        OstTrace0( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - placeholder modify" );
                         iGenerationQueue[itemIndex].iPlaceholder = EFalse;
                         }
                     else
                         {
                         TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - real modify");
+                        OstTrace0( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - real modify" );
                         iGenerationQueue[itemIndex].iItemAction = EGenerationItemActionModify;
                         SetForceRun( ETrue );
                         }
@@ -679,6 +722,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                 else
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append");
+                    OstTrace0( TRACE_NORMAL, DUP8_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - append" );
                     SetGenerationItemAction( item, aItemType);
                     item.iPlaceholder = EFalse;
                     AppendProcessingQueue( item );
@@ -689,6 +733,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
         else if (aType == ENotifyRemove && aItemType == EGenerationItemTypeAny)
             {
             TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - ENotifyRemove, remove IDs from all queues");
+            OstTrace0( TRACE_NORMAL, DUP9_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - ENotifyRemove, remove IDs from all queues" );
             
             for (int i=0; i<aIDArray.Count(); i++)
                 {
@@ -717,6 +762,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                 else
                     {
                     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - append");
+                    OstTrace0( TRACE_NORMAL, DUP10_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - append" );
                     item.iItemAction = EGenerationItemActionDelete;
                     delete item.iUri;
                     item.iUri = NULL;
@@ -734,12 +780,14 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                     }
                 
                 TN_DEBUG2( "CThumbAGProcessor::AddToQueueL() - %S", aObjectUriArray[i]); 
+                OstTraceExt1( TRACE_NORMAL, DUP11_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL;aObjectUriArray[i]=%S", *aObjectUriArray[i] );
                 }
             }
 #ifdef _DEBUG
         else
             {
 	        TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() -  should not come here" );
+	        OstTrace0( TRACE_NORMAL, DUP12_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL -  should not come here" );
 	        __ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbAGProcessor::AddToQueueL()"), KErrArgument));
 	        User::Leave( KErrArgument );
             }
@@ -748,6 +796,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
     ActivateAO(); 
     
     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP13_CTHUMBAGPROCESSOR_ADDTOQUEUEL, "CThumbAGProcessor::AddToQueueL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -757,6 +806,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
 void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
     {
     TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL - begin" );
     
     __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::CreateThumbnailsL() !iTMSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::CreateThumbnailsL() !iDefNamespace "), KErrBadHandle));
@@ -795,9 +845,11 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             {
             //generate both if needed
             TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() EOptimizeForQuality ");
+            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL - EOptimizeForQuality" );
             iTMSession->SetQualityPreferenceL( CThumbnailManager::EOptimizeForQuality );
             
             TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 2nd round add remove from queue", aObject->Id() );
+            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL - 2nd round add remove from queue;aObject->Id()=%u", aObject->Id() );
                         
             TThumbnailGenerationItem item;
             item.iItemId = aObject->Id();
@@ -816,10 +868,12 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             {
             //1st round
             TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() EOptimizeForQualityWithPreview");
+            OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL - EOptimizeForQualityWithPreview" );
             iTMSession->SetQualityPreferenceL( CThumbnailManager::EOptimizeForQualityWithPreview );
             
             // add item to 2nd round queue 
             TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL() - 1st round add/modify, append to 2nd round queue", aObject->Id() );
+            OstTrace1( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL - 1st round add/modify, append to 2nd round queue;aObject->Id()=%u", aObject->Id() );
             
             TThumbnailGenerationItem item;
             item.iItemId = aObject->Id();
@@ -850,6 +904,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
         if ( err != KErrNone )
             {
             TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL, iTMSession error == %d", err );
+            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL" );
             
             iSessionDied = ETrue;
             ActivateAO();
@@ -865,6 +920,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
         }
         
     TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_CREATETHUMBNAILSL, "CThumbAGProcessor::CreateThumbnailsL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -874,6 +930,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
 void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGenerationItemAction aAction  )
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_QUERYL, "CThumbAGProcessor::QueryL - begin" );
     
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryL() !iMdeSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryL() !iDefNamespace "), KErrBadHandle));
@@ -900,7 +957,7 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
     TInt maxCount = iGenerationQueue.Count();
         
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill begin iGenerationQueue == %d, iQueryQueue == %d", iGenerationQueue.Count(), iQueryQueue.Count() );
-    
+    OstTraceExt2( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_QUERYL, "CThumbAGProcessor::QueryL -  - fill begin iGenerationQueue, iQueryQueue;iGenerationQueue.Count()=%d;iQueryQueue.Count()=%d", iGenerationQueue.Count(), iQueryQueue.Count() );
     
     TInt itemCount(0);
     for(TInt i=0; itemCount < KMaxQueryItems && i < maxCount; i++)
@@ -941,6 +998,7 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
         if( itemIndex >= 0 )
             {
             TN_DEBUG2( "CThumbAGProcessor::QueryL() - fill %d", iGenerationQueue[itemIndex].iItemId );        
+            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_QUERYL, "CThumbAGProcessor::QueryL - fill;iGenerationQueue[itemIndex].iItemId=%u", iGenerationQueue[itemIndex].iItemId );
             iQueryQueue.InsertInOrder(iGenerationQueue[itemIndex].iItemId, CompareId);
             itemCount++;
             }
@@ -949,12 +1007,14 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
     if(!itemCount)
         {
         TN_DEBUG1( "CThumbAGProcessor::QueryL() - empty query, cancel?!");
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_QUERYL, "CThumbAGProcessor::QueryL - empty query, cancel?!" );
         iQueryActive = EFalse;
         __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryL() empty! "), KErrNotFound));
         return;
         }
     
     TN_DEBUG3( "CThumbAGProcessor::QueryL() - fill end iGenerationQueue == %d, iQueryQueue == %d", iGenerationQueue.Count(), iQueryQueue.Count() );
+    OstTraceExt2( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_QUERYL, "CThumbAGProcessor::QueryL;iGenerationQueue.Count()=%d;iQueryQueue.Count()=%d", iGenerationQueue.Count(), iQueryQueue.Count() );
     
     CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );
     iQuery = iMdESession->NewObjectQueryL( *iDefNamespace, objDef, this );
@@ -995,8 +1055,13 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
     
 	    iQuery->FindL();
 		}
+	else
+	    {
+        iQueryActive = EFalse;
+	    }
     
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_QUERYL, "CThumbAGProcessor::QueryL - end" );
     }
 
 
@@ -1008,6 +1073,7 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
 void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_QUERYPLACEHOLDERSL, "CThumbAGProcessor::QueryPlaceholdersL" );
     
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iMdeSession "), KErrBadHandle));
     __ASSERT_DEBUG((iDefNamespace), User::Panic(_L("CThumbAGProcessor::QueryPlaceholdersL() !iDefNamespace "), KErrBadHandle));
@@ -1022,6 +1088,7 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
         if( !iQueryPlaceholders->IsComplete() )
             {
             TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL active- skip" );
+            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_QUERYPLACEHOLDERSL, "CThumbAGProcessor::QueryPlaceholdersL - skip" );
             return;
             }
         
@@ -1032,6 +1099,7 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
         }
    
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - start" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_QUERYPLACEHOLDERSL, "CThumbAGProcessor::QueryPlaceholdersL - start" );
 
     CMdEObjectDef& imageObjDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
     CMdEObjectDef& videoObjDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
@@ -1062,12 +1130,13 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
         audioPHObjectCondition.SetPlaceholderOnly( ETrue );
         audioPHObjectCondition.SetNotPresent( aPresent );
         
-        iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryBatchSize);   
+        iQueryPlaceholders->FindL(KMdEQueryDefaultMaxCount, KMaxQueryBatchSize);   
        
         CleanupStack::Pop(3, &imagePHObjectCondition );
         }
 	
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - end" );
+    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_QUERYPLACEHOLDERSL, "CThumbAGProcessor::QueryPlaceholdersL - end" );
     }
 
 
@@ -1078,16 +1147,19 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
 void CThumbAGProcessor::RunL()
     {
     TN_DEBUG1( "CThumbAGProcessor::RunL() - begin" );
+	OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - begin" );
 	
 	if(iShutdown)
 		{
         TN_DEBUG1( "CThumbAGProcessor::RunL() - shutdown" );
+		OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - shutdown" );
 		return;
 		}
     
     if (iSessionDied)
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - iSessionDied" );
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - iSessionDied" );
         delete iTMSession;
         iTMSession = NULL;
         }
@@ -1095,6 +1167,7 @@ void CThumbAGProcessor::RunL()
     if (iInit)
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - Do Initialisation 1" );
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - Do Initialisation 1" );
         
         iInit = EFalse;
         iInit2 = ETrue;
@@ -1107,6 +1180,7 @@ void CThumbAGProcessor::RunL()
 		//query all items after PH query
         iDoQueryAllItems = ETrue;
         TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation 1 done" );
+        OstTrace0( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - Initialisation 1 done" );
         ActivateAO();
         return;
         }
@@ -1114,26 +1188,32 @@ void CThumbAGProcessor::RunL()
     if(iInit2)
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - Do Initialisation 2" );
+		OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - Do Initialisation 2" );
 		
         iInit2 = EFalse;
         TInt err(KErrNone);
         
 #ifdef  MDS_MODIFY_OBSERVER        
         TN_DEBUG1( "CThumbAGProcessor::RunL() do iHarvesterClient connect");
+        OstTrace0( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - do iHarvesterClient connect" );
         err = iHarvesterClient.Connect();
         TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient connect err = %d", err);
+        OstTrace1( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - iHarvesterClient connect;err=%d", err );
         
         __ASSERT_DEBUG((err == KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), !iHarvesterClient "), err));
         
         if(  err == KErrNone )
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer");
+            OstTrace0( TRACE_NORMAL, DUP8_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - add iHarvesterClient observer" );
             err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypeMMC | EHEObserverTypePlaceholder, 20 );
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
+            OstTrace1( TRACE_NORMAL, DUP9_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - iHarvesterClient observer;err=%d", err );
             
             if( !err )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer failed");
+                OstTrace0( TRACE_NORMAL, DUP10_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - add iHarvesterClient observer failed" );
                 // if we fail observer harvester, fake it
                 iHarvesterActivated = ETrue;
                 }
@@ -1142,8 +1222,10 @@ void CThumbAGProcessor::RunL()
 #endif
  
         TN_DEBUG1( "CThumbAGProcessor::RunL() MMPXCollectionUtility");
+        OstTrace0( TRACE_NORMAL, DUP11_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - MMPXCollectionUtility");
         TRAP( err, iCollectionUtility = MMPXCollectionUtility::NewL( this, KMcModeIsolated ));
         TN_DEBUG2( "CThumbAGProcessor::RunL() create MMPXCollectionUtility err = %d", err);
+        OstTrace1( TRACE_NORMAL, DUP12_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - create MMPXCollectionUtility err;err=%d", err );
         __ASSERT_DEBUG((iCollectionUtility), User::Panic(_L("CThumbAGProcessor::RunL(), !iCollectionUtility "), err));
         
         __ASSERT_DEBUG((iActivityManager), User::Panic(_L("CThumbAGProcessor::RunL(), !iActivityManager "), KErrBadHandle));
@@ -1153,6 +1235,7 @@ void CThumbAGProcessor::RunL()
             }
         
         TN_DEBUG1( "CThumbAGProcessor::RunL() - Initialisation 2 done" );
+        OstTrace0( TRACE_NORMAL, DUP13_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - Initialisation 2 done" );
         return;
         }
     
@@ -1160,6 +1243,7 @@ void CThumbAGProcessor::RunL()
     if (!iTMSession)
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - open TNM session");
+        OstTrace0( TRACE_NORMAL, DUP14_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL" );
         TRAPD( err, iTMSession = CThumbnailManager::NewL( *this ) );
 		
         if (err != KErrNone)
@@ -1167,6 +1251,7 @@ void CThumbAGProcessor::RunL()
             iTMSession = NULL;
             ActivateAO();
             TN_DEBUG2( "CThumbAGProcessor::RunL() - Session restart failed, error == %d", err );
+            OstTrace1( TRACE_NORMAL, DUP15_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - Session restart failed, error;err=%d", err );
             }        
         else 
             {
@@ -1179,6 +1264,7 @@ void CThumbAGProcessor::RunL()
     if(iActiveCount >= KMaxDaemonRequests)
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - waiting for previous to complete, abort..." );
+        OstTrace0( TRACE_NORMAL, DUP16_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - waiting for previous to complete, abort..." );
         return;
         }
     
@@ -1187,17 +1273,20 @@ void CThumbAGProcessor::RunL()
 	if( iForegroundRun )
 		{
       	TN_DEBUG1( "void CThumbAGProcessor::RunL() KForceBackgroundGeneration enabled");
+	  	OstTrace0( TRACE_NORMAL, DUP17_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - KForceBackgroundGeneration enabled" );
 	  	}
 	
     if( iForceRun )
         {
         TN_DEBUG1( "CThumbAGProcessor::RunL() - *** FORCED RUN ***");
+        OstTrace0( TRACE_NORMAL, DUP18_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - *** FORCED RUN ***" );
         }
 #endif
 	
   	if( (iForceRun || iForegroundRun ) && !iMountTimer->IsActive() )
       	{
         TN_DEBUG1( "void CThumbAGProcessor::RunL() skip idle detection!");
+      	OstTrace0( TRACE_NORMAL, DUP19_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - skip idle detection!" );
       	CancelTimeout();
      	}
   	else
@@ -1205,6 +1294,7 @@ void CThumbAGProcessor::RunL()
         if( !iIdle || iHarvesting || iMPXHarvesting || iPeriodicTimer->IsActive() )
             {
             TN_DEBUG1( "void CThumbAGProcessor::RunL() device not idle");
+            OstTrace0( TRACE_NORMAL, DUP20_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - device not idle" );
             return;
             }
         else
@@ -1217,10 +1307,12 @@ void CThumbAGProcessor::RunL()
                 {
             	//start inactivity timer and retry on after callback
             	TN_DEBUG1( "void CThumbAGProcessor::RunL() server not idle");
+                OstTrace0( TRACE_NORMAL, DUP21_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - server not idle" );
                 StartTimeout();
                 return;
                 }
             TN_DEBUG1( "void CThumbAGProcessor::RunL() device and server idle, process");
+            OstTrace0( TRACE_NORMAL, DUP22_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - device and server idle, process" );
             }
 	    }
     
@@ -1234,6 +1326,7 @@ void CThumbAGProcessor::RunL()
         if(((iForceRun && iModify ) || (!iForceRun && !iModify )) && !iUnknownItemCount && !iMountTimer->IsActive())
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() - iQueryReady START" );
+            OstTrace0( TRACE_NORMAL, DUP23_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - iQueryReady START" );
             
             const CMdEObject* object = &iQuery->Result( iProcessingCount-1 );
             iProcessingCount--;
@@ -1251,6 +1344,7 @@ void CThumbAGProcessor::RunL()
             
                 TRAP( err, CreateThumbnailsL( object ) );
                 TN_DEBUG2( "CThumbAGProcessor::RunL(), CreateThumbnailsL error == %d", err );
+                OstTrace1( TRACE_NORMAL, DUP24_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - CreateThumbnailsL error;err=%d", err );
                 __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGProcessor::RunL(), CreateThumbnailsL() "), err));
                 }
             }
@@ -1259,6 +1353,7 @@ void CThumbAGProcessor::RunL()
             {
 			//cancel query
             TN_DEBUG1( "CThumbAGProcessor::RunL() - cancel processing query" );
+            OstTrace0( TRACE_NORMAL, DUP25_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - cancel processing query" );
             DeleteAndCancelQuery( ETrue );
 	        ActivateAO();
             return;  
@@ -1268,6 +1363,7 @@ void CThumbAGProcessor::RunL()
         if( iProcessingCount <= 0 )
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() - iQueryReady FINISH" );
+            OstTrace0( TRACE_NORMAL, DUP26_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - iQueryReady FINISH" );
             iQueryReady = EFalse;
             iQueryActive = EFalse;
             }
@@ -1287,11 +1383,13 @@ void CThumbAGProcessor::RunL()
         else  
             {
             TN_DEBUG1( "CThumbAGProcessor::RunL() - waiting for query to complete, abort..." );
+            OstTrace0( TRACE_NORMAL, DUP27_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - waiting for query to complete, abort..." );
             }    
         }
     else if ( iUnknownItemCount > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() unknown items in queue");
+        OstTrace0( TRACE_NORMAL, DUP28_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - unknown items in queue" );
         
         i2ndRound = EFalse;
         iModify = EFalse;
@@ -1303,6 +1401,7 @@ void CThumbAGProcessor::RunL()
     else if ( iDeleteItemCount > 0 )
        {
        TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
+       OstTrace0( TRACE_NORMAL, DUP29_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - delete thumbnails" );
        // delete thumbs by URI
        __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
        if(iTMSession)
@@ -1323,12 +1422,14 @@ void CThumbAGProcessor::RunL()
                    {
                    //URI is invalid
                    TN_DEBUG1( "void CThumbAGProcessor::RunL() unable to delete URI inbalid");
+                   OstTrace0( TRACE_NORMAL, DUP30_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - unable to delete URI inbalid" );
                    iGenerationQueue.Remove( itemIndex );
                    ActivateAO();
                    return;
                    }
 
                TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  iGenerationQueue[itemIndex].iUri);
+               OstTraceExt1( TRACE_NORMAL, DUP31_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL;iGenerationQueue[itemIndex].iUri=%S", *iGenerationQueue[itemIndex].iUri );
                CThumbnailObjectSource* source = NULL;                
                TRAPD(err,  source = CThumbnailObjectSource::NewL( *iGenerationQueue[itemIndex].iUri, KNullDesC));
                   
@@ -1351,6 +1452,7 @@ void CThumbAGProcessor::RunL()
     else if ( iModifyItemCount > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update thumbnails");
+        OstTrace0( TRACE_NORMAL, DUP32_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - update thumbnails" );
         
         i2ndRound = EFalse;
         
@@ -1363,6 +1465,7 @@ void CThumbAGProcessor::RunL()
     else if ( iAddItemCount > 0 )
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update 1st round thumbnails");
+        OstTrace0( TRACE_NORMAL, DUP33_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - update 1st round thumbnails" );
         
         i2ndRound = EFalse;
         iUnknown = EFalse;
@@ -1374,6 +1477,7 @@ void CThumbAGProcessor::RunL()
     else if( i2ndAddItemCount > 0)
         {
         TN_DEBUG1( "void CThumbAGProcessor::RunL() update 2nd round thumbnails");
+            OstTrace0( TRACE_NORMAL, DUP34_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - update 2nd round thumbnails" );
             
         // query for object info
         iQueryActive = ETrue;
@@ -1383,6 +1487,7 @@ void CThumbAGProcessor::RunL()
         }
         
     TN_DEBUG1( "CThumbAGProcessor::RunL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP35_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -1392,10 +1497,12 @@ void CThumbAGProcessor::RunL()
 void CThumbAGProcessor::DeleteAndCancelQuery(TBool aRestoreItems)
     {
     TN_DEBUG2( "CThumbAGProcessor::DeleteAndCancelQuery(aRestoreItems = %d) in", aRestoreItems );
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_DELETEANDCANCELQUERY, "CThumbAGProcessor::DeleteAndCancelQuery;aRestoreItems=%d", aRestoreItems );
     
     if(iQuery)
         {
         TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() - deleting query" );
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_DELETEANDCANCELQUERY, "CThumbAGProcessor::DeleteAndCancelQuery - deleting query" );
         iQuery->Cancel();
         delete iQuery;
         iQuery = NULL;
@@ -1425,6 +1532,7 @@ void CThumbAGProcessor::DeleteAndCancelQuery(TBool aRestoreItems)
         }
 
     TN_DEBUG1( "CThumbAGProcessor::DeleteAndCancelQuery() out" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_DELETEANDCANCELQUERY, "CThumbAGProcessor::DeleteAndCancelQuery - out" );
     }
 
 // ---------------------------------------------------------------------------
@@ -1442,6 +1550,7 @@ void CThumbAGProcessor::HarvestingUpdated(
          TInt aItemsLeft )
     {
     TN_DEBUG4( "CThumbAGProcessor::HarvestingUpdated -- start() aHEObserverType = %d, aHarvesterEventState = %d, aItemsLeft = %d", aHEObserverType, aHarvesterEventState, aItemsLeft );
+    OstTraceExt3( TRACE_NORMAL, CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated;aHEObserverType=%u;aHarvesterEventState=%u;aItemsLeft=%d", aHEObserverType, aHarvesterEventState, aItemsLeft );
     
 	if(iShutdown)
         {
@@ -1457,14 +1566,17 @@ void CThumbAGProcessor::HarvestingUpdated(
     if( aHEObserverType == EHEObserverTypePlaceholder)
         {
         TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypePlaceholder");
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypePlaceholder" );
         }
     else if( aHEObserverType == EHEObserverTypeOverall)
         {
         TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeOverall");
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeOverall" );
         }
     else if( aHEObserverType == EHEObserverTypeMMC)
         {
         TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeMMC");
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- type EHEObserverTypeMMC" );
         }
     #endif
     
@@ -1496,10 +1608,12 @@ void CThumbAGProcessor::HarvestingUpdated(
             if( iPHHarvesting )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesterin started");
+                OstTrace0( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesterin starteds" );
                 }
             else
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesting finished");
+                OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesting finished" );
                 //query present placeholders
                 TRAP_IGNORE(QueryPlaceholdersL( EFalse ));
                 iDoQueryAllItems = EFalse;
@@ -1512,6 +1626,7 @@ void CThumbAGProcessor::HarvestingUpdated(
           {
           //if items count increasing, restart mount timeout 
             TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- PH count increasing, restart mount timeout");
+            OstTrace0( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- PH count increasing, restart mount timeout" );
             
            if(iMountTimer->IsActive())
               {
@@ -1555,11 +1670,13 @@ void CThumbAGProcessor::HarvestingUpdated(
             if( iHarvesting )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS harvesting started");
+                OstTrace0( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MDS harvesting started" );
                 CancelTimeout();
                 }
             else
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS harvesting finished ");
+                OstTrace0( TRACE_NORMAL, DUP8_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MDS harvesting finished" );
                 // continue processing if needed
                 StartTimeout();
                 
@@ -1598,6 +1715,7 @@ void CThumbAGProcessor::HarvestingUpdated(
             if( iMMCHarvesting )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesterin started");
+                OstTrace0( TRACE_NORMAL, DUP9_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesterin started" );
                 UpdatePSValues(EFalse, ETrue);
                 iMMCHarvestingItemsLeftTemp = 0;
                 }
@@ -1609,6 +1727,7 @@ void CThumbAGProcessor::HarvestingUpdated(
                     StartTimeout();
                     }
                 TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesting finished ");
+                OstTrace0( TRACE_NORMAL, DUP10_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MDS MMC harvesting finished" );
                 }
             }
         
@@ -1616,6 +1735,7 @@ void CThumbAGProcessor::HarvestingUpdated(
         if(iMMCHarvesting && aItemsLeft > iMMCHarvestingItemsLeftTemp)
             {
               TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MMC count increasing, restart mount timeout");
+              OstTrace0( TRACE_NORMAL, DUP11_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated -- MMC count increasing, restart mount timeout" );
               
              if(iMountTimer->IsActive())
                 {
@@ -1629,6 +1749,7 @@ void CThumbAGProcessor::HarvestingUpdated(
         }
    
     TN_DEBUG4( "CThumbAGProcessor::HarvestingUpdated -- end() iHarvesting == %d, iPHHarvesting == %d iMMCHarvesting == %d ", iHarvesting, iPHHarvesting, iMMCHarvesting);
+    OstTraceExt3( TRACE_NORMAL, DUP12_CTHUMBAGPROCESSOR_HARVESTINGUPDATED, "CThumbAGProcessor::HarvestingUpdated;iHarvesting=%u;iPHHarvesting=%u;iMMCHarvesting=%u", iHarvesting, iPHHarvesting, iMMCHarvesting );
     }
 
 // ---------------------------------------------------------------------------
@@ -1638,6 +1759,7 @@ void CThumbAGProcessor::HarvestingUpdated(
 void CThumbAGProcessor::StartTimeout()
     {
     TN_DEBUG1( "CThumbAGProcessor::StartTimeout()");
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_STARTTIMEOUT, "CThumbAGProcessor::StartTimeout" );
     CancelTimeout();
     
     if(!iHarvesting && !iMPXHarvesting && !iPeriodicTimer->IsActive() && !iShutdown)
@@ -1654,6 +1776,7 @@ void CThumbAGProcessor::StartTimeout()
 void CThumbAGProcessor::CancelTimeout()
     {
     TN_DEBUG1( "CThumbAGProcessor::CancelTimeout()");
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_CANCELTIMEOUT, "CThumbAGProcessor::CancelTimeout" );
     if(iPeriodicTimer->IsActive())
         {
         iPeriodicTimer->Cancel();
@@ -1671,7 +1794,11 @@ TInt CThumbAGProcessor::RunError(TInt /*aError*/)
 #endif
     {
     TN_DEBUG2( "CThumbAGrocessor::RunError() %d", aError);
-    
+#ifdef _DEBUG
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_RUNERROR, "CThumbAGProcessor::RunError;aError=%d", aError );
+#else
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_RUNERROR, "CThumbAGProcessor::RunError");
+#endif    
     UpdatePSValues(EFalse, EFalse);
         
     iActiveCount--;
@@ -1693,6 +1820,7 @@ void CThumbAGProcessor::ActivateAO()
     if(iFormatting)
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - FORMATTING - DAEMON ON PAUSE");
+        OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_ACTIVATEAO, "CThumbAGProcessor::ActivateAO - FORMATTING - DAEMON ON PAUSE" );
         return;
         }
     
@@ -1700,6 +1828,7 @@ void CThumbAGProcessor::ActivateAO()
     if ( (iModifyItemCount > 0 || iDeleteItemCount > 0 ||  iUnknownItemCount > 0) && !iMountTimer->IsActive())
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() -  forced run");
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_ACTIVATEAO, "CThumbAGProcessor::ActivateAO - iModifyItemCount > 0 || iUnknownItemCount > 0 || iDeleteItemCount > 0" );
         SetForceRun( ETrue );
         }
     else
@@ -1711,6 +1840,7 @@ void CThumbAGProcessor::ActivateAO()
     if( !IsActive() && !iShutdown && ((iActiveCount < KMaxDaemonRequests && !iQueryActive) || iForceRun ))
         {
         TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - Activated");
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_ACTIVATEAO, "CThumbAGProcessor::ActivateAO - Activated" );
         SetActive();
         TRequestStatus* statusPtr = &iStatus;
         User::RequestComplete( statusPtr, KErrNone );
@@ -1726,6 +1856,7 @@ void CThumbAGProcessor::ActivateAO()
 TInt CThumbAGProcessor::PeriodicTimerCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbAGProcessor::PeriodicTimerCallBack()");
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_PERIODICTIMERCALLBACK, "CThumbAGProcessor::PeriodicTimerCallBack" );
     CThumbAGProcessor* self = static_cast<CThumbAGProcessor*>( aAny );
     
     self->CancelTimeout();
@@ -1755,22 +1886,31 @@ void CThumbAGProcessor::CheckAutoCreateValuesL()
     // get cenrep values
     TInt ret = rep->Get( KAutoCreateImageGrid, imageGrid );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateImageGrid %d", ret);
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateImageGrid;ret=%d", ret );
     ret = rep->Get( KAutoCreateImageList, imageList );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateImageList %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateImageList;ret=%d", ret );
     ret = rep->Get( KAutoCreateImageFullscreen, imageFull );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateImageFullscreen %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL;ret=%d", ret );
     ret = rep->Get( KAutoCreateVideoGrid, videoGrid );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateVideoGrid %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateVideoGrid;ret=%d", ret );
     ret = rep->Get( KAutoCreateVideoList, videoList );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateVideoList %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateVideoList;ret=%d", ret );
     ret = rep->Get( KAutoCreateVideoFullscreen, videoFull );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateVideoFullscreen %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateVideoFullscreen;ret=%d", ret );
     ret = rep->Get( KAutoCreateAudioGrid, audioGrid );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateAudioGrid %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateAudioGrid;ret=%d", ret );
     ret = rep->Get( KAutoCreateAudioList, audioList );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateAudioList %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateAudioList;ret=%d", ret );
     ret = rep->Get( KAutoCreateAudioFullscreen, audioFull );
     TN_DEBUG2( "CThumbAGProcessor::CheckAutoCreateValuesL() KAutoCreateAudioFullscreen %d", ret);
+    OstTrace1( TRACE_NORMAL, DUP8_CTHUMBAGPROCESSOR_CHECKAUTOCREATEVALUESL, "CThumbAGProcessor::CheckAutoCreateValuesL - KAutoCreateAudioFullscreen;ret=%d", ret );
     
     iAutoImage = EFalse;
     iAutoVideo = EFalse;
@@ -1804,6 +1944,11 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
 #endif
     {
     TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() aRemoveFromDelete == %d - begin", aRemoveFromDelete );
+#ifdef _DEBUG
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_REMOVEFROMQUEUES, "CThumbAGProcessor::RemoveFromQueues - aRemoveFromDelete;aRemoveFromDelete=%d", aRemoveFromDelete );
+#else
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_REMOVEFROMQUEUES, "CThumbAGProcessor::RemoveFromQueues - aRemoveFromDelete" );
+#endif
     
     TInt itemIndex(KErrNotFound);
     
@@ -1812,6 +1957,7 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
         TThumbnailGenerationItem item;
         item.iItemId = aIDArray[i];
         TN_DEBUG2( "CThumbAGProcessor::RemoveFromQueues() - %d", aIDArray[i]);
+        OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_REMOVEFROMQUEUES, "CThumbAGProcessor::RemoveFromQueues;aIDArray[i]=%u", aIDArray[i] );
 
         itemIndex = iGenerationQueue.FindInOrder(item, Compare);                        
         if(itemIndex >= 0)
@@ -1820,6 +1966,7 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
             iGenerationQueue[itemIndex].iUri = NULL;
             iGenerationQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iGenerationQueue" );
+            OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_REMOVEFROMQUEUES, "CThumbAGProcessor::RemoveFromQueues - iGenerationQueue" );
             }
                 
         itemIndex = iQueryQueue.FindInOrder(aIDArray[i], CompareId);                    
@@ -1827,12 +1974,14 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
             {
             iQueryQueue.Remove(itemIndex);
             TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - iQueryQueue" );
+            OstTrace0( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_REMOVEFROMQUEUES, "CThumbAGProcessor::RemoveFromQueues - iQueryQueue" );
             }
         }
     
     ActivateAO();
     
     TN_DEBUG1( "CThumbAGProcessor::RemoveFromQueues() - end" );
+    OstTrace0( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_REMOVEFROMQUEUES, "CThumbAGProcessor::RemoveFromQueues - end" );
     }
 	
 // ---------------------------------------------------------------------------
@@ -1842,6 +1991,7 @@ void CThumbAGProcessor::RemoveFromQueues( const RArray<TItemId>& aIDArray, const
 void CThumbAGProcessor::SetForceRun( const TBool aForceRun)
     {
     TN_DEBUG2( "CThumbAGProcessor::SetForceRun(%d) - end", aForceRun ); 
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_SETFORCERUN, "CThumbAGProcessor::SetForceRun - end;aForceRun=%u", aForceRun );
 
     // enable forced run
     iForceRun = aForceRun;
@@ -1854,6 +2004,7 @@ void CThumbAGProcessor::SetForceRun( const TBool aForceRun)
 void CThumbAGProcessor::QueryAllItemsL()
     {
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL" );
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_QUERYALLITEMSL, "CThumbAGProcessor::QueryAllItemsL" );
     
     __ASSERT_DEBUG((iMdESession), User::Panic(_L("CThumbAGProcessor::QueryAllItemsL() !iMdeSession "), KErrBadHandle));
     
@@ -1867,6 +2018,7 @@ void CThumbAGProcessor::QueryAllItemsL()
         if( !iQueryAllItems->IsComplete() )
             {
             TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL active- skip" );
+            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_QUERYALLITEMSL, "CThumbAGProcessor::QueryAllItemsL - active- skip" );
             return;
             }
         
@@ -1877,6 +2029,7 @@ void CThumbAGProcessor::QueryAllItemsL()
         }
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - start" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_QUERYALLITEMSL, "CThumbAGProcessor::QueryAllItemsL -start" );
     
     CMdEObjectDef& imageObjDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
     CMdEObjectDef& videoObjDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
@@ -1899,11 +2052,12 @@ void CThumbAGProcessor::QueryAllItemsL()
     CMdEObjectCondition& audioObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
 	CleanupStack::PushL( &audioObjectCondition );
     
-    iQueryAllItems->FindL(KMaxTInt, KMaxQueryBatchSize);  
+    iQueryAllItems->FindL(KMdEQueryDefaultMaxCount, KMaxQueryBatchSize);  
 	
 	CleanupStack::Pop(3, &imageObjectCondition);
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - end" );
+    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_QUERYALLITEMSL, "CThumbAGProcessor::QueryAllItemsL" );
     }
 
 // -----------------------------------------------------------------------------
@@ -1922,6 +2076,7 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
     TMPXMessageId generalId( *aMessage->Value<TMPXMessageId>( KMPXMessageGeneralId ) );
     
     TN_DEBUG2( "CThumbAGProcessor::HandleCollectionMessage KMPXMessageGeneralId=%d", generalId);
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_HANDLECOLLECTIONMESSAGE, "CThumbAGProcessor::HandleCollectionMessage - KMPXMessageGeneralId;generalId=%u", generalId );
 
 	//we are interestead of only general system events
     if ( generalId == KMPXMessageGeneral )
@@ -1929,6 +2084,7 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
         TInt event( *aMessage->Value<TInt>( KMPXMessageGeneralEvent ) );
         TInt op( *aMessage->Value<TInt>( KMPXMessageGeneralType ) );
         TN_DEBUG3( "CThumbAGProcessor::HandleCollectionMessage KMPXMessageGeneralEvent=%d", event, op);
+        OstTraceExt2( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_HANDLECOLLECTIONMESSAGE, "CThumbAGProcessor::HandleCollectionMessage - KMPXMessageGeneralEvent;event=%d;op=%d", event, op );
         if ( event == TMPXCollectionMessage::EBroadcastEvent )
             {
             switch( op )
@@ -1937,6 +2093,7 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
                 case EMcMsgRefreshStart:
                 case EMcMsgUSBMTPStart:
                     TN_DEBUG1("CThumbAGProcessor::HandleCollectionMessage MPX refresh started" );
+                    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_HANDLECOLLECTIONMESSAGE, "CThumbAGProcessor::HandleCollectionMessage - MPX refresh started" );
                     iMPXHarvesting = ETrue;
                     CancelTimeout();
                     break;
@@ -1945,6 +2102,7 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
                 case EMcMsgUSBMTPEnd:
                 case EMcMsgUSBMTPNotActive:
                     TN_DEBUG1("CThumbAGProcessor::HandleCollectionMessage MPX refresh finished/not active" );
+                    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_HANDLECOLLECTIONMESSAGE, "CThumbAGProcessor::HandleCollectionMessage - MPX refresh finished/not active" );
                     iMPXHarvesting = EFalse;
                     StartTimeout();
                     break;
@@ -1963,6 +2121,7 @@ void CThumbAGProcessor::HandleCollectionMessage( CMPXMessage* aMessage, TInt aEr
                 }
                 
             TN_DEBUG3( "CThumbAGProcessor::HandleCollectionMessage -- end() iHarvesting == %d, iMPXHarvesting == %d", iHarvesting, iMPXHarvesting);
+            OstTraceExt2( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_HANDLECOLLECTIONMESSAGE, "CThumbAGProcessor::HandleCollectionMessage - end;iHarvesting=%u;iMPXHarvesting=%u", iHarvesting, iMPXHarvesting );
             }
         }
     }
@@ -2008,6 +2167,7 @@ void CThumbAGProcessor::HandleCollectionMediaL( const CMPXMedia& /*aMedia*/,
 void CThumbAGProcessor::ActivityChanged(const TBool aActive)
     {
     TN_DEBUG2( "void CThumbAGProcessor::ActivityChanged() aActive == %d", aActive);
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_ACTIVITYCHANGED, "CThumbAGProcessor::ActivityChanged" );
     if(aActive)
         {
         iIdle = EFalse;
@@ -2032,6 +2192,7 @@ void CThumbAGProcessor::ActivityChanged(const TBool aActive)
 void CThumbAGProcessor::FormatNotification( TBool aFormat )
     {
     TN_DEBUG2( "CThumbAGProcessor::FormatNotification(%d)", aFormat );
+    OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_FORMATNOTIFICATION, "CThumbAGProcessor::FormatNotification;aFormat=%u", aFormat );
     
     iFormatting = aFormat;
     
@@ -2051,6 +2212,7 @@ void CThumbAGProcessor::FormatNotification( TBool aFormat )
 void CThumbAGProcessor::RPropertyNotification(const TInt aError, const TUid aKeyCategory, const TUint aPropertyKey, const TInt aValue)
     {
     TN_DEBUG5( "CThumbAGProcessor::RPropertyNotification() aError = %d, aPropertyKey = %d, aKeyCategory = %d, aValue = %d", aError, aPropertyKey, aKeyCategory, aValue );
+    OstTraceExt2( TRACE_NORMAL, CTHUMBAGPROCESSOR_RPROPERTYNOTIFICATION, "CThumbAGProcessor::RPropertyNotification;aPropertyKey=%u;aValue=%d", aPropertyKey, aValue );
     
     if(aPropertyKey == KForceBackgroundGeneration && aKeyCategory == KTAGDPSNotification )
         {
@@ -2090,6 +2252,7 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine, const TBool aForce)
         if( ret != KErrNone )
             {
             TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() define KDaemonProcessing ret = %d", ret);
+            OstTrace1( TRACE_NORMAL, CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues - define KDaemonProcessing;ret=%d", ret );
             }
 
         ret = RProperty::Define(KTAGDPSNotification, KItemsleft, RProperty::EInt);
@@ -2097,6 +2260,7 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine, const TBool aForce)
         if( ret != KErrNone )
             {
             TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() define KItemsleft ret = %d", ret);
+            OstTrace1( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues - define KItemsleft;ret=%d", ret );
             }
         }
     
@@ -2118,6 +2282,7 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine, const TBool aForce)
            }
        
        TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() KItemsleft == %d", itemsLeft);
+       OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues;itemsLeft=%d", itemsLeft );
            
        //cancel 2nd round generarion when there is items in 1st round queues
        if(iAddItemCount && i2ndRound)
@@ -2138,26 +2303,32 @@ void CThumbAGProcessor::UpdatePSValues(const TBool aDefine, const TBool aForce)
         if( daemonProcessing != iPreviousDaemonProcessing)
             {
             TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() update KDaemonProcessing == %d", daemonProcessing);
+            OstTrace1( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues - update KDaemonProcessing;daemonProcessing=%u", daemonProcessing );
             iPreviousDaemonProcessing = daemonProcessing;
             TInt ret = RProperty::Set(KTAGDPSNotification, KDaemonProcessing, daemonProcessing);
             
             if(ret != KErrNone )
                 {
                 TN_DEBUG3( "CThumbAGProcessor::UpdatePSValues() set KDaemonProcessing %d failed %d", daemonProcessing, ret);
+                OstTraceExt2( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues - set KDaemonProcessing;daemonProcessing=%u;ret=%d", daemonProcessing, ret );
                 }
             }
         
+        TInt ret = RProperty::Get(KTAGDPSNotification, KItemsleft, iPreviousItemsLeft );
         TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() iPreviousItemsLeft == %d", iPreviousItemsLeft);
+        OstTrace1( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues;iPreviousItemsLeft=%d", iPreviousItemsLeft );
         
         if( itemsLeft != iPreviousItemsLeft)
             {
             TN_DEBUG2( "CThumbAGProcessor::UpdatePSValues() Set KItemsleft == %d", itemsLeft);
+            OstTrace1( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues - Set KItemsleft;itemsLeft=%d", itemsLeft );
             iPreviousItemsLeft = itemsLeft;
             TInt ret = RProperty::Set(KTAGDPSNotification, KItemsleft, itemsLeft );
             
             if(ret != KErrNone )
                 {
                 TN_DEBUG3( "CThumbAGProcessor::UpdatePSValues() set KItemsleft %d failed %d", itemsLeft, ret);
+                OstTraceExt2( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_UPDATEPSVALUES, "CThumbAGProcessor::UpdatePSValues - set KItemsleft failed;itemsLeft=%d;ret=%d", itemsLeft, ret );
                 }
             }
         
@@ -2182,6 +2353,7 @@ TInt CThumbAGProcessor::CompareId(const TItemId& aLeft, const TItemId& aRight)
 void CThumbAGProcessor::UpdateItemCounts()
     {
     TN_DEBUG1( "CThumbAGProcessor::UpdateItemCounts()");
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts" );
     iModifyItemCount = 0;
     iDeleteItemCount = 0;
     iAddItemCount = 0;
@@ -2243,24 +2415,43 @@ void CThumbAGProcessor::UpdateItemCounts()
     
     TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iActiveCount = %d", 
             iActiveCount);
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts - iActiveCount;iActiveCount=%u", iActiveCount );
     TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iPreviousItemsLeft = %d", 
             iPreviousItemsLeft);
+    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iPreviousItemsLeft=%d", iPreviousItemsLeft );
     TN_DEBUG5( "CThumbAGProcessor::UpdateItemCounts() iHarvesting == %d, iMMCHarvesting == %d, iPHHarvesting == %d, iMPXHarvesting == %d", 
             iHarvesting, iMMCHarvesting, iPHHarvesting, iMPXHarvesting);
+    OstTraceExt4( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iHarvesting=%d;iMMCHarvesting=%d;iPHHarvesting=%d;iMPXHarvesting=%d", 
+            iHarvesting, iMMCHarvesting, iPHHarvesting, iMPXHarvesting );
+
     TN_DEBUG5( "CThumbAGProcessor::UpdateItemCounts() iIdle = %d, iForegroundRun = %d, timer = %d, iForceRun = %d", 
             iIdle, iForegroundRun, iPeriodicTimer->IsActive(), iForceRun);
+    OstTraceExt4( TRACE_NORMAL, DUP4_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iIdle=%d;iForegroundRun=%d;iPeriodicTimer->IsActive()=%d;iForceRun=%d", 
+            iIdle, iForegroundRun, iPeriodicTimer->IsActive(), iForceRun );
+			
     TN_DEBUG4( "CThumbAGProcessor::UpdateItemCounts() iModify = %d, iQueryReady = %d, iProcessingCount = %d", 
             iModify, iQueryReady, iProcessingCount);
+    OstTraceExt2( TRACE_NORMAL, DUP5_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iModify=%u;iQueryReady=%u", 
+            iModify, iQueryReady );
+    OstTrace1( TRACE_NORMAL, DUP12_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iProcessingCount=%u", iProcessingCount );
     TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iMountTimer = %d", iMountTimer->IsActive());
+    OstTrace1( TRACE_NORMAL, DUP6_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iMountTimer->IsActive()=%u", iMountTimer->IsActive() );
     TN_DEBUG3( "CThumbAGProcessor::UpdateItemCounts() iGenerationQueue = %d, iQueryQueue = %d", 
             iGenerationQueue.Count(), iQueryQueue.Count());
+    OstTraceExt2( TRACE_NORMAL, DUP7_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iGenerationQueue.Count()=%d;iQueryQueue.Count()=%d", iGenerationQueue.Count(), iQueryQueue.Count() );
     TN_DEBUG5( "CThumbAGProcessor::UpdateItemCounts() iAddItemCount=%d, i2ndAddItemCount=%d, iModifyItemCount=%d, iDeleteItemCount=%d",
             iAddItemCount, i2ndAddItemCount, iModifyItemCount, iDeleteItemCount );
+    OstTrace0( TRACE_NORMAL, DUP8_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts" );
     TN_DEBUG3( "CThumbAGProcessor::UpdateItemCounts() iUnknownItemCount=%d, iPlaceholderItemCount=%d",
             iUnknownItemCount, iPlaceholderItemCount);
+    OstTraceExt2( TRACE_NORMAL, DUP9_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iUnknownItemCount=%d;iPlaceholderItemCount=%d", iUnknownItemCount, iPlaceholderItemCount );
     TN_DEBUG4( "CThumbAGProcessor::UpdateItemCounts() iAudioItemCount=%d, iVideoItemCount=%d, iImageItemCount=%d",
             iAudioItemCount, iVideoItemCount, iImageItemCount);
+    OstTraceExt3( TRACE_NORMAL, DUP10_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iAudioItemCount=%u;iVideoItemCount=%d;iImageItemCount=%d", 
+            iAudioItemCount, iVideoItemCount, iImageItemCount );
+			
     TN_DEBUG2( "CThumbAGProcessor::UpdateItemCounts() iCameraItemCount=%d", iCameraItemCount);
+    OstTrace1( TRACE_NORMAL, DUP11_CTHUMBAGPROCESSOR_UPDATEITEMCOUNTS, "CThumbAGProcessor::UpdateItemCounts;iCameraItemCount=%d", iCameraItemCount );
     
     //compress queues when empty
     if(!iGenerationQueue.Count())
@@ -2282,6 +2473,7 @@ void CThumbAGProcessor::UpdateItemCounts()
 TInt CThumbAGProcessor::MountTimerCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbAGProcessor::MountTimerCallBack()");
+    OstTrace0( TRACE_NORMAL, CTHUMBAGPROCESSOR_MOUNTTIMERCALLBACK, "CThumbAGProcessor::MountTimerCallBack" );
     CThumbAGProcessor* self = static_cast<CThumbAGProcessor*>( aAny );
     
     self->iMountTimer->Cancel();
@@ -2316,7 +2508,7 @@ void CThumbAGProcessor::SetGenerationItemAction( TThumbnailGenerationItem& aGene
         case EGenerationItemTypeVideo:
             //S^3 EGenerationItemActionAdd
             //S^4 EGenerationItemAction2ndAdd
-            aGenerationItem.iItemAction = EGenerationItemActionAdd;    
+            aGenerationItem.iItemAction = EGenerationItemAction2ndAdd;    
             break;
         default:
             aGenerationItem.iItemAction = EGenerationItemActionResolveType;

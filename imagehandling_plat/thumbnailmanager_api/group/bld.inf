@@ -29,6 +29,7 @@ PRJ_EXPORTS
 ../inc/thumbnailmanager.h     MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailmanager.h)
 ../inc/thumbnailmanagerobserver.h     MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailmanagerobserver.h)
 ../inc/thumbnailobjectsource.h     MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailobjectsource.h)
+../inc/thumbnailmanager_qt.h    MW_LAYER_PLATFORM_EXPORT_PATH(thumbnailmanager_qt.h)
 
 #endif // RD_THUMBNAILMANAGER
 

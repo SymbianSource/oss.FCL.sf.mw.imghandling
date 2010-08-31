@@ -28,6 +28,11 @@
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailscaletaskTraces.h"
+#endif
+
 
 
 // ======== MEMBER FUNCTIONS ========
@@ -78,6 +83,7 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
     iBitmapToPool(aBitmapToPool), iEXIF(aEXIF), iVirtualUri( aVirtualUri )
     {
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::CThumbnailScaleTask()", this );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSCALETASK_CTHUMBNAILSCALETASK, "CThumbnailScaleTask::CThumbnailScaleTask;this=%o", this );
     
     iRequestId = aRequestId;
     }
@@ -114,6 +120,7 @@ CThumbnailScaleTask::~CThumbnailScaleTask()
     if ( iBitmapInPool && iBitmap )
         {
         TN_DEBUG1("CThumbnailScaleTask()::~CThumbnailScaleTask() delete original bitmap from pool");
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSCALETASK_CTHUMBNAILSCALETASK, "CThumbnailScaleTask::~CThumbnailScaleTask - delete original bitmap from pool" );
         
         // Original bitmap is owned by server, decrease reference count
         iServer.DeleteBitmapFromPool( iBitmap->Handle());
@@ -132,12 +139,14 @@ CThumbnailScaleTask::~CThumbnailScaleTask()
 void CThumbnailScaleTask::StartL()
     {
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL()", this );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL;this=%o", this );
 
     CThumbnailTask::StartL();
 
     if ( !iCrop )
         {
         TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - cropping OFF", this );
+        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL - cropping OFF;this=%o", this );
     
         // target size at max, keep aspect ratio
         CalculateTargetSize();
@@ -145,12 +154,14 @@ void CThumbnailScaleTask::StartL()
     else
         {
         TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - cropping ON", this );
+        OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL - cropping ON;this=%o", this );
     
         // exact target size, crop excess
         CalculateCropRectangle();
         }
     
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - sizes calculated", this );
+    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL - sizes calculated;this=%o", this );
     
 #ifdef _DEBUG
     aStart.UniversalTime();
@@ -165,6 +176,7 @@ void CThumbnailScaleTask::StartL()
     if(bitmapSize.iHeight == iTargetSize.iHeight && bitmapSize.iWidth == iTargetSize.iWidth)
         {
         TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - no need for scaling", this);
+        OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL - no need for scaling;this=%o", this );
     
         // copy bitmap 1:1
         User::LeaveIfError( iScaledBitmap->Create( bitmapSize, iBitmap->DisplayMode() ));
@@ -183,6 +195,7 @@ void CThumbnailScaleTask::StartL()
     else
         {
         TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() - scaling", this);
+        OstTrace1( TRACE_NORMAL, DUP5_CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL - scaling;this=%o", this );
         
         User::LeaveIfError( iScaledBitmap->Create( iTargetSize, iBitmap->DisplayMode() ));
         iServer.ScaleBitmapL( iStatus, * iBitmap, * iScaledBitmap, iCropRectangle );
@@ -190,6 +203,7 @@ void CThumbnailScaleTask::StartL()
         }  
     
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::StartL() end", this );
+    OstTrace1( TRACE_NORMAL, DUP6_CTHUMBNAILSCALETASK_STARTL, "CThumbnailScaleTask::StartL - end;this=%o", this );
     }
 
 
@@ -202,10 +216,14 @@ void CThumbnailScaleTask::RunL()
     TInt err = iStatus.Int();
 
     TN_DEBUG3( "CThumbnailScaleTask(0x%08x)::RunL() err=%d)", this, err );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSCALETASK_RUNL, "CThumbnailScaleTask::RunL;this=%o", this );
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSCALETASK_RUNL, "CThumbnailScaleTask::RunL;err=%d", err );
 
     #ifdef _DEBUG
     aStop.UniversalTime();
+    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailScaleTask::RunL() scale took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
+    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSCALETASK_RUNL, "CThumbnailScaleTask::RunL - scale took ms;tookTime=%d", tookTime );
     #endif
 
     if ( !err )
@@ -225,6 +243,7 @@ void CThumbnailScaleTask::RunL()
 void CThumbnailScaleTask::DoCancel()
     {
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::DoCancel()", this );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSCALETASK_DOCANCEL, "CThumbnailScaleTask::DoCancel;this=%o", this );
     iServer.CancelScale();
     }
 
@@ -333,16 +352,22 @@ void CThumbnailScaleTask::StoreAndCompleteL()
     {
     TN_DEBUG6( "CThumbnailScaleTask(0x%08x)::StoreAndCompleteL() iFilename=%S, iThumbnailSize=%d, iBitmap=0x%08x, iScaledBitmap=0x%08x)", 
                this, &iFilename, iThumbnailSize, iBitmap, iScaledBitmap );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL;this=%o", this );
+	OstTraceExt1( TRACE_NORMAL, DUP1_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL;iFilename=%S", iFilename );
+	OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL;iBitmap=%o", iBitmap );
+	
 		 
     // do not store TN if quality is too low eg. orignal size of image is smaller than requested size
     // (do not store upscaled images)
     if ( (iTargetSizeTN.iWidth > iOriginalSize.iWidth || iTargetSizeTN.iHeight > iOriginalSize.iHeight) && iEXIF)
         {
         TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() too low quality");
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL - too low quality" );
         iDoStore = EFalse;
         }
     
     TN_DEBUG3("CThumbnailScaleTask(0x%08x)::StoreAndCompleteL() iDoStore = %d", this, iDoStore);
+    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL;this=%o", this );
     
     if ( iDoStore )
         {
@@ -377,6 +402,7 @@ void CThumbnailScaleTask::StoreAndCompleteL()
         if (iBitmapToPool)
             {
             TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap handle to params");
+            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL" );
             
             params.iBitmapHandle = iScaledBitmap->Handle();
             }    
@@ -385,12 +411,14 @@ void CThumbnailScaleTask::StoreAndCompleteL()
 	        && iEXIF && !iDoStore)
 	        {
             TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() EThumbnailPreviewThumbnail");
-	    
+            OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL - EThumbnailPreviewThumbnail" );
+            
 		    // this is upscaled preview image
 	        params.iControlFlags = EThumbnailPreviewThumbnail;
 	        }
 	    
         TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() write params to message");
+        OstTrace0( TRACE_NORMAL, DUP7_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL - write params to message" );
         
 	    // pass bitmap handle to client
 	    iMessage.WriteL( 0, iParamsBuf );
@@ -398,13 +426,15 @@ void CThumbnailScaleTask::StoreAndCompleteL()
         if (iBitmapToPool)
             {
             TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() scaled bitmap to pool");
-        
+            OstTrace0( TRACE_NORMAL, DUP8_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL - scaled bitmap to pool" );
+            
             iServer.AddBitmapToPoolL( iRequestId.iSession, iScaledBitmap, iRequestId );
             iScaledBitmap = NULL; // Server owns the bitmap now
             }
         }
     
     TN_DEBUG1("CThumbnailScaleTask()::StoreAndCompleteL() - end");
+    OstTrace0( TRACE_NORMAL, DUP9_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL, "CThumbnailScaleTask::StoreAndCompleteL - end" );
     }
 
 

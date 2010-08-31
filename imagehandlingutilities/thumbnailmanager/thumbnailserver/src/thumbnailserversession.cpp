@@ -31,6 +31,11 @@
 #include "thumbnailpanic.h"
 
 #include "thumbnailcenrep.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailserversessionTraces.h"
+#endif
+
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -161,6 +166,7 @@ TInt CThumbnailServerSession::DispatchMessageL( const RMessage2& aMessage )
 void CThumbnailServerSession::CreateL()
     {
     TN_DEBUG2( "CThumbnailServerSession::AddSession() = 0x%08x", this );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CREATEL, "CThumbnailServerSession::CreateL;this=%o", this );
     
     Server()->AddSession();
     }
@@ -174,6 +180,7 @@ void CThumbnailServerSession::CreateL()
 void CThumbnailServerSession::ServiceL( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::ServiceL() - begin" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_SERVICEL, "CThumbnailServerSession::ServiceL - begin" );
     
     __ASSERT_DEBUG( !iMessage.Handle(), ThumbnailPanic(EThumbnailMessageNotCompleted));
     if ( iMessage.Handle())
@@ -191,6 +198,7 @@ void CThumbnailServerSession::ServiceL( const RMessage2& aMessage )
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbnailServerSession::ServiceL() - client thread not found");
+            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_SERVICEL, "CThumbnailServerSession::ServiceL - client thread not found" );
     
             iMessage = RMessage2();
             }       
@@ -198,6 +206,7 @@ void CThumbnailServerSession::ServiceL( const RMessage2& aMessage )
     else
         {
         TN_DEBUG1( "CThumbnailServerSession::ServiceL() - message null");
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_SERVICEL, "CThumbnailServerSession::ServiceL - message null" );
         }
     
     // clean up possible trash
@@ -231,6 +240,7 @@ void CThumbnailServerSession::ServiceL( const RMessage2& aMessage )
     iClientThread.Close();
     
     TN_DEBUG1( "CThumbnailServerSession::ServiceL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSERVERSESSION_SERVICEL, "CThumbnailServerSession::ServiceL - end" );
     }
 
 
@@ -261,6 +271,7 @@ void CThumbnailServerSession::Cancel()
 void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_UPDATETHUMBNAILSL, "CThumbnailServerSession::UpdateThumbnailsL" );
     
     if(aMessage.Int1() != KCheckValue)
        {
@@ -291,8 +302,26 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
         TInt sourceType = 0;
         TInt err = Server()->MimeTypeFromFileExt( params.iFileName, mimeType );
         
+        // need to use recognizer
+        if (err == KErrNotFound)
+            {
+            Server()->Fs().ShareProtected();
+            RFile64 file;
+            CleanupClosePushL( file );
+          
+            User::LeaveIfError( file.Open( Server()->Fs(), params.iFileName, EFileShareReadersOrWriters )); 
+            TN_DEBUG2( "CThumbnailServerSession::UpdateThumbnailsL - file handle opened for %S", &params.iFileName );
+          
+            mimeType = Server()->ResolveMimeTypeL(file);
+          
+            file.Close();
+            TN_DEBUG1("CThumbnailServerSession::UpdateThumbnailsL - file handle closed");
+          
+            CleanupStack::Pop( &file );    
+            }
+        
         // get missing sizes
-        if ( err == KErrNone && ( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly ) != 0 )
+        if ( ( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly ) != 0 )
             {
             sourceType = Server()->SourceTypeFromMimeType( mimeType );
             
@@ -313,10 +342,12 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
         if(!missingSizes)
             {
             TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - finished part 1" );
+            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_UPDATETHUMBNAILSL, "CThumbnailServerSession::UpdateThumbnailsL - finished part 1" );
             aMessage.Complete( KErrNone );
             }
         else
             {
+            OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_UPDATETHUMBNAILSL, "CThumbnailServerSession::UpdateThumbnailsL  - some sizes missing..." );
             TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - some sizes missing..." ); 
             }
         }
@@ -324,6 +355,7 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
     if (missingSizes || !finished)
         {
         TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - need to create (some) thumbs" );
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSERVERSESSION_UPDATETHUMBNAILSL, "CThumbnailServerSession::UpdateThumbnailsL - need to create (some) thumbs" );
         
         if(missingSizes)
             {
@@ -343,6 +375,7 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
     else
         {
         TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - finished part 2" );
+        OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSERVERSESSION_UPDATETHUMBNAILSL, "CThumbnailServerSession::UpdateThumbnailsL - finished part 2" );
         }
     
     iMessage = RMessage2();
@@ -358,6 +391,7 @@ void CThumbnailServerSession::RenameThumbnailsL( const RMessage2& aMessage )
     if(aMessage.Int1() != KCheckValue)
        {
        TN_DEBUG1( "CThumbnailServerSession::RenameThumbnailsL() - error in aMessage - leaving" );
+       OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_RENAMETHUMBNAILSL, "CThumbnailServerSession::RenameThumbnailsL - error in aMessage - leaving" );
        User::Leave(KErrArgument);
        }
     
@@ -397,6 +431,7 @@ void CThumbnailServerSession::RequestThumbByIdAsyncL( const RMessage2&
     if(aMessage.Int1() != KCheckValue)
        {
        TN_DEBUG1( "CThumbnailServerSession::RequestThumbByIdAsync() - error in aMessage - leaving" );
+       OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYIDASYNCL, "CThumbnailServerSession::RequestThumbByIdAsyncL - leaving" );
        User::Leave(KErrArgument);
        }
 
@@ -423,10 +458,13 @@ void CThumbnailServerSession::RequestThumbByIdAsyncL( const RMessage2&
     
 #ifdef _DEBUG
     aStop.UniversalTime();
+    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailServerSession::RequestThumbByIdAsyncL() request took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000 );
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYIDASYNCL, "CThumbnailServerSession::RequestThumbByIdAsyncL;tookTime=%d", tookTime );
 #endif 
     
     TN_DEBUG1("CThumbnailServerSession::RequestThumbByIdAsyncL() - end" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYIDASYNCL, "CThumbnailServerSession::RequestThumbByIdAsyncL - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -437,10 +475,12 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
     aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL" );
     
     if(aMessage.Int1() != KCheckValue)
        {
        TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsync() - error in aMessage - leaving" );
+       OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - error in aMessage - leaving" );
        User::Leave(KErrArgument);
        }
     
@@ -472,6 +512,7 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
     if (params.iControlFlags == EThumbnailGeneratePersistentSizesOnly)
         {
         TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - EThumbnailGeneratePersistentSizesOnly" );
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - EThumbnailGeneratePersistentSizesOnly" );
         CreateGenerateTaskFromFileHandleL( &file );
         
         // ownership of the file transferred
@@ -486,6 +527,7 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
             {
             // If thumbnail of requested size is blacklisted, fetching is left with KErrCompletion
             TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - thumbnail blacklisted" );
+            OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - thumbnail blacklisted" );
             
             aMessage.Complete( err );
             iMessage = RMessage2();
@@ -496,10 +538,12 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
         else if ( !err && iBitmap )
             {
             TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - found existing thumbnail - bitmap " );
+            OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - found existing thumbnail - bitmap " );
 
             // Thumbnail already stored
             CleanupStack::PopAndDestroy(&file);
             TN_DEBUG1("CThumbnailServerSession::RequestThumbByFileHandleAsyncL - file handle closed");
+            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - file handle closed" );
 
             ProcessBitmapL();
             }
@@ -507,6 +551,7 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
                  !(params.iFlags& CThumbnailManager::EDoNotCreate) )
             {
             TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - KErrNotFound & !EDoNotCreate" );
+            OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - KErrNotFound & !EDoNotCreate" );
             CreateGenerateTaskFromFileHandleL( &file);
             
             // ownership of the file transferred
@@ -515,6 +560,7 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
         else if (!err && iBuffer)
             {
             TN_DEBUG1( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - found existing thumbnail - jpeg " );
+            OstTrace0( TRACE_NORMAL, DUP7_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - found existing thumbnail - jpeg" );
             
             CThumbnailDecodeTask* task = new( ELeave )CThumbnailDecodeTask( Server()
                         ->Processor(), * Server(), iBuffer, params.iPriority, params.iDisplayMode );
@@ -533,10 +579,12 @@ void CThumbnailServerSession::RequestThumbByFileHandleAsyncL( const RMessage2&
             // close file
             CleanupStack::PopAndDestroy(&file);
             TN_DEBUG1("CThumbnailServerSession::RequestThumbByFileHandleAsyncL - file handle closed");
+            OstTrace0( TRACE_NORMAL, DUP8_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - file handle closed" );
             }
         else
             {
             TN_DEBUG2( "CThumbnailServerSession::RequestThumbByFileHandleAsyncL() - thumbnail not found, err=%d", err );
+            OstTrace1( TRACE_NORMAL, DUP9_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL, "CThumbnailServerSession::RequestThumbByFileHandleAsyncL - thumbnail not found;err=%d", err );
             
             aMessage.Complete( ConvertSqlErrToE32Err( err ));
             iMessage = RMessage2();
@@ -555,6 +603,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
     aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::RequestThumbByPathAsyncL()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL" );
     
 #ifdef _DEBUG
     TTime aStart, aStop;
@@ -564,6 +613,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
     if(aMessage.Int1() != KCheckValue)
        {
        TN_DEBUG1( "CThumbnailServerSession::RequestThumbByPathAsync() - error in aMessage - leaving" );
+       OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL - error in aMessage - leaving" );
        User::Leave(KErrArgument);
        }
 
@@ -590,6 +640,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	        {
 	        TN_DEBUG1( 
 	            "CThumbnailServerSession::RequestThumbByPathAsyncL() - found existing thumbnail- bitmap" );
+	        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL - found existing thumbnail- bitmap" );
 
 	        ProcessBitmapL();
 	        }
@@ -597,6 +648,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	        {
 	        TN_DEBUG1( 
 	            "CThumbnailServerSession::RequestThumbByPathAsyncL() - found existing thumbnail- jpeg" );
+	        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL - found existing thumbnail- jpeg" );
 	        
 	        CThumbnailDecodeTask* task = new( ELeave )CThumbnailDecodeTask( Server()
 	               ->Processor(), * Server(), iBuffer, params.iPriority, params.iDisplayMode );
@@ -616,6 +668,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	        {
             // If thumbnail of requested size is blacklisted, fetching is left with KErrCompletion
             TN_DEBUG1( "CThumbnailServerSession::RequestThumbByPathAsyncL() - thumbnail blacklisted" );
+            OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL - thumbnail blacklisted" );
             
             aMessage.Complete( err );
             iMessage = RMessage2();
@@ -624,6 +677,7 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
 	        {
 	        TN_DEBUG2( 
 	            "CThumbnailServerSession::RequestThumbByPathAsyncL() - thumbnail not found, err = %d", err );
+	        OstTrace1( TRACE_NORMAL, DUP5_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL  - thumbnail not found;err=%d", err );
 	        
 	        // don't try to create from virtual URI
 	        if ( params.iVirtualUri )
@@ -652,17 +706,21 @@ void CThumbnailServerSession::RequestThumbByPathAsyncL( const RMessage2&
     
 #ifdef _DEBUG
     aStop.UniversalTime();
+    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailStore::RequestThumbByPathAsyncL() request took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000 );
+    OstTrace1( TRACE_NORMAL, DUP6_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL, "CThumbnailServerSession::RequestThumbByPathAsyncL;tookTime=%d", tookTime );
 #endif
     }   
     
 void CThumbnailServerSession::RequestSetThumbnailByBufferL( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBufferL()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_REQUESTSETTHUMBNAILBYBUFFERL, "CThumbnailServerSession::RequestSetThumbnailByBufferL" );
     
     if(aMessage.Int3() != KCheckValue)
         {
         TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBufferL() - error in aMessage - leaving" );
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_REQUESTSETTHUMBNAILBYBUFFERL, "CThumbnailServerSession::RequestSetThumbnailByBufferL - error in aMessage - leaving" );
         User::Leave(KErrArgument);
         }
       
@@ -707,10 +765,12 @@ void CThumbnailServerSession::RequestSetThumbnailByBufferL( const RMessage2& aMe
 void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_REQUESTSETTHUMBNAILBYBITMAPL, "CThumbnailServerSession::RequestSetThumbnailByBitmapL" );
 
     if(aMessage.Int2() != KCheckValue)
         {
         TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL() - error in aMessage - leaving" );
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_REQUESTSETTHUMBNAILBYBITMAPL, "CThumbnailServerSession::RequestSetThumbnailByBitmapL - error in aMessage - leaving" );
         User::Leave(KErrArgument);
         }
         
@@ -808,6 +868,7 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
                    (*missingSizes)[i].iSize.iWidth = height;
                     
                    TN_DEBUG1( "CThumbnailServerSession::RequestSetThumbnailByBitmapL() - portrait");
+                   OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_REQUESTSETTHUMBNAILBYBITMAPL, "CThumbnailServerSession::RequestSetThumbnailByBitmapL - portrait" );
                    }
                }
         
@@ -862,6 +923,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
 
     TN_DEBUG2( 
         "CThumbnailServerSession::CreateGenerateTaskFromFileHandleL() -- create thumbnail generation task for %S", &params.iFileName );
+    OstTraceExt1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CREATEGENERATETASKFROMFILEHANDLEL, "CThumbnailServerSession::CreateGenerateTaskFromFileHandleL -- create thumbnail generation task for;params.iFileName=%S", params.iFileName );
     
     // disk space check only for stored sizes
     if ( params.iImport && 
@@ -947,6 +1009,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
     if( !aFile)
         {
         TN_DEBUG1("CThumbnailServerSession::CreateGenerateTaskFromFileHandleL() - KErrArgument");
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_CREATEGENERATETASKFROMFILEHANDLEL, "CThumbnailServerSession::CreateGenerateTaskFromFileHandleL - KErrArgument" );
         User::Leave( KErrArgument );
         }
     CleanupClosePushL( *aFile );
@@ -989,6 +1052,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
 
     TN_DEBUG2( 
         "CThumbnailServerSession::CreateGenerateTaskFromBufferL() -- create thumbnail generation task for %S", &params.iTargetUri );
+    OstTraceExt1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CREATEGENERATETASKFROMBUFFERL, "CThumbnailServerSession::CreateGenerateTaskFromBufferL -  -- create thumbnail generation task for;params.iTargetUri=%S", params.iTargetUri );
   
     // disk space check only for stored sizes
     if ( params.iThumbnailSize != ECustomThumbnailSize && 
@@ -1014,11 +1078,13 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
         
         User::LeaveIfError( file.Open( Server()->Fs(), params.iTargetUri, EFileShareReadersOrWriters )); 
         TN_DEBUG2( "CThumbnailServerSession::CreateGenerateTaskFromBufferL - file handle opened for %S", &params.iFileName );
+                OstTraceExt1( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_CREATEGENERATETASKFROMBUFFERL, "CThumbnailServerSession::CreateGenerateTaskFromBufferL;params.iFileName=%S", params.iFileName );
                 
         mimetype = Server()->ResolveMimeTypeL(file);
                 
         file.Close();
         TN_DEBUG1("CThumbnailServerSession::CreateGenerateTaskFromBufferL - file handle closed");
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_CREATEGENERATETASKFROMBUFFERL, "CThumbnailServerSession::CreateGenerateTaskFromBufferL - file handle closed" );
         
         CleanupStack::Pop( &file );    
         }
@@ -1062,6 +1128,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
     if( !aBuffer)
         {
         TN_DEBUG1( "CThumbnailServerSession::UpdateThumbnailsL() - KErrArgument" );
+        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSERVERSESSION_CREATEGENERATETASKFROMBUFFERL, "CThumbnailServerSession::CreateGenerateTaskFromBufferL - KErrArgument" );
         User::Leave( KErrArgument );
         }
     
@@ -1098,6 +1165,7 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
 void CThumbnailServerSession::FetchThumbnailL()
     {
     TN_DEBUG1("CThumbnailServerSession::FetchThumbnailL()");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_FETCHTHUMBNAILL, "CThumbnailServerSession::FetchThumbnailL" );
     __ASSERT_DEBUG( !iBitmap, ThumbnailPanic( EThumbnailBitmapNotReleased ));
     __ASSERT_DEBUG( !iBuffer, ThumbnailPanic( EThumbnailBitmapNotReleased ));
 
@@ -1119,6 +1187,7 @@ void CThumbnailServerSession::FetchThumbnailL()
         {
         TN_DEBUG3( "CThumbnailServerSession::FetchThumbnailL( ThumbnailSize=%d ( Path=%S ))", 
                  params.iThumbnailSize, &params.iFileName );
+        OstTraceExt1( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_FETCHTHUMBNAILL, "CThumbnailServerSession::FetchThumbnailL;params.iFileName=%S", params.iFileName );
         Server()->FetchThumbnailL( params.iFileName, iBitmap, iBuffer, params.iThumbnailSize, iOriginalSize);
         }
     else
@@ -1129,6 +1198,7 @@ void CThumbnailServerSession::FetchThumbnailL()
     if( iBitmap)
         {
         TN_DEBUG4( "CThumbnailServerSession::FetchThumbnailL() size %d x %d displaymode %d", iBitmap->SizeInPixels().iWidth, iBitmap->SizeInPixels().iHeight, iBitmap->DisplayMode());
+        OstTraceExt3( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_FETCHTHUMBNAILL, "CThumbnailServerSession::FetchThumbnailL;iBitmap->SizeInPixels().iWidth=%d;iBitmap->SizeInPixels().iHeight=%d;iBitmap->DisplayMode()=%u", iBitmap->SizeInPixels().iWidth, iBitmap->SizeInPixels().iHeight, iBitmap->DisplayMode() );
         }
 #endif
     }
@@ -1146,6 +1216,7 @@ void CThumbnailServerSession::ProcessBitmapL()
     if ( ClientThreadAlive() )
         {        
         TN_DEBUG2("CThumbnailServerSession::ProcessBitmapL(), iBitmap handle= 0x%08x", iBitmap->Handle());
+        OstTrace1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_PROCESSBITMAPL, "CThumbnailServerSession::ProcessBitmapL;iBitmap->Handle()=%o", iBitmap->Handle() );
         
         params.iBitmapHandle = iBitmap->Handle();
         const TSize bitmapSize = iBitmap->SizeInPixels();
@@ -1163,6 +1234,7 @@ void CThumbnailServerSession::ProcessBitmapL()
         iMessage.WriteL( 0, iRequestParams );
         
         TN_DEBUG1("CThumbnailServerSession()::ProcessBitmapL() bitmap to pool");
+        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_PROCESSBITMAPL, "CThumbnailServerSession::ProcessBitmapL - bitmap to pool" );
         
         Server()->AddBitmapToPoolL( this, iBitmap, TThumbnailServerRequestId( this, params.iRequestId ) );
         
@@ -1186,6 +1258,7 @@ void CThumbnailServerSession::ProcessBitmapL()
 void CThumbnailServerSession::ReleaseBitmap( const RMessage2& aMessage )
     {
     TN_DEBUG2( "CThumbnailServerSession::ReleaseBitmap(%d)", aMessage.Int0());
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_RELEASEBITMAP, "CThumbnailServerSession::ReleaseBitmap;aMessage.Int0()=%d", aMessage.Int0() );
     Server()->DeleteBitmapFromPool( aMessage.Int0());
     }
 
@@ -1198,12 +1271,16 @@ void CThumbnailServerSession::ReleaseBitmap( const RMessage2& aMessage )
 TInt CThumbnailServerSession::CancelRequest( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::CancelRequest()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CANCELREQUEST, "CThumbnailServerSession::CancelRequest" );
     
     const TThumbnailServerRequestId requestId( this, aMessage.Int0());
     const TInt err = Server()->DequeTask( requestId );
     TN_DEBUG4( 
         "CThumbnailServerSession::CancelRequest(0x%08x/%d) - returning %d",
         requestId.iSession, requestId.iRequestId, err );
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_CANCELREQUEST, "CThumbnailServerSession::CancelRequest;requestId.iSession=%o", requestId.iSession );
+    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_CANCELREQUEST, "CThumbnailServerSession::CancelRequest;err=%d", err );
+    
     return err;
     }
 
@@ -1215,6 +1292,7 @@ TInt CThumbnailServerSession::CancelRequest( const RMessage2& aMessage )
 TInt CThumbnailServerSession::ChangePriority( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::ChangePriority()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CHANGEPRIORITY, "CThumbnailServerSession::ChangePriority" );
     
     const TThumbnailServerRequestId requestId( this, aMessage.Int0());
     const TInt newPriority = aMessage.Int1();
@@ -1223,6 +1301,9 @@ TInt CThumbnailServerSession::ChangePriority( const RMessage2& aMessage )
     TN_DEBUG5( 
         "CThumbnailServerSession::ChangePriority(0x%08x/%d, %d) - returning %d",
         requestId.iSession, requestId.iRequestId, newPriority, err );
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_CHANGEPRIORITY, "CThumbnailServerSession::ChangePriority;requestId.iSession=%o", requestId.iSession );
+    OstTraceExt2( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_CHANGEPRIORITY, "CThumbnailServerSession::ChangePriority;requestId.iRequestId=%u;err=%d", requestId.iRequestId, err );
+    
     return err;
     }
 
@@ -1236,6 +1317,7 @@ void CThumbnailServerSession::DeleteThumbnailsL( const RMessage2& aMessage )
     if(aMessage.Int2() != KCheckValue)
        {
        TN_DEBUG1( "CThumbnailServerSession::DeleteThumbnailsL() - error in aMessage - leaving" );
+       OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_DELETETHUMBNAILSL, "CThumbnailServerSession::DeleteThumbnailsL - error in aMessage - leaving" );
        User::Leave(KErrArgument);
        }
     
@@ -1259,6 +1341,7 @@ void CThumbnailServerSession::DeleteThumbnailsByIdL( const RMessage2& aMessage )
     if(aMessage.Int2() != KCheckValue)
        {
        TN_DEBUG1( "CThumbnailServerSession::DeleteThumbnailsByIdL() - error in aMessage - leaving" );
+       OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_DELETETHUMBNAILSBYIDL, "CThumbnailServerSession::DeleteThumbnailsByIdL - error in aMessage - leaving" );
        User::Leave(KErrArgument);
        }
     
@@ -1302,6 +1385,7 @@ void CThumbnailServerSession::GetMimeTypeBufferSizeL( const RMessage2& aMessage 
 void CThumbnailServerSession::GetMimeTypeListL( const RMessage2& aMessage )
     {
     TN_DEBUG1( "CThumbnailServerSession::GetMimeTypeListL()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_GETMIMETYPELISTL, "CThumbnailServerSession::GetMimeTypeListL" );
     
     TInt len = aMessage.GetDesMaxLengthL( 0 );
     HBufC* buf = HBufC::NewLC( len );
@@ -1417,11 +1501,13 @@ void CThumbnailServerSession::ResolveMimeTypeL( RFile64* aFile )
               
                 User::LeaveIfError( file.Open( Server()->Fs(), params.iFileName, EFileShareReadersOrWriters )); 
                 TN_DEBUG2( "CThumbnailServerSession::ResolveMimeType - file handle opened for %S", &params.iFileName );
+                OstTraceExt1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_RESOLVEMIMETYPEL, "CThumbnailServerSession::ResolveMimeTypeL - file handle opened;params.iFileName=%S", params.iFileName );
               
                 params.iMimeType = Server()->ResolveMimeTypeL(file);
               
                 file.Close();
                 TN_DEBUG1("CThumbnailServerSession::ResolveMimeType - file handle closed");
+                OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_RESOLVEMIMETYPEL, "CThumbnailServerSession::ResolveMimeTypeL - file handle closed" );
               
                 CleanupStack::Pop( &file );    
                 }    
@@ -1437,6 +1523,7 @@ void CThumbnailServerSession::ResolveMimeTypeL( RFile64* aFile )
 TInt CThumbnailServerSession::ConvertSqlErrToE32Err( TInt aReason )
     {
     TN_DEBUG2("CThumbnailServerSession::ConvertSqlErrToE32Err(%d)", aReason);
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CONVERTSQLERRTOE32ERR, "CThumbnailServerSession::ConvertSqlErrToE32Err;aReason=%d", aReason );
     TInt e32Err(aReason);
 	
     if ( aReason >=  - 144 )
@@ -1540,6 +1627,7 @@ TInt CThumbnailServerSession::ConvertSqlErrToE32Err( TInt aReason )
 TBool CThumbnailServerSession::ClientThreadAlive()
     {
     TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive()");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILSERVERSESSION_CLIENTTHREADALIVE, "CThumbnailServerSession::ClientThreadAlive" );
     
     if ( iMessage.Handle())
         {
@@ -1549,6 +1637,7 @@ TBool CThumbnailServerSession::ClientThreadAlive()
         if( exitType != EExitPending )
             {
             TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - client thread died");
+            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSERVERSESSION_CLIENTTHREADALIVE, "CThumbnailServerSession::ClientThreadAlive - client thread died" );
         
             iMessage = RMessage2();
             
@@ -1563,6 +1652,7 @@ TBool CThumbnailServerSession::ClientThreadAlive()
     else
         {
         TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - message null");       
+        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSERVERSESSION_CLIENTTHREADALIVE, "CThumbnailServerSession::ClientThreadAlive - message null" );
         return EFalse;
         }
     }

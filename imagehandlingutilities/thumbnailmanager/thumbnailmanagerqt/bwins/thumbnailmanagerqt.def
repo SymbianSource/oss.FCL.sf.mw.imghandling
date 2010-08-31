@@ -1,0 +1,22 @@
+EXPORTS
+	?getThumbnail@ThumbnailManager@@QAEHABVQString@@PAXH@Z @ 1 NONAME ; int ThumbnailManager::getThumbnail(class QString const &, void *, int)
+	?qualityPreference@ThumbnailManager@@QBE?AW4QualityPreference@1@XZ @ 2 NONAME ; enum ThumbnailManager::QualityPreference ThumbnailManager::qualityPreference(void) const
+	?cancelRequest@ThumbnailManager@@QAE_NH@Z @ 3 NONAME ; bool ThumbnailManager::cancelRequest(int)
+	?setMode@ThumbnailManager@@QAE_NW4ThumbnailMode@1@@Z @ 4 NONAME ; bool ThumbnailManager::setMode(enum ThumbnailManager::ThumbnailMode)
+	?setQualityPreference@ThumbnailManager@@QAE_NW4QualityPreference@1@@Z @ 5 NONAME ; bool ThumbnailManager::setQualityPreference(enum ThumbnailManager::QualityPreference)
+	?setThumbnail@ThumbnailManager@@QAEHABVQPixmap@@ABVQString@@PAXH@Z @ 6 NONAME ; int ThumbnailManager::setThumbnail(class QPixmap const &, class QString const &, void *, int)
+	?thumbnailSize@ThumbnailManager@@QBE?AVQSize@@XZ @ 7 NONAME ; class QSize ThumbnailManager::thumbnailSize(void) const
+	??1ThumbnailManager@@UAE@XZ @ 8 NONAME ; ThumbnailManager::~ThumbnailManager(void)
+	??0ThumbnailManager@@QAE@PAVQObject@@@Z @ 9 NONAME ; ThumbnailManager::ThumbnailManager(class QObject *)
+	?setThumbnailSize@ThumbnailManager@@QAE_NW4ThumbnailSize@1@@Z @ 10 NONAME ; bool ThumbnailManager::setThumbnailSize(enum ThumbnailManager::ThumbnailSize)
+	?deleteThumbnails@ThumbnailManager@@QAEXABVQString@@@Z @ 11 NONAME ; void ThumbnailManager::deleteThumbnails(class QString const &)
+	?setThumbnailSize@ThumbnailManager@@QAE_NABVQSize@@@Z @ 12 NONAME ; bool ThumbnailManager::setThumbnailSize(class QSize const &)
+	?deleteThumbnails@ThumbnailManager@@QAEXK@Z @ 13 NONAME ; void ThumbnailManager::deleteThumbnails(unsigned long)
+	?changePriority@ThumbnailManager@@QAE_NHH@Z @ 14 NONAME ; bool ThumbnailManager::changePriority(int, int)
+	?getThumbnail@ThumbnailManager@@QAEHKPAXH@Z @ 15 NONAME ; int ThumbnailManager::getThumbnail(unsigned long, void *, int)
+	?mode@ThumbnailManager@@QBE?AW4ThumbnailMode@1@XZ @ 16 NONAME ; enum ThumbnailManager::ThumbnailMode ThumbnailManager::mode(void) const
+	?setThumbnail@ThumbnailManager@@QAEHABVQImage@@ABVQString@@PAXH@Z @ 17 NONAME ; int ThumbnailManager::setThumbnail(class QImage const &, class QString const &, void *, int)
+	?thumbnailReady@ThumbnailManager@@IAEXVQImage@@PAXHH@Z @ 18 NONAME ; void ThumbnailManager::thumbnailReady(class QImage, void *, int, int)
+	?thumbnailReady@ThumbnailManager@@IAEXVQPixmap@@PAXHH@Z @ 19 NONAME ; void ThumbnailManager::thumbnailReady(class QPixmap, void *, int, int)
+	?setThumbnail@ThumbnailManager@@QAEHABVQString@@00PAXH@Z @ 20 NONAME ; int ThumbnailManager::setThumbnail(class QString const &, class QString const &, class QString const &, void *, int)
+

@@ -49,7 +49,7 @@ USERINCLUDE	../../inc   // ADo level inc dir
 
 // Default system include paths for middleware layer modules.
 MW_LAYER_SYSTEMINCLUDE
-SYSTEMINCLUDE   /epoc32/include/icl // Needs to be removed after ICL has made SF structural changes.
+SYSTEMINCLUDE   /epoc32/include/icl 
 
 
 LIBRARY			euser.lib

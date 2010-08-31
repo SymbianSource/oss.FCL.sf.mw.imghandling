@@ -119,8 +119,8 @@ const TDisplayMode KThumbnailDefaultDisplayMode = EColor64K;
 
 //default displaymode (bpp - bits per pixel) for TNs in DB
 //this makes possible to provide all colour depths up to 16M aka 24 -bit full colour
-//Symbian^3 EColor16M
-const TDisplayMode KStoreDisplayMode = EColor16M;
+//Symbian^4 EColor16MAP
+const TDisplayMode KStoreDisplayMode = EColor16MAP;
 
 //required amount of memory to keep bitmaps on RAM in bits
 const TInt KMemoryNeed = 5000000;

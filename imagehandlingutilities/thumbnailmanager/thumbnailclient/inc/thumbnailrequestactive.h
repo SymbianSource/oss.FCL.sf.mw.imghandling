@@ -95,7 +95,7 @@ public:
      *                    ThumbnailReady callback.
      * @param aTargetUri         Target URI to which the imported thumbnail is linked.
      */
-    void GetThumbnailL( const RFile64& aFile, TThumbnailId aThumbnailId,
+    void GetThumbnailL( const RFile64& aFile, TThumbnailId aThumbnailId, const TDesC8& aMimeType,
         CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager::TThumbnailQualityPreference
         aQualityPreference, const TSize& aSize, const TDisplayMode aDisplayMode,
         const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri = KNullDesC,
@@ -117,7 +117,7 @@ public:
      *                    ThumbnailReady callback.
      * @param aTargetUri         Target URI to which the imported thumbnail is linked.
      */
-    void GetThumbnailL( TThumbnailId aThumbnailId, const TDesC& aPath,
+    void GetThumbnailL( TThumbnailId aThumbnailId, const TDesC& aPath, const TDesC8& aMimeType,
         CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager::TThumbnailQualityPreference
         aQualityPreference, const TSize& aSize, const TDisplayMode aDisplayMode,
         const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly, const TDesC& aTargetUri = KNullDesC,
@@ -142,7 +142,7 @@ public:
      * @param aThumbnailSize Relative thumbnail size
      */
     void GetThumbnailL( const TDesC& aPath, TThumbnailId aThumbnailId,
-        CThumbnailManager::TThumbnailFlags aFlags, 
+        const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, 
         CThumbnailManager::TThumbnailQualityPreference aQualityPreference, 
         const TSize& aSize, const TDisplayMode aDisplayMode, const TInt aPriority, 
         TAny* aClientData, TBool aGeneratePersistentSizesOnly, 

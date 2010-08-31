@@ -1,0 +1,25 @@
+EXPORTS
+	_ZN16ThumbnailManager12getThumbnailERK7QStringPvi @ 1 NONAME
+	_ZN16ThumbnailManager12getThumbnailEmPvi @ 2 NONAME
+	_ZN16ThumbnailManager12setThumbnailERK7QPixmapRK7QStringPvi @ 3 NONAME
+	_ZN16ThumbnailManager13cancelRequestEi @ 4 NONAME
+	_ZN16ThumbnailManager14changePriorityEii @ 5 NONAME
+	_ZN16ThumbnailManager16deleteThumbnailsERK7QString @ 6 NONAME
+	_ZN16ThumbnailManager16deleteThumbnailsEm @ 7 NONAME
+	_ZN16ThumbnailManager16setThumbnailSizeENS_13ThumbnailSizeE @ 8 NONAME
+	_ZN16ThumbnailManager16setThumbnailSizeERK5QSize @ 9 NONAME
+	_ZN16ThumbnailManager20setQualityPreferenceENS_17QualityPreferenceE @ 10 NONAME
+	_ZN16ThumbnailManager7setModeENS_13ThumbnailModeE @ 11 NONAME
+	_ZN16ThumbnailManagerC1EP7QObject @ 12 NONAME
+	_ZN16ThumbnailManagerC2EP7QObject @ 13 NONAME
+	_ZN16ThumbnailManagerD0Ev @ 14 NONAME
+	_ZN16ThumbnailManagerD1Ev @ 15 NONAME
+	_ZN16ThumbnailManagerD2Ev @ 16 NONAME
+	_ZNK16ThumbnailManager13thumbnailSizeEv @ 17 NONAME
+	_ZNK16ThumbnailManager17qualityPreferenceEv @ 18 NONAME
+	_ZNK16ThumbnailManager4modeEv @ 19 NONAME
+	_ZN16ThumbnailManager12setThumbnailERK6QImageRK7QStringPvi @ 20 NONAME
+	_ZN16ThumbnailManager14thumbnailReadyE6QImagePvii @ 21 NONAME
+	_ZN16ThumbnailManager14thumbnailReadyE7QPixmapPvii @ 22 NONAME
+	_ZN16ThumbnailManager12setThumbnailERK7QStringS2_S2_Pvi @ 23 NONAME
+

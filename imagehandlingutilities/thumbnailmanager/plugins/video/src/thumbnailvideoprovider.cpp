@@ -25,6 +25,11 @@
 #include "thumbnailmanageruids.hrh"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailvideoproviderTraces.h"
+#endif
+
 
 #ifndef IMPLEMENTATION_PROXY_ENTRY
 typedef TAny* TProxyNewLPtr;
@@ -59,6 +64,7 @@ CThumbnailVideoProvider::CThumbnailVideoProvider():CActive( EPriorityStandard )
     iTimeout = EFalse;
     
     TN_DEBUG1( "CThumbnailVideoProvider::CThumbnailVideoProvider()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILVIDEOPROVIDER_CTHUMBNAILVIDEOPROVIDER, "CThumbnailVideoProvider::CThumbnailVideoProvider" );
     }
 
 
@@ -82,6 +88,7 @@ CThumbnailVideoProvider::~CThumbnailVideoProvider()
     iTimer.Close();
     
     TN_DEBUG1( "CThumbnailVideoProvider::~CThumbnailVideoProvider()" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILVIDEOPROVIDER_CTHUMBNAILVIDEOPROVIDER, "CThumbnailVideoProvider::~CThumbnailVideoProvider" );
     REComSession::DestroyedImplementation( iDtor_ID_Key );
     }
 // -----------------------------------------------------------------------------
@@ -117,6 +124,7 @@ void CThumbnailVideoProvider::RunL()
         iTimeout = EFalse;
         
         TN_DEBUG1( "CThumbnailVideoProvider::RunL() - timeout" );
+        OstTrace0( TRACE_NORMAL, CTHUMBNAILVIDEOPROVIDER_RUNL, "CThumbnailVideoProvider::RunL - timeout" );
         }
     }
 
@@ -130,10 +138,17 @@ void CThumbnailVideoProvider::GetThumbnailL( RFs&  /*aFs*/, RFile64& aFile, cons
     const TDisplayMode /*aDisplayMode*/, const CThumbnailManager::TThumbnailQualityPreference /*aQualityPreference */)
     {
     TN_DEBUG1( "CThumbnailVideoProvider::GetThumbnailL() start" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILVIDEOPROVIDER_GETTHUMBNAILL, "CThumbnailVideoProvider::GetThumbnailL - start" );
 
     iFlags = aFlags;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
+
+//Symbian^4 specific	
+//TODO currently only ARM platforms supports MAP mode
+#if !(defined(__CC_ARM) || defined(__ARMCC__))
+    iDisplayMode = EColor16M;
+#endif	
 
     TFileName filename;
     User::LeaveIfError( aFile.FullName( filename ));
@@ -146,6 +161,7 @@ void CThumbnailVideoProvider::GetThumbnailL( RFs&  /*aFs*/, RFile64& aFile, cons
         }
     
     TN_DEBUG1( "CThumbnailVideoProvider::GetThumbnailL() end" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILVIDEOPROVIDER_GETTHUMBNAILL, "CThumbnailVideoProvider::GetThumbnailL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +176,7 @@ void CThumbnailVideoProvider::GetThumbnailL( RFs& /*aFs*/,
     const CThumbnailManager::TThumbnailQualityPreference /*aQualityPreference */)
     {
     TN_DEBUG1( "CThumbnailVideoProvider::GetThumbnailL() - nothing to do" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILVIDEOPROVIDER_GETTHUMBNAILL, "CThumbnailVideoProvider::GetThumbnailL - nothing to do" );
     }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +186,7 @@ void CThumbnailVideoProvider::GetThumbnailL( RFs& /*aFs*/,
 void CThumbnailVideoProvider::GetThumbnailL( RFs& /*aFs*/, TDesC8& /*aBuffer*/)
     {
     TN_DEBUG1( "CThumbnailVideoProvider::GetThumbnailL() - nothing to do" );
+    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILVIDEOPROVIDER_GETTHUMBNAILL, "CThumbnailVideoProvider::GetThumbnailL - nothing to do" );
     User::Leave( KErrNotSupported );
     }
 
@@ -198,6 +216,7 @@ void CThumbnailVideoProvider::NotifyVideoClipThumbCompleted( CTNEVideoClipInfo&
     /*aInfo*/, TInt aError, CFbsBitmap* aThumb )
     {
     TN_DEBUG2( "CThumbnailVideoProvider::NotifyVideoClipThumbCompleted(aError=%d)", aError );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILVIDEOPROVIDER_NOTIFYVIDEOCLIPTHUMBCOMPLETED, "CThumbnailVideoProvider::NotifyVideoClipThumbCompleted;aError=%d", aError );
     
     iTimer.Cancel();
     iTimeout = EFalse;
@@ -220,6 +239,7 @@ void CThumbnailVideoProvider::NotifyVideoClipInfoReady( CTNEVideoClipInfo&
     aInfo, TInt aError )
     {
     TN_DEBUG2( "CThumbnailVideoProvider::NotifyVideoClipInfoReady(aError=%d)", aError );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILVIDEOPROVIDER_NOTIFYVIDEOCLIPINFOREADY, "CThumbnailVideoProvider::NotifyVideoClipInfoReady;aError=%d", aError );
     
     if ( aError == KErrNone )
         {
@@ -231,6 +251,7 @@ void CThumbnailVideoProvider::NotifyVideoClipInfoReady( CTNEVideoClipInfo&
         if ( err != KErrNone )
             {
             TN_DEBUG2( "CThumbnailVideoProvider::NotifyVideoClipInfoReady() -- GetThumbL() left with %d", err );
+            OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILVIDEOPROVIDER_NOTIFYVIDEOCLIPINFOREADY, "CThumbnailVideoProvider::NotifyVideoClipInfoReady - GetThumbL() left with;err=%d", err );
             
             iObserver->ThumbnailProviderReady( err, NULL, TSize(), EFalse, EFalse);
             

@@ -179,7 +179,7 @@ void CThumbnailCenRep::ConstructL()
     TInt ySize( 0 );
     TBool flags( EFalse );
     const TBool KGridAndListThumbnailCropped = ETrue; 
-    TInt raw_mode( EColor16M ); // always 16-bit
+    TInt raw_mode( EColor64K );
     TInt format( 0 );
     TBool autoCreate( EFalse );
     

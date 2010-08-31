@@ -60,7 +60,7 @@ MW_LAYER_SYSTEMINCLUDE
 
 USERINCLUDE             ../inc
 USERINCLUDE             ../../inc
-USERINCLUDE             ../../tmcommon/inc
+USERINCLUDE             ../../tmcommon/inc ../traces ../../thumbnailserver/traces
 
 LIBRARY                 euser.lib
 LIBRARY         	mdeclient.lib

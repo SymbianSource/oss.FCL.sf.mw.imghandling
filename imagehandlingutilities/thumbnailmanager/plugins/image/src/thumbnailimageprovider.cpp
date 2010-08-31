@@ -25,6 +25,11 @@
 #include "thumbnailmanageruids.hrh"
 #include "thumbnaillog.h"
 #include "thumbnailmanagerconstants.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailimageproviderTraces.h"
+#endif
+
 
 #ifndef IMPLEMENTATION_PROXY_ENTRY
 typedef TAny* TProxyNewLPtr;
@@ -55,6 +60,7 @@ CThumbnailImageProvider* CThumbnailImageProvider::NewL()
 CThumbnailImageProvider::CThumbnailImageProvider()
     {
     TN_DEBUG1( "CThumbnailImageProvider::CThumbnailImageProvider()" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILIMAGEPROVIDER_CTHUMBNAILIMAGEPROVIDER, "CThumbnailImageProvider::CThumbnailImageProvider" );
     }
 
 
@@ -66,6 +72,7 @@ CThumbnailImageProvider::CThumbnailImageProvider()
 CThumbnailImageProvider::~CThumbnailImageProvider()
     {
     TN_DEBUG1( "CThumbnailImageProvider::~CThumbnailImageProvider()" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILIMAGEPROVIDER_CTHUMBNAILIMAGEPROVIDER, "CThumbnailImageProvider::~CThumbnailImageProvider" );
     delete iImageDecoder;
     iImageDecoder = NULL;
     delete iImageDecoderv2;
@@ -84,6 +91,7 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     const TDisplayMode /*aDisplayMode*/, const CThumbnailManager::TThumbnailQualityPreference aQualityPreference )
     {
     TN_DEBUG1( "CThumbnailImageProvider::GetThumbnailL() start" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILIMAGEPROVIDER_GETTHUMBNAILL, "CThumbnailImageProvider::GetThumbnailL - start" );
 
     if ( !iImageDecoder )
         {
@@ -95,12 +103,24 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     iQualityPreference = aQualityPreference;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
-    
+
+//Symbian^4 specific
+    if ( KJpegMime() != iMimeType.Des8() ) 
+        {
+        iDisplayMode = EColor16M;
+        }
+		
+//TODO currently only ARM platforms supports MAP mode
+#if !(defined(__CC_ARM) || defined(__ARMCC__))
+    iDisplayMode = EColor16M;
+#endif	
+	
     iImageDecoder->CreateL( aFile, *iObserver, iQualityPreference, iMimeType, iTargetSize );
     iOriginalSize = iImageDecoder->OriginalSize();
     iImageDecoder->DecodeL( iDisplayMode, iFlags );
     
     TN_DEBUG1( "CThumbnailImageProvider::GetThumbnailL() end" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILIMAGEPROVIDER_GETTHUMBNAILL, "CThumbnailImageProvider::GetThumbnailL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +133,7 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8* aBuffer, const
     const TDisplayMode /*aDisplayMode*/, const CThumbnailManager::TThumbnailQualityPreference aQualityPreference )
     {
     TN_DEBUG1( "CThumbnailImageProvider::GetThumbnailL() start" );
+    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILIMAGEPROVIDER_GETTHUMBNAILL, "CThumbnailImageProvider::GetThumbnailL - start" );
     
     if ( !iImageDecoder )
         {
@@ -124,12 +145,24 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8* aBuffer, const
     iQualityPreference = aQualityPreference;
 	//set default mode displaymode from global constants
     iDisplayMode = KStoreDisplayMode;
-    
+	
+//Symbian^4 specific
+    if ( KJpegMime() != iMimeType.Des8() ) 
+        {
+        iDisplayMode = EColor16M;
+        }
+
+//TODO currently only ARM platforms supports MAP mode
+#if !(defined(__CC_ARM) || defined(__ARMCC__))
+    iDisplayMode = EColor16M;
+#endif	
+		
     iImageDecoder->CreateL( aBuffer, *iObserver, iQualityPreference, iMimeType, iTargetSize );
     iOriginalSize = iImageDecoder->OriginalSize();
     iImageDecoder->DecodeL( iDisplayMode, iFlags );
     
     TN_DEBUG1( "CThumbnailImageProvider::GetThumbnailL() end" );
+    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILIMAGEPROVIDER_GETTHUMBNAILL, "CThumbnailImageProvider::GetThumbnailL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +173,7 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8* aBuffer, const
 void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8& aBuffer)
     {
     TN_DEBUG1( "CThumbnailImageProvider::GetThumbnailL() start" );
+    OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILIMAGEPROVIDER_GETTHUMBNAILL, "CThumbnailImageProvider::GetThumbnailL - start" );
 
     if ( !iImageDecoderv2 )
         {     
@@ -151,6 +185,7 @@ void CThumbnailImageProvider::GetThumbnailL( RFs& aFs, TDesC8& aBuffer)
     iImageDecoderv2->DecodeL();
     
     TN_DEBUG1( "CThumbnailImageProvider::GetThumbnailL() end" );
+    OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILIMAGEPROVIDER_GETTHUMBNAILL, "CThumbnailImageProvider::GetThumbnailL - end" );
     }
 
 // ---------------------------------------------------------------------------
