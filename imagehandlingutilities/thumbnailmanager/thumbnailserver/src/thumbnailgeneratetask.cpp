@@ -29,11 +29,6 @@
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"
 #include "thumbnailfetchedchecker.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailgeneratetaskTraces.h"
-#endif
-
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -57,7 +52,6 @@ CThumbnailGenerateTask::CThumbnailGenerateTask( CThumbnailTaskProcessor&
     iQualityPreference( aQualityPreference ), iVirtualUri( aVirtualUri )
     {
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CThumbnailGenerateTask()", this);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILGENERATETASK_CTHUMBNAILGENERATETASK, "CThumbnailGenerateTask::CThumbnailGenerateTask;this=%o", this );
     
     if ( !aBuffer && aFile)
         {
@@ -91,7 +85,6 @@ CThumbnailGenerateTask::CThumbnailGenerateTask( CThumbnailTaskProcessor&
 CThumbnailGenerateTask::~CThumbnailGenerateTask()
     {
     TN_DEBUG2("CThumbnailGenerateTask(0x%08x)::~CThumbnailGenerateTask()", this);
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILGENERATETASK_CTHUMBNAILGENERATETASK, "CThumbnailGenerateTask::~CThumbnailGenerateTask;this=%o", this );
     
     if ( iProvider )
         {
@@ -117,7 +110,6 @@ CThumbnailGenerateTask::~CThumbnailGenerateTask()
     
     iFile.Close();
     TN_DEBUG1("CThumbnailGenerateTask::~CThumbnailGenerateTask() - file handle closed");
-    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILGENERATETASK_CTHUMBNAILGENERATETASK, "CThumbnailGenerateTask::~CThumbnailGenerateTask - file handle closed" );
     }
 
 
@@ -128,7 +120,6 @@ CThumbnailGenerateTask::~CThumbnailGenerateTask()
 void CThumbnailGenerateTask::StartL()
     {
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::StartL()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILGENERATETASK_STARTL, "CThumbnailGenerateTask::StartL;this=%o", this );
 
     CThumbnailTask::StartL();
     
@@ -150,7 +141,6 @@ void CThumbnailGenerateTask::StartL()
     iProvider = iServer.ResolveProviderL(mimeType);
        	
     TN_DEBUG3( "CThumbnailGenerateTask(0x%08x) -- provider UID 0x%08x", this, iProvider->Uid());
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILGENERATETASK_STARTL, "CThumbnailGenerateTask::StartL;this=%o", this );
 
     __ASSERT_DEBUG(( iProvider ), ThumbnailPanic( EThumbnailNullPointer ));
 
@@ -188,7 +178,6 @@ void CThumbnailGenerateTask::StartL()
     User::LeaveIfError( providerErr );
     
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::StartL() end", this );
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILGENERATETASK_STARTL, "CThumbnailGenerateTask::StartL -end;this=%o", this );
     }
 
 
@@ -209,7 +198,6 @@ void CThumbnailGenerateTask::RunL()
 void CThumbnailGenerateTask::DoCancel()
     {
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::DoCancel()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILGENERATETASK_DOCANCEL, "CThumbnailGenerateTask::DoCancel;this=%o", this );
     
     if ( iProvider )
         {
@@ -286,9 +274,6 @@ void CThumbnailGenerateTask::ThumbnailProviderReady( const TInt aError,
     {
     TN_DEBUG4( 
         "CThumbnailGenerateTask(0x%08x)::ThumbnailProviderReady(aError=%d, aBitmap=0x%08x)", this, aError, aBitmap );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILGENERATETASK_THUMBNAILPROVIDERREADY, "CThumbnailGenerateTask::ThumbnailProviderReady;this=%o", this );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILGENERATETASK_THUMBNAILPROVIDERREADY, "CThumbnailGenerateTask::ThumbnailProviderReady;aError=%d", aError );
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILGENERATETASK_THUMBNAILPROVIDERREADY, "CThumbnailGenerateTask::ThumbnailProviderReady;aBitmap=%o", aBitmap );
 
     #ifdef _DEBUG
     aStop.UniversalTime();
@@ -314,7 +299,6 @@ void CThumbnailGenerateTask::ThumbnailProviderReady( const TInt aError,
         
 #ifdef _DEBUG
         TN_DEBUG2( "CThumbnailGenerateTask::ThumbnailProviderReady() - displaymode is %d", aBitmap->DisplayMode());
-        OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILGENERATETASK_THUMBNAILPROVIDERREADY, "CThumbnailGenerateTask::ThumbnailProviderReady;aBitmap->DisplayMode()=%u", aBitmap->DisplayMode() );
 #endif
         
         TRAPD( err, CreateScaleTasksL( aBitmap ));
@@ -374,8 +358,6 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             TThumbnailSize size = (*iMissingSizes)[ i ].iType;
 #ifdef _DEBUG
             TN_DEBUG3( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() *iMissingSizes)[ i ].iType == %d", this, size );
-            OstTrace1( TRACE_NORMAL, CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL;this=%o", this );
-            OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL;size=%d", size );
 #endif
             
             if ( iPortrait )
@@ -385,21 +367,13 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                      size == EAudioFullScreenThumbnailSize ||
                      size == EImageFullScreenThumbnailSize )
                     {
-                    TInt mis_width = (*iMissingSizes)[ i ].iSize.iWidth;
                     TN_DEBUG2( "*iMissingSizes)[ i ].iWidth == %d", (*iMissingSizes)[ i ].iSize.iWidth );
-                    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL;width=%d", mis_width );
-
-                    TInt mis_height = (*iMissingSizes)[ i ].iSize.iHeight;
                     TN_DEBUG2( "*iMissingSizes)[ i ].iHeight == %d", (*iMissingSizes)[ i ].iSize.iHeight );
-                    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL;mis_height=%d", mis_height );
                     TInt width = (*iMissingSizes)[ i ].iSize.iWidth; 
                     (*iMissingSizes)[ i ].iSize.iWidth = (*iMissingSizes)[ i ].iSize.iHeight;
                     (*iMissingSizes)[ i ].iSize.iHeight = width;
                     TN_DEBUG2( "*iMissingSizes)[ i ].iWidth == %d", (*iMissingSizes)[ i ].iSize.iWidth );
-                    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL;width=%d", width );
-                    mis_height = (*iMissingSizes)[ i ].iSize.iHeight;
                     TN_DEBUG2( "*iMissingSizes)[ i ].iHeight == %d", (*iMissingSizes)[ i ].iSize.iHeight );
-                    OstTrace1( TRACE_NORMAL, DUP5_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL;mis_height=%d", mis_height );
                     }
                 }
             
@@ -419,7 +393,6 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                 {
                 complTask->SetDoStore( EFalse );
                 TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() - do not store", this );
-                OstTrace1( TRACE_NORMAL, DUP6_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL - do not store;this=%o", this );
                 }
             else
                 {
@@ -469,7 +442,6 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             {
             complTask->SetDoStore( EFalse );
             TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() - do not store", this );
-            OstTrace1( TRACE_NORMAL, DUP7_CTHUMBNAILGENERATETASK_CREATESCALETASKSL, "CThumbnailGenerateTask::CreateScaleTasksL - do not store;this=%o", this );
             }
         else
             {
@@ -507,7 +479,6 @@ void CThumbnailGenerateTask::ScaledBitmapToPool( TBool aBool )
 void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
     {
     TN_DEBUG1( "CThumbnailGenerateTask::CreateBlackListedL()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILGENERATETASK_CREATEBLACKLISTEDL, "CThumbnailGenerateTask::CreateBlackListedL" );
     CFbsBitmap* tempBitmap = 0;
     tempBitmap = new (ELeave) CFbsBitmap();
     CleanupStack::PushL( tempBitmap );
@@ -544,7 +515,6 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
 void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOriginalSize )
     {
     TN_DEBUG1( "CThumbnailGenerateTask::DoBlacklisting()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILGENERATETASK_DOBLACKLISTING, "CThumbnailGenerateTask::DoBlacklisting" );
     // Create a temporary bitmap of size 1 for storing blacklisted thumbnail
     // Because no actual bitmap data is generated, there is no reason to 
     // add bitmap to server bitmap pool. Completion of client request with
@@ -563,7 +533,6 @@ void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOr
         if(iMissingSizes)
             {
             TN_DEBUG2( "CThumbnailGenerateTask::DoBlacklisting() - blacklist missing sizes count = %d", iMissingSizes->Count() );
-            OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILGENERATETASK_DOBLACKLISTING, "CThumbnailGenerateTask::DoBlacklisting - blacklist missing sizes count;iMissingSizes->Count()=%d", iMissingSizes->Count() );
 
             for ( TInt i( 0 ); i < iMissingSizes->Count(); i++ )
                 {
@@ -572,7 +541,6 @@ void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOr
                 if (err != KErrNone)
                    {
                    TN_DEBUG3( "CThumbnailGenerateTask::DoBlacklisting() - blacklisting missing size %d failed with code %d", iThumbnailSize, err );
-                   OstTraceExt2( TRACE_NORMAL, DUP2_CTHUMBNAILGENERATETASK_DOBLACKLISTING, "CThumbnailGenerateTask::DoBlacklisting -  - blacklisting missing size failed with error;iThumbnailSize=%u;err=%d", iThumbnailSize, err );
                    }
                 }
             return;
@@ -580,18 +548,15 @@ void CThumbnailGenerateTask::DoBlacklisting( const TInt aError, const TSize& aOr
         else
             {
             TN_DEBUG1( "CThumbnailGenerateTask::DoBlacklisting() - blacklist single size" );
-            OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILGENERATETASK_DOBLACKLISTING, "CThumbnailGenerateTask::DoBlacklisting - blacklist single size" );
             TRAPD( err, CreateBlackListedL( aOriginalSize ) );
             if (err != KErrNone)
                 {
                 TN_DEBUG2( "CThumbnailGenerateTask::DoBlacklisting() - blacklisting failed with code %d", err );
-                OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILGENERATETASK_DOBLACKLISTING, "CThumbnailGenerateTask::DoBlacklisting - blacklisting failed with code;err=%d", err );
                 }
             return;
             }
         }
     TN_DEBUG1( "CThumbnailGenerateTask::DoBlacklisting() - not blacklisted " );        
-    OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILGENERATETASK_DOBLACKLISTING, "CThumbnailGenerateTask::DoBlacklisting - not blacklisted" );
     }
 }
 

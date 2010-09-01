@@ -33,11 +33,6 @@
 #include "thumbnailpanic.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailserver.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailstoreTraces.h"
-#endif
-
 
 
 _LIT8( KThumbnailSqlConfig, "page_size=32768; cache_size=64;" );
@@ -49,8 +44,8 @@ const TInt KMinor = 2;
 const TInt KStoreUnrecoverableErr = KErrCorrupt;
 
 // Database path without drive letter
-//Symbian^4 v5
-_LIT( KThumbnailDatabaseName, ":[102830AB]thumbnail_v5.db" );
+//Symbian^3 v4
+_LIT( KThumbnailDatabaseName, ":[102830AB]thumbnail_v4.db" );
 
 
 // Allow access to database only for the server process
@@ -77,7 +72,6 @@ void RThumbnailTransaction::BeginL()
     if (iDatabase.InTransaction())
         {
         TN_DEBUG1( "RThumbnailTransaction::BeginL() - error: old transaction open!" );
-        OstTrace0( TRACE_NORMAL, RTHUMBNAILTRANSACTION_BEGINL, "RThumbnailTransaction::BeginL - error: old transaction open!" );
         __ASSERT_DEBUG(( !iDatabase.InTransaction() ), ThumbnailPanic( EThumbnailSQLTransaction ));
         
         // old transaction already open, don't open another
@@ -97,7 +91,6 @@ void RThumbnailTransaction::BeginL()
 #ifdef _DEBUG
     TPtrC errorMsg = iDatabase.LastErrorMessage();
     TN_DEBUG3( "RThumbnailTransaction::BeginL() lastError %S, ret = %d" , &errorMsg, err);
-    OstTraceExt2( TRACE_NORMAL, DUP1_RTHUMBNAILTRANSACTION_BEGINL, "RThumbnailTransaction::BeginL - lastError;errorMsg=%S;err=%d", errorMsg, err );
 #endif
         User::Leave( err );
         }
@@ -128,7 +121,6 @@ void RThumbnailTransaction::CommitL()
 #ifdef _DEBUG
     TPtrC errorMsg = iDatabase.LastErrorMessage();
     TN_DEBUG3( "RThumbnailTransaction::CommitL() lastError %S, ret = %d" , &errorMsg, ret);
-    OstTraceExt2( TRACE_NORMAL, DUP2_RTHUMBNAILTRANSACTION_BEGINL, "RThumbnailTransaction::BeginL - lastError;errorMsg=%S;ret=%d", errorMsg, ret );
 #endif  
     User::LeaveIfError( ret );
         }
@@ -158,7 +150,6 @@ TInt RThumbnailTransaction::Rollback()
         else
             {
             TN_DEBUG1( "RThumbnailTransaction::Rollback() - automatic rollback already done!" );
-            OstTrace0( TRACE_NORMAL, RTHUMBNAILTRANSACTION_ROLLBACK, "RThumbnailTransaction::Rollback - automatic rollback already done!" );
             }
         }
     
@@ -193,7 +184,6 @@ CThumbnailStore* CThumbnailStore::NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CTh
 CThumbnailStore::~CThumbnailStore()
     {
     TN_DEBUG2( "CThumbnailStore::~CThumbnailStore() drive: %d", iDrive );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_CTHUMBNAILSTORE, "CThumbnailStore::~CThumbnailStore;iDrive=%d", iDrive );
     
     if(iActivityManager)
         {
@@ -225,7 +215,6 @@ CThumbnailStore::~CThumbnailStore()
     iDatabase.Close();
     
     TN_DEBUG1( "CThumbnailStore::~CThumbnailStore() - database closed" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_CTHUMBNAILSTORE, "CThumbnailStore::~CThumbnailStore - database closed" );
     }
 
 // ---------------------------------------------------------------------------
@@ -248,7 +237,6 @@ CThumbnailStore::CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnai
 void CThumbnailStore::ConstructL()
     {
     TN_DEBUG1( "CThumbnailStore::ConstructL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_CONSTRUCTL, "CThumbnailStore::ConstructL" );
 
 #ifdef _DEBUG
     iThumbCounter = 0;
@@ -269,7 +257,6 @@ void CThumbnailStore::ConstructL()
         CleanupStack::PopAndDestroy( databasePath );
     
         TN_DEBUG2( "CThumbnailStore::ConstructL() drive: %d", iDrive );
-        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_CONSTRUCTL, "CThumbnailStore::ConstructL;iDrive=%d", iDrive );
     
         OpenDatabaseL();
     
@@ -283,7 +270,6 @@ void CThumbnailStore::ConstructL()
     else
         {
 	    TN_DEBUG1( "CThumbnailStore::ConstructL() - read only, dymmy mode..." );
-        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_CONSTRUCTL, "CThumbnailStore::ConstructL - read only, dymmy mode..." );
         iDeleteThumbs = EFalse;
         iCheckFilesExist = EFalse;
         iLastCheckedRowID = -1;
@@ -296,7 +282,6 @@ void CThumbnailStore::ConstructL()
 TInt CThumbnailStore::OpenDatabaseFileL()
     {
     TN_DEBUG1( "CThumbnailStore::OpenDatabaseFile()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_OPENDATABASEFILEL, "CThumbnailStore::OpenDatabaseFileL" );
     
     HBufC* databasePath = HBufC::NewLC( KMaxFileName );
     TPtr pathPtr = databasePath->Des();
@@ -316,7 +301,6 @@ TInt CThumbnailStore::OpenDatabaseFileL()
 TInt CThumbnailStore::OpenDatabaseL( TBool aNewDatabase )
     {
     TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() drive: %d", iDrive );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_OPENDATABASEL, "CThumbnailStore::OpenDatabaseL;iDrive=%d", iDrive );
         
     CloseStatements();
     iDatabase.Close();
@@ -341,7 +325,6 @@ TInt CThumbnailStore::OpenDatabaseL( TBool aNewDatabase )
         err = OpenDatabaseFileL();
         
         TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() -- err = %d", err);
-        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_OPENDATABASEL, "CThumbnailStore::OpenDatabaseL;err=%d", err );
                
         if ( err == KErrNone)
             {
@@ -412,7 +395,6 @@ TInt CThumbnailStore::OpenDatabaseL( TBool aNewDatabase )
 void CThumbnailStore::PrepareDbL()
     {
     TN_DEBUG1( "CThumbnailStore::PrepareDbL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_PREPAREDBL, "CThumbnailStore::PrepareDbL" );
     
     // add persistent tables
     CreateTablesL();
@@ -430,22 +412,18 @@ void CThumbnailStore::PrepareDbL()
 void CThumbnailStore::CreateTablesL()
     {
     TN_DEBUG1( "CThumbnailStore::CreateTablesL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_CREATETABLESL, "CThumbnailStore::CreateTablesL" );
     
     TInt err = KErrNone;
     err = iDatabase.Exec( KThumbnailCreateInfoTable );
     TN_DEBUG2( "CThumbnailStore::CreateTablesL() KThumbnailCreateInfoTable err=%d", err );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_CREATETABLESL, "CThumbnailStore::CreateTablesL - KThumbnailCreateInfoTable;err=%d", err );
     User::LeaveIfError( err );
     
     err = iDatabase.Exec( KThumbnailCreateInfoDataTable );
     TN_DEBUG2( "CThumbnailStore::CreateTablesL() KThumbnailCreateInfoDataTable err=%d", err );
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_CREATETABLESL, "CThumbnailStore::CreateTablesL - KThumbnailCreateInfoDataTable;err=%d", err );
     User::LeaveIfError( err );
     
     err = iDatabase.Exec(KThumbnailDeletedTable);
     TN_DEBUG2( "CThumbnailStore::CreateTablesL() KThumbnailDeletedTable err=%d", err );
-    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_CREATETABLESL, "CThumbnailStore::CreateTablesL - KThumbnailDeletedTable;err=%d", err );
     User::LeaveIfError( err );
     
     err = iDatabase.Exec( KThumbnailCreateInfoTableIndex1 );
@@ -454,7 +432,6 @@ void CThumbnailStore::CreateTablesL()
     
     err = iDatabase.Exec(KThumbnailVersionTable);
     TN_DEBUG2( "CThumbnailStore::CreateTablesL() KThumbnailVersionTable err=%d", err );
-    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_CREATETABLESL, "CThumbnailStore::CreateTablesL;err=%d", err );
     User::LeaveIfError( err );
     }
 
@@ -465,7 +442,6 @@ void CThumbnailStore::CreateTablesL()
 void CThumbnailStore::CreateTempTablesL()
     {
     TN_DEBUG1( "CThumbnailStore::CreateTempTablesL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_CREATETEMPTABLESL, "CThumbnailStore::CreateTempTablesL" );
 
     TInt err = iDatabase.Exec( KThumbnailCreateTempInfoTable );
 
@@ -474,7 +450,6 @@ void CThumbnailStore::CreateTempTablesL()
         {
         TPtrC errorMsg = iDatabase.LastErrorMessage();
         TN_DEBUG2( "CThumbnailStore::PrepareDbL() KThumbnailCreateTempInfoTable %S" , &errorMsg);
-        OstTraceExt1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_CREATETEMPTABLESL, "CThumbnailStore::CreateTempTablesL - KThumbnailCreateTempInfoTable;errorMsg=%S", errorMsg );
         }
 #endif
     
@@ -487,7 +462,6 @@ void CThumbnailStore::CreateTempTablesL()
         {
         TPtrC errorMsg = iDatabase.LastErrorMessage();
         TN_DEBUG2( "CThumbnailStore::PrepareDbL() KThumbnailCreateTempInfoDataTable %S" , &errorMsg);
-        OstTraceExt1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_CREATETEMPTABLESL, "CThumbnailStore::CreateTempTablesL - KThumbnailCreateTempInfoDataTable;errorMsg=%S", errorMsg );
         }
 #endif
     
@@ -497,7 +471,6 @@ void CThumbnailStore::CreateTempTablesL()
 void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     {
     TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() drive: %d", iDrive );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL;iDrive=%d", iDrive );
     
     TVolumeInfo volumeinfo;
     User::LeaveIfError( iFs.Volume(volumeinfo, iDrive) );
@@ -510,7 +483,6 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     iUnrecoverable = ETrue;
     
     TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() database closed" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL - database closed" );
     
     HBufC* databasePath = HBufC::NewLC( KMaxFileName );
     TPtr pathPtr = databasePath->Des();
@@ -524,10 +496,8 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     if(aDelete)
         {
         TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() delete database" );
-        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL - delete database" );
         TInt del = iDatabase.Delete(pathPtr);     
         TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() deleted database, err: %d", del );       
-        OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL" );
         }
         
     const TDesC8& config = KThumbnailSqlConfig;
@@ -538,10 +508,8 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
 
     // create new
     TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() create new" );
-    OstTrace0( TRACE_FATAL, DUP3_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL - create new" );
     TRAP(err, iDatabase.CreateL( pathPtr, securityPolicy, &config ));    
     TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() -- database created, err = %d", err );
-    OstTrace1( TRACE_FATAL, DUP5_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL;err=%d", err );
     User::LeaveIfError(err);
     
     CleanupStack::PopAndDestroy( &securityPolicy );
@@ -550,7 +518,6 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
     TRAPD(prepareErr, PrepareDbL() );
     
     TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() -- prepare tables, err = %d", prepareErr );
-    OstTrace1( TRACE_FATAL, DUP6_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL - prepare tables;prepareErr=%d", prepareErr );
     
     TInt mediaidErr(KErrNone);
     
@@ -562,7 +529,6 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
         file.Close();
         
         TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() -- mediaID file created, err = %d", mediaidErr );
-        OstTrace1( TRACE_FATAL, DUP7_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL;mediaidErr=%d", mediaidErr );
         }
     
     // delete db if not fully complete
@@ -571,10 +537,8 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
         CloseStatements();
         iDatabase.Close();
         TN_DEBUG1( "CThumbnailStore::RecreateDatabaseL() delete database" );
-        OstTrace0( TRACE_FATAL, DUP8_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL - delete database" );
         TInt del = iDatabase.Delete(pathPtr);     
         TN_DEBUG2( "CThumbnailStore::RecreateDatabaseL() deleted database, err: %d", del );
-        OstTrace1( TRACE_FATAL, DUP9_CTHUMBNAILSTORE_RECREATEDATABASEL, "CThumbnailStore::RecreateDatabaseL - delete database;del=%d", del );
         }
     
     User::LeaveIfError( prepareErr );
@@ -586,7 +550,6 @@ void CThumbnailStore::RecreateDatabaseL(const TBool aDelete)
 TInt CThumbnailStore::CheckRowIDs()
     {
     TN_DEBUG1( "CThumbnailStore::CheckRowIDs()");
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs" );
     
     RSqlStatement stmt;
     TInt column = 0;   
@@ -599,7 +562,6 @@ TInt CThumbnailStore::CheckRowIDs()
         {
         stmt.Close();
         TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetInfoRowID failed %d");
-        OstTrace1( TRACE_FATAL, DUP1_CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs KGetInfoRowID failed;ret=%d", ret );
         return KErrNotSupported;
         }
     rowStatus = stmt.Next();
@@ -616,7 +578,6 @@ TInt CThumbnailStore::CheckRowIDs()
 #ifdef _DEBUG
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
-        OstTraceExt1( TRACE_FATAL, DUP2_CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs - lastError;errorMsg2=%S", errorMsg2 );
 #endif
         return KErrNotSupported;
         }
@@ -626,7 +587,6 @@ TInt CThumbnailStore::CheckRowIDs()
         {
         stmt.Close();
         TN_DEBUG1( "CThumbnailStore::CheckRowIDs() KGetDataRowID failed");
-        OstTrace0( TRACE_FATAL, DUP3_CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs - KGetDataRowID failed" );
         return KErrNotSupported;
         }
     rowStatus = stmt.Next();
@@ -643,15 +603,12 @@ TInt CThumbnailStore::CheckRowIDs()
 #ifdef _DEBUG
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::ResetThumbnailIDs() lastError %S, ret = %d" , &errorMsg2);
-        OstTraceExt1( TRACE_FATAL, DUP4_CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs - lastError;errorMsg2=%S", errorMsg2 );
 #endif
         return KErrNotSupported;
         }
     
     TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - inforows %Ld", inforows );
-    OstTraceExt1( TRACE_FATAL, DUP5_CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs;inforows=%g", inforows );
     TN_DEBUG2( "CThumbnailStore::CheckRowIDsL() - datarows %Ld", datarows );
-    OstTraceExt1( TRACE_FATAL, DUP6_CTHUMBNAILSTORE_CHECKROWIDS, "CThumbnailStore::CheckRowIDs;datarows=%Ld", datarows );
             
     if( inforows != datarows )
         {
@@ -671,7 +628,6 @@ TInt CThumbnailStore::CheckRowIDs()
 TInt CThumbnailStore::CheckVersion()
     {
     TN_DEBUG1( "CThumbnailStore::CheckVersion()" );
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_CHECKVERSION, "CThumbnailStore::CheckVersion" );
     RSqlStatement stmt;
          
     TInt rowStatus = 0;
@@ -684,7 +640,6 @@ TInt CThumbnailStore::CheckVersion()
        {  
        stmt.Close();
        TN_DEBUG1( "CThumbnailStore::CheckVersion() unknown version" );
-       OstTrace0( TRACE_FATAL, DUP1_CTHUMBNAILSTORE_CHECKVERSION, "CThumbnailStore::CheckVersion - unknown version" );
        return KErrNotSupported;
        }
               
@@ -703,7 +658,6 @@ TInt CThumbnailStore::CheckVersion()
 #ifdef _DEBUG
          TPtrC errorMsg = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::CheckVersion() lastError %S, ret = %d" , &errorMsg);
-        OstTrace0( TRACE_FATAL, DUP2_CTHUMBNAILSTORE_CHECKVERSION, "CThumbnailStore::CheckVersion" );
 #endif
         return ret;
         }
@@ -715,7 +669,6 @@ TInt CThumbnailStore::CheckVersion()
     else
       {
       TN_DEBUG1( "CThumbnailStore::CheckVersion() - wrong DB version" );
-      OstTrace0( TRACE_FATAL, DUP3_CTHUMBNAILSTORE_CHECKVERSION, "CThumbnailStore::CheckVersion" );
       return KErrNotSupported;  
       }
     }
@@ -727,7 +680,6 @@ TInt CThumbnailStore::CheckVersion()
 TInt CThumbnailStore::CheckImei()
     {
     TN_DEBUG1( "CThumbnailStore::CheckImei()" );
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_CHECKIMEI, "CThumbnailStore::CheckImei" );
     RSqlStatement stmt;
          
     TInt rowStatus = 0;
@@ -739,7 +691,6 @@ TInt CThumbnailStore::CheckImei()
        {  
         stmt.Close();
        TN_DEBUG1( "CThumbnailStore::CheckImei() failed" );
-       OstTrace0( TRACE_FATAL, DUP1_CTHUMBNAILSTORE_CHECKIMEI, "CThumbnailStore::CheckImei - failed" );
        return KErrNotSupported;
        }
               
@@ -758,7 +709,6 @@ TInt CThumbnailStore::CheckImei()
 #ifdef _DEBUG
          TPtrC errorMsg = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::CheckImei() lastError %S, ret = %d" , &errorMsg);
-        OstTraceExt1( TRACE_FATAL, DUP2_CTHUMBNAILSTORE_CHECKIMEI, "CThumbnailStore::CheckImei - lastError;errorMsg=%S", errorMsg );
 #endif
         return ret;
         }
@@ -770,7 +720,6 @@ TInt CThumbnailStore::CheckImei()
     else
       {
       TN_DEBUG1( "CThumbnailStore::CheckImei() mismatch" );
-      OstTrace0( TRACE_FATAL, DUP3_CTHUMBNAILSTORE_CHECKIMEI, "CThumbnailStore::CheckImei - mismatch" );
       return KErrNotSupported;  
       }
     }
@@ -782,7 +731,6 @@ TInt CThumbnailStore::CheckImei()
 TInt CThumbnailStore::CheckMediaIDL()
     {
     TN_DEBUG1( "CThumbnailStore::CheckMediaIDL()" );
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_CHECKMEDIAIDL, "CThumbnailStore::CheckMediaIDL" );
     
     TVolumeInfo volumeinfo;
     User::LeaveIfError( iFs.Volume(volumeinfo, iDrive) );
@@ -796,7 +744,6 @@ TInt CThumbnailStore::CheckMediaIDL()
        TInt err = file.Create(iFs, mediaid, EFileShareReadersOrWriters );
        file.Close();
        TN_DEBUG2( "CThumbnailStore::CheckMediaIDL() -- mediaID file created, err = %d", err );
-       OstTrace1( TRACE_FATAL, DUP1_CTHUMBNAILSTORE_CHECKMEDIAIDL, "CThumbnailStore::CheckMediaIDL - mediaID file created;err=%d", err );
        
        return KErrNotSupported;
        } 
@@ -811,7 +758,6 @@ TInt CThumbnailStore::CheckMediaIDL()
 void CThumbnailStore::AddVersionAndImeiL()
     {
     TN_DEBUG1( "CThumbnailStore::AddVersionAndImei()" );
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_ADDVERSIONANDIMEIL, "CThumbnailStore::AddVersionAndImeiL" );
     RSqlStatement stmt;
     CleanupClosePushL( stmt );
             
@@ -841,7 +787,6 @@ void CThumbnailStore::AddVersionAndImeiL()
 void CThumbnailStore::UpdateImeiL()
     {
     TN_DEBUG1( "CThumbnailStore::UpdateImeiL()" );
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_UPDATEIMEIL, "CThumbnailStore::UpdateImeiL" );
     RSqlStatement stmt;
     CleanupClosePushL( stmt );
             
@@ -858,7 +803,6 @@ void CThumbnailStore::UpdateImeiL()
 #ifdef _DEBUG
         TPtrC errorMsg = iDatabase.LastErrorMessage();
         TN_DEBUG2( "RThumbnailTransaction::UpdateImeiL() lastError %S" , &errorMsg);
-        OstTraceExt1( TRACE_FATAL, DUP1_CTHUMBNAILSTORE_UPDATEIMEIL, "CThumbnailStore::UpdateImeiL - lastError;errorMsg=%S", errorMsg );
 #endif
         User::Leave(err);
         }
@@ -873,7 +817,6 @@ void CThumbnailStore::UpdateImeiL()
 void CThumbnailStore::PrepareStatementsL()
     {
     TN_DEBUG1("CThumbnailStore::PrepareStatementsL()");
-    OstTrace0( TRACE_FATAL, CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL" );
     
     TInt err = KErrNone;  
 #ifdef _DEBUG
@@ -884,7 +827,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectInfoByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP1_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSelectInfoByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -893,7 +835,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectTempInfoByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP2_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSelectTempInfoByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -902,7 +843,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailInsertTempThumbnailInfo %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP3_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailInsertTempThumbnailInfo ;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -911,7 +851,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailInsertTempThumbnailInfoData %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP4_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailInsertTempThumbnailInfoData;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -920,7 +859,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectModifiedByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP5_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -929,7 +867,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectTempModifiedByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP6_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSelectTempModifiedByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -938,7 +875,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailFindDuplicate %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP7_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailFindDuplicate;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -947,7 +883,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailTempFindDuplicate %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP8_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailTempFindDuplicate;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -956,7 +891,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlFindDeleted %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP9_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlFindDeleted;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -965,7 +899,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectSizeByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP10_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSelectSizeByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -974,7 +907,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectTempSizeByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP11_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSelectTempSizeByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -983,7 +915,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlSelectRowIDInfoByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP12_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlSelectRowIDInfoByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -992,7 +923,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlDeleteInfoByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP13_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlDeleteInfoByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1001,7 +931,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlDeleteInfoDataByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP14_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlDeleteInfoDataByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1010,7 +939,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KTempThumbnailSqlSelectRowIDInfoByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP15_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KTempThumbnailSqlSelectRowIDInfoByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1019,7 +947,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KTempThumbnailSqlDeleteInfoByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP16_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KTempThumbnailSqlDeleteInfoByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1028,7 +955,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KTempThumbnailSqlDeleteInfoDataByPath %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP17_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KTempThumbnailSqlDeleteInfoDataByPath;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1037,7 +963,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlInsertDeleted %S" , &msg );
-    OstTraceExt1( TRACE_FATAL, DUP18_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlInsertDeleted;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1046,7 +971,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlSelectMarked %S" , &msg );
-    OstTraceExt1( TRACE_NORMAL, DUP19_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlSelectMarked;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1055,7 +979,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlDeleteInfoByRowID %S" , &msg );
-    OstTraceExt1( TRACE_NORMAL, DUP20_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlDeleteInfoByRowID;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1064,7 +987,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSqlDeleteInfoDataByRowID %S" , &msg );
-    OstTraceExt1( TRACE_NORMAL, DUP21_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSqlDeleteInfoDataByRowID;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1073,7 +995,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailSelectAllPaths %S" , &msg );
-    OstTraceExt1( TRACE_NORMAL, DUP22_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailSelectAllPaths;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1082,7 +1003,6 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailRename %S" , &msg );
-    OstTraceExt1( TRACE_NORMAL, DUP23_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailRename;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
@@ -1091,13 +1011,11 @@ void CThumbnailStore::PrepareStatementsL()
 #ifdef _DEBUG
     msg.Append( iDatabase.LastErrorMessage() );
     TN_DEBUG2( "CThumbnailStore::PrepareStatementsL() KThumbnailTempRename %S" , &msg );
-    OstTraceExt1( TRACE_NORMAL, DUP24_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - KThumbnailTempRename;msg=%S", msg );
     msg.Zero();
 #endif
     User::LeaveIfError( err );
     
     TN_DEBUG1("CThumbnailStore::PrepareStatementsL() end");
-    OstTrace0( TRACE_NORMAL, DUP25_CTHUMBNAILSTORE_PREPARESTATEMENTSL, "CThumbnailStore::PrepareStatementsL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -1118,7 +1036,6 @@ void CThumbnailStore::ResetStatement( TAny* aStmt )
 void CThumbnailStore::CloseStatements()
     {
     TN_DEBUG1("CThumbnailStore::CloseStatements()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_CLOSESTATEMENTS, "CThumbnailStore::CloseStatements" );
     
     iStmt_KThumbnailSelectInfoByPath.Close();
     iStmt_KThumbnailSelectTempInfoByPath.Close();   
@@ -1146,7 +1063,6 @@ void CThumbnailStore::CloseStatements()
     iStmt_KThumbnailTempRename.Close();
     
     TN_DEBUG1("CThumbnailStore::CloseStatements() end");
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_CLOSESTATEMENTS, "CThumbnailStore::CloseStatements - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -1228,7 +1144,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
     TTime timeStamp;
     
     TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp aModified %Ld", aModified );
-    OstTraceExt1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - timeStamp aModified;aModified=%Ld", aModified );
         
     if( aModified )
         {
@@ -1251,12 +1166,10 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
             if (timeErr != KErrNone)
                 {
                 TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) error getting timeStamp: %d", timeErr );
-                OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - error getting timeStamp;timeErr=%d", timeErr );
                 }
             else
                 {
                 TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp       iFs %Ld", timeStamp.Int64() );
-                OstTraceExt1( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - timeStamp;timeStamp.Int64()=%Ld", timeStamp.Int64() );
                 }
             }
         
@@ -1265,12 +1178,10 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
             // otherwise current time
             timeStamp.UniversalTime();
             TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp   current %Ld", timeStamp.Int64() );
-            OstTraceExt1( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - timeStamp   current;timeStamp.Int64()=%Ld", timeStamp.Int64() );
             }
         }
         
    TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) timeStamp       set %Ld", timeStamp.Int64());
-   OstTraceExt1( TRACE_NORMAL, DUP5_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - timeStamp       set;timeStamp.Int64()=%Ld", timeStamp.Int64() );
    
     paramIndex = stmt->ParameterIndex( KThumbnailSqlParamModified );
     User::LeaveIfError( paramIndex );
@@ -1302,15 +1213,11 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
 #ifdef _DEBUG
     iThumbCounter++;
     TN_DEBUG2( "CThumbnailStore::THUMBSTORE-COUNTER----------, Thumbs = %d", iThumbCounter );
-    OstTrace1( TRACE_NORMAL, DUP6_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::THUMBSTORE-COUNTER----------, Thumbs =;iThumbCounter=%d", iThumbCounter );
     
     aStop.UniversalTime();
-    TInt tookTime = aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( private ) insert to table %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-    OstTrace1( TRACE_NORMAL, DUP7_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - insert to table;tookTime=%d", tookTime );
 #endif 
     TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( private ) out" );
-    OstTrace0( TRACE_NORMAL, DUP8_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - out" );
     }
 
 
@@ -1325,7 +1232,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     {
     TSize thumbSize = aThumbnail->SizeInPixels();
     TN_DEBUG4( "CThumbnailStore::StoreThumbnailL( public ) aThumbnailSize = %d, aThumbnailSize(%d,%d) IN", aThumbnailSize, thumbSize.iWidth, thumbSize.iHeight );
-    OstTraceExt3( TRACE_NORMAL, DUP9_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - IN;aThumbnailSize=%u;thumbSize.iWidth=%d;thumbSize.iHeight=%d", aThumbnailSize, thumbSize.iWidth, thumbSize.iHeight );    
+    
     if(iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::StoreThumbnailL() read only, skip..." );
@@ -1341,7 +1248,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
             || thumbSize.iWidth <= 0 || thumbSize.iHeight <= 0 )
         {
         TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) not stored");
-        OstTrace0( TRACE_NORMAL, DUP10_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - not stored" );
         return;
         }
     
@@ -1374,7 +1280,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                  aThumbnailSize == EAudioFullScreenThumbnailSize) && !aBlackListed )
                 {
                 TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - encode jpg" );
-                OstTrace0( TRACE_NORMAL, DUP11_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - encode jpg" );
             
                 HBufC8* data = NULL;
                 CleanupStack::PushL( data );
@@ -1387,38 +1292,32 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 if ( decErr != KErrNone )
                     {
                     TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - HW CExtJpegEncoder failed %d", decErr);
-                    OstTrace1( TRACE_NORMAL, DUP12_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - HW CExtJpegEncoder failed;decErr=%d", decErr );
                 
                     TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::ESwImplementation, data, options ) );
                     if ( decErr != KErrNone )
                         {
                         TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - SW CExtJpegEncoder failed %d", decErr);
-                        OstTrace1( TRACE_NORMAL, DUP13_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - SW CExtJpegEncoder failed;decErr=%d", decErr );
                     
                         TRAPD( decErr, encoder = CImageEncoder::DataNewL( data,  KJpegMime(), options ) );
                         if ( decErr != KErrNone )
                             {
                             TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - CImageEncoder failed %d", decErr);
-                            OstTrace1( TRACE_NORMAL, DUP14_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - CImageEncoder failed;decErr=%d", decErr );
                             
                             User::Leave(decErr);
                             }
                         else
                             {
                             TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - CImageEncoder created" );
-                            OstTrace0( TRACE_NORMAL, DUP15_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - CImageEncoder created" );
                             }
                         }
                     else
                         {
                         TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - SW CExtJpegEncoder created" );
-                        OstTrace0( TRACE_NORMAL, DUP16_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - SW CExtJpegEncoder created" );
                         }
                     }
                 else
                     {
                     TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - HW CExtJpegEncoder created" );
-                    OstTrace0( TRACE_NORMAL, DUP17_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - HW CExtJpegEncoder created" );
                     }             
                 
                 CleanupStack::Pop( data );
@@ -1455,7 +1354,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 if(request == KErrNone)
                     {           
                     TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - encoding ok" );    
-                    OstTrace0( TRACE_NORMAL, DUP18_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - encoding ok" );
                 
                     CleanupStack::PushL( data );
                     TPtr8 ptr = data->Des(); 
@@ -1467,7 +1365,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 else
                     {
                     TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - encoding failed: %d", request.Int() );
-                    OstTrace1( TRACE_NORMAL, DUP19_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - encoding failed;request.Int()=%d", request.Int() );
                     }
                 
                 delete data;
@@ -1495,7 +1392,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     CleanupStack::PopAndDestroy( path );
     
     TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) out" );
-    OstTrace0( TRACE_NORMAL, DUP20_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - out" );
     }
 
 // ---------------------------------------------------------------------------
@@ -1505,7 +1401,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
 TBool CThumbnailStore::FindDuplicateL( const TDesC& aPath, const TThumbnailSize& aThumbnailSize )
     {
     TN_DEBUG1( "CThumbnailStore::FindDuplicateL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_FINDDUPLICATEL, "CThumbnailStore::FindDuplicateL" );
+	
 	if(iReadOnly)
 		{
 		TN_DEBUG1( "CThumbnailStore::FindDuplicateL() read only, skip..." );
@@ -1552,20 +1448,17 @@ TBool CThumbnailStore::FindDuplicateL( const TDesC& aPath, const TThumbnailSize&
         if(rowStatus == KSqlAtRow)
             {
             TN_DEBUG1( "CThumbnailStore::FindDuplicateL() - duplicate in main table" );
-            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_FINDDUPLICATEL, "CThumbnailStore::FindDuplicateL - duplicate in main table" );
             
             found = ETrue;
             }
         else
             {
             TN_DEBUG1( "CThumbnailStore::FindDuplicateL() - no duplicate" );
-            OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_FINDDUPLICATEL, "CThumbnailStore::FindDuplicateL - no duplicate" );
             }
         }
     else
         {
         TN_DEBUG1( "CThumbnailStore::FindDuplicateL() - duplicate in temp table" );
-        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_FINDDUPLICATEL, "CThumbnailStore::FindDuplicateL - duplicate in temp table" );
         
         found = ETrue;
         }
@@ -1589,12 +1482,10 @@ TBool CThumbnailStore::FindDuplicateL( const TDesC& aPath, const TThumbnailSize&
         if(rowStatus == KSqlAtRow)
             {
             TN_DEBUG1( "CThumbnailStore::FindDuplicateL() - duplicate marked deleted" );
-            OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_FINDDUPLICATEL, "CThumbnailStore::FindDuplicateL - duplicate marked deleted" );
             
             DeleteThumbnailsL(aPath, ETrue);
             
             TN_DEBUG1( "CThumbnailStore::FindDuplicateL() - duplicate force-deleted" );
-            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSTORE_FINDDUPLICATEL, "CThumbnailStore::FindDuplicateL - duplicate force-deleted" );
             
             found = EFalse;
             }
@@ -1611,7 +1502,7 @@ void CThumbnailStore::GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RA
     TThumbnailPersistentSize > & aMissingSizes, TBool aCheckGridSizeOnly )
     {
     TN_DEBUG2( "CThumbnailStore::GetMissingSizesL() aSourceType == %d", aSourceType );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_GETMISSINGSIZESL, "CThumbnailStore::GetMissingSizesL;aSourceType=%d", aSourceType );
+    
     if(iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::GetMissingSizesL() read only, skip..." );
@@ -1639,7 +1530,6 @@ void CThumbnailStore::GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RA
                     {
                     TN_DEBUG4( "CThumbnailStore::GetMissingSizesL() skip, aCheckGridSizeOnly = %d and  iPersistentSizes[%d].iSizeType == %d", 
                             aCheckGridSizeOnly, i, iPersistentSizes[i].iSizeType );
-                    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_GETMISSINGSIZESL, "CThumbnailStore::GetMissingSizesL;aCheckGridSizeOnly=%u", aCheckGridSizeOnly );
                     }
 				else
 				    {
@@ -1656,7 +1546,6 @@ void CThumbnailStore::GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RA
     TInt missingSizeCount = aMissingSizes.Count();
         
     TN_DEBUG2( "CThumbnailStore::GetMissingSizesL() missingSizeCount == %d", missingSizeCount );
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_GETMISSINGSIZESL, "CThumbnailStore::GetMissingSizesL;missingSizeCount=%d", missingSizeCount );
     
     // check temp table first
     RSqlStatement* stmt = NULL;
@@ -1684,7 +1573,6 @@ void CThumbnailStore::GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RA
                 if ( aMissingSizes[ i ].iType == size )
                     {
                     TN_DEBUG1( "CThumbnailStore::GetMissingSizesL() -- thumbnail found" );
-                    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_GETMISSINGSIZESL, "CThumbnailStore::GetMissingSizesL - thumbnail found" );
                     aMissingSizes.Remove( i );
                     missingSizeCount--;
                     break;
@@ -1729,7 +1617,7 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     aThumbnail, TDesC8* & aData, const TThumbnailSize aThumbnailSize, TSize &aThumbnailRealSize )
     {
     TN_DEBUG3( "CThumbnailStore::FetchThumbnailL(%S) aThumbnailSize==%d", &aPath, aThumbnailSize );
-    OstTraceExt2( TRACE_NORMAL, CTHUMBNAILSTORE_FETCHTHUMBNAILL, "CThumbnailStore::FetchThumbnailL;aPath=%S;aThumbnailSize=%u", aPath, aThumbnailSize );
+    
     if(iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() read only, skip..." );
@@ -1748,7 +1636,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     TInt column = 0;
     
     TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() -- TEMP TABLE lookup" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_FETCHTHUMBNAILL, "CThumbnailStore::FetchThumbnailL - TEMP TABLE lookup" );
 
     RSqlStatement* stmt = NULL;
     stmt = &iStmt_KThumbnailSelectTempInfoByPath;
@@ -1768,7 +1655,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     if(rowStatus != KSqlAtRow)
        {
        TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() -- MAIN TABLE lookup" );
-       OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_FETCHTHUMBNAILL, "CThumbnailStore::FetchThumbnailL - MAIN TABLE lookup" );
       
        CleanupStack::PopAndDestroy( stmt );
        stmt = &iStmt_KThumbnailSelectInfoByPath;
@@ -1788,7 +1674,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     if(rowStatus == KSqlAtRow)
        {
         TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() -- thumbnail found" );
-        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_FETCHTHUMBNAILL, "CThumbnailStore::FetchThumbnailL - thumbnail found" );
         
         // Check whether blacklisted thumbnail entry modified. 
         // If thumbnail is marked as blacklisted and timestamp has 
@@ -1846,7 +1731,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     else
         {
         TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() -- thumbnail NOT found" );
-        OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_FETCHTHUMBNAILL, "CThumbnailStore::FetchThumbnailL - thumbnail NOT found" );
         }
         
     CleanupStack::PopAndDestroy( stmt );
@@ -1863,7 +1747,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
                                          TBool aTransaction )
     {
     TN_DEBUG2( "CThumbnailStore::DeleteThumbnailsL(%S)", &aPath );
-    OstTraceExt1( TRACE_NORMAL, CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL;aPath=%S", aPath );
 
     if(iReadOnly)
         {
@@ -1898,7 +1781,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         }
         
     TN_DEBUG1( "CThumbnailStore::DeleteThumbnailsByPathL() -- TEMP TABLE lookup" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - TEMP TABLE lookup" );
     
     RSqlStatement* stmt = NULL;
     RSqlStatement* stmt_info = NULL;
@@ -1937,7 +1819,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         User::LeaveIfError( err );
         
         TN_DEBUG1( "CThumbnailStore::DeleteThumbnailsByPathL() -- TEMP TABLE lookup - thumbnail deleted" );
-        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - TEMP TABLE lookup - thumbnail deleted" );
        
         // fetch another row (temp table rowIDs are updated immediately)
         stmt->Reset();
@@ -1958,7 +1839,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         {
         //look from real table 
         TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- MAIN TABLE lookup" );
-        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - MAIN TABLE lookup" );
         
         stmt = &iStmt_KThumbnailSqlSelectRowIDInfoByPath;
         CleanupStack::PushL(TCleanupItem(ResetStatement, stmt));
@@ -1993,7 +1873,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
             User::LeaveIfError( err );
            
             TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- MAIN TABLE lookup - thumbnail deleted" );
-            OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - MAIN TABLE lookup - thumbnail deleted" );
             
             rowStatus = stmt->Next();
             }
@@ -2008,7 +1887,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
     else
         {
         TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- MAIN TABLE lookup" );        
-        OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - MAIN TABLE lookup" );
     
         stmt = &iStmt_KThumbnailSqlSelectRowIDInfoByPath;
         CleanupStack::PushL(TCleanupItem(ResetStatement, stmt));
@@ -2025,7 +1903,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         if (rowStatus == KSqlAtRow)
             {        
             TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- add to Deleted" );
-            OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - add to Deleted" );
         
             // only add path to deleted table
             stmt = &iStmt_KThumbnailSqlInsertDeleted;
@@ -2042,7 +1919,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
         else
             {
             TN_DEBUG1( "CThumbnailStore::DeleteThumbnailByPathL() -- no thumbs in MAIN" );
-            OstTrace0( TRACE_NORMAL, DUP7_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - no thumbs in MAIN" );
             }
         }    
     
@@ -2054,16 +1930,13 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
     
 #ifdef _DEBUG
     aStop.UniversalTime();
-    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailStore::DeleteThumbnailByPathL() took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-    OstTrace1( TRACE_NORMAL, DUP8_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL - took;tookTime=%d", tookTime );
 #endif
     
     // start maintenance if rows in main table were marked
     if (!aForce && count > 0)
         {
         TN_DEBUG2( "CThumbnailStore::DeleteThumbnailByPathL() -- MAIN TABLE lookup - %d rows marked deleted", count);
-        OstTrace1( TRACE_NORMAL, DUP9_CTHUMBNAILSTORE_DELETETHUMBNAILSL, "CThumbnailStore::DeleteThumbnailsL -- MAIN TABLE lookup - rows marked deleted;count=%d", count );
         
         iDeleteThumbs = ETrue;
         iActivityManager->Start();
@@ -2079,7 +1952,7 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
 void CThumbnailStore::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC& aNewPath )
     {
     TN_DEBUG2( "CThumbnailStore::RenameThumbnailsL(%S)", &aCurrentPath );
-    OstTraceExt1( TRACE_NORMAL, CTHUMBNAILSTORE_RENAMETHUMBNAILSL, "CThumbnailStore::RenameThumbnailsL;aCurrentPath=%S", aCurrentPath );
+    
     if(iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::RenameThumbnailsL() read only, skip..." );
@@ -2108,7 +1981,6 @@ void CThumbnailStore::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC&
     transaction.BeginL();
         
     TN_DEBUG1( "CThumbnailStore::RenameThumbnailsL() -- TEMP TABLE" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_RENAMETHUMBNAILSL, "CThumbnailStore::RenameThumbnailsL - TEMP TABLE" );
     
     RSqlStatement* stmt = NULL;
     stmt = &iStmt_KThumbnailTempRename;
@@ -2125,7 +1997,6 @@ void CThumbnailStore::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC&
     User::LeaveIfError( stmt->Exec() );
     
     TN_DEBUG1( "CThumbnailStore::RenameThumbnailsL() -- MAIN TABLE" );
-    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_RENAMETHUMBNAILSL, "CThumbnailStore::RenameThumbnailsL - MAIN TABLE" );
     
     CleanupStack::PopAndDestroy( stmt );
     stmt = &iStmt_KThumbnailRename;
@@ -2154,9 +2025,7 @@ void CThumbnailStore::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC&
     
 #ifdef _DEBUG
     aStop.UniversalTime();
-    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailStore::RenameThumbnailsL() took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_RENAMETHUMBNAILSL, "CThumbnailStore::RenameThumbnailsL;tookTime=%d", tookTime );
 #endif      
     }
 
@@ -2176,7 +2045,6 @@ void CThumbnailStore::SetPersistentSizes(const RArray < TThumbnailPersistentSize
 void CThumbnailStore::FlushCacheTable( TBool aForce )
     {
     TN_DEBUG1("CThumbnailStore::FlushCacheTable() in");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - in" );
     
     StopAutoFlush();
     
@@ -2190,7 +2058,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         {
         // cache empty or db unusable
         TN_DEBUG1( "CThumbnailStore::FlushCacheTable() error ");
-        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - error" );
         return;
         }
     
@@ -2200,7 +2067,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     if(ret != KErrNone)
        {
        TN_DEBUG2( "CThumbnailStore::FlushCacheTable() error checking MTP sync: %d", ret);
-       OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - error checking MTP sync;ret=%d", ret );
        }
     
     //set init max flush delay
@@ -2212,7 +2078,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         {
         //MTP or MPX harvesting active, allow longer flush -> bigger batch size
         TN_DEBUG1("CThumbnailStore::FlushCacheTable() MTP sync, longer flush..");
-        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - MTP sync, longer flush.." );
         aMaxFlushDelay = KMaxMTPFlushDelay;
         }
     
@@ -2220,7 +2085,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     if( iBatchItemCount == 1)
         {
         TN_DEBUG2("CThumbnailStore::FlushCacheTable() calculate new batch size iPreviousFlushDelay = %d", iPreviousFlushDelay);
-        OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;iPreviousFlushDelay=%d", iPreviousFlushDelay );
         //adjust batch size dynamically between min and max based on previous flush speed
         if( iPreviousFlushDelay > 0 )
             {
@@ -2228,15 +2092,10 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
             iBatchFlushItemCount = (TInt)aNewBatchFlushItemCount;
 
             TN_DEBUG2("CThumbnailStore::FlushCacheTable() aMaxFlushDelay %e", aMaxFlushDelay);      
-            OstTrace1( TRACE_NORMAL, DUP5_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;aMaxFlushDelay=%d", aMaxFlushDelay );
             TN_DEBUG2("CThumbnailStore::FlushCacheTable() aPreviousFlushDelay %e", aPreviousFlushDelay);      
-			OstTrace1( TRACE_NORMAL, DUP6_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;aPreviousFlushDelay=%d", aPreviousFlushDelay );
 			TN_DEBUG2("CThumbnailStore::FlushCacheTable() aBatchFlushItemCount %e", aBatchFlushItemCount);      
-            OstTrace1( TRACE_NORMAL, DUP7_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;aBatchFlushItemCount=%d", aBatchFlushItemCount );
             TN_DEBUG2("CThumbnailStore::FlushCacheTable() aNewBatchFlushItemCount %e", aNewBatchFlushItemCount);
-            OstTrace1( TRACE_NORMAL, DUP8_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;aNewBatchFlushItemCount=%d", aNewBatchFlushItemCount );
             TN_DEBUG2("CThumbnailStore::FlushCacheTable() iBatchFlushItemCount %d", iBatchFlushItemCount);
-            OstTrace1( TRACE_NORMAL, DUP9_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;iBatchFlushItemCount=%d", iBatchFlushItemCount );
             
             if( iBatchFlushItemCount < KMInBatchItems )
                 {
@@ -2255,7 +2114,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         }
     
     TN_DEBUG3("CThumbnailStore::FlushCacheTable() iBatchFlushItemCount = %d, iBatchItemCount = %d", iBatchFlushItemCount, iBatchItemCount);
-    OstTrace0( TRACE_NORMAL, DUP10_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable" );
     
     if( iBatchItemCount < iBatchFlushItemCount && !aForce)
        {
@@ -2269,18 +2127,15 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     // Move data from temp table to main....
     TInt err_begin = iDatabase.Exec( KThumbnailBeginTransaction );
     TN_DEBUG2("CThumbnailStore::FlushCacheTable() KThumbnailBeginTransaction %d", err_begin);
-    OstTrace1( TRACE_NORMAL, DUP11_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - KThumbnailBeginTransaction;err_begin=%d", err_begin );
     
     TInt err_tempinfo = iDatabase.Exec( KThumbnailMoveFromTempInfoToMainTable );
     TN_DEBUG2("CThumbnailStore::FlushCacheTable() KThumbnailMoveFromTempInfoToMainTable %d", err_tempinfo);
-    OstTrace1( TRACE_NORMAL, DUP12_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - KThumbnailMoveFromTempInfoToMainTable;err_tempinfo=%d", err_tempinfo );
     
 #ifdef _DEBUG
     if(err_tempinfo < 0)
         {
         TPtrC errorMsg = iDatabase.LastErrorMessage();
         TN_DEBUG2( "CThumbnailStore::FlushCacheTable() lastError %S", &errorMsg);
-        OstTraceExt1( TRACE_NORMAL, DUP13_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - lastError;errorMsg=%S", errorMsg );
         }
 #endif
     
@@ -2291,29 +2146,24 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
         {
         TPtrC errorMsg2 = iDatabase.LastErrorMessage();
         TN_DEBUG2( "CThumbnailStore::FlushCacheTable() KThumbnailMoveFromTempDataToMainTable %S", &errorMsg2);
-        OstTraceExt1( TRACE_NORMAL, DUP14_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - KThumbnailMoveFromTempDataToMainTable;errorMsg2=%S", errorMsg2 );
         }
 #endif
     
     TInt err_delinfo = iDatabase.Exec( KThumbnailDeleteFromTempInfoTable );
     TN_DEBUG2("CThumbnailStore::FlushCacheTable() KThumbnailDeleteFromTempInfoTable %d", err_delinfo);
-    OstTrace1( TRACE_NORMAL, DUP15_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - KThumbnailDeleteFromTempInfoTable;err_delinfo=%d", err_delinfo );
     
     TInt err_deldata = iDatabase.Exec( KThumbnailDeleteFromTempDataTable );
     TN_DEBUG2("CThumbnailStore::FlushCacheTable() KThumbnailDeleteFromTempDataTable %d", err_deldata);
-    OstTrace1( TRACE_NORMAL, DUP16_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable;err_deldata=%d", err_deldata );
    
     if( err_tempinfo < 0 || err_tempdata < 0  || err_delinfo < 0  || err_deldata < 0 )
         {
         TInt err = iDatabase.Exec( KThumbnailRollbackTransaction );
         TN_DEBUG2("CThumbnailStore::FlushCacheTable() KThumbnailRollbackTransaction %d", err);
-        OstTrace1( TRACE_NORMAL, DUP17_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - KThumbnailRollbackTransaction;err=%d", err );
         }
     else
         {
         TInt err_commit = iDatabase.Exec( KThumbnailCommitTransaction );
         TN_DEBUG2("CThumbnailStore::FlushCacheTable() KThumbnailCommitTransaction %d", err_commit);
-        OstTrace0( TRACE_NORMAL, DUP18_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable" );
         }
     
     // db got corrupted
@@ -2321,7 +2171,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
        err_tempdata == KSqlErrCorrupt || err_tempdata == KErrCorrupt)
         {
         TN_DEBUG1("CThumbnailStore::FlushCacheTable() db corrupted");
-        OstTrace0( TRACE_NORMAL, DUP19_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - db corrupted" );
     
         // open new
         TRAP_IGNORE(OpenDatabaseL(ETrue));
@@ -2331,13 +2180,11 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     iPreviousFlushDelay = (TInt)iStopFlush.MicroSecondsFrom(iStartFlush).Int64()/1000;
     
     TN_DEBUG2( "CThumbnailStore::FlushCacheTable() took %d ms", iPreviousFlushDelay);
-    OstTrace1( TRACE_NORMAL, DUP20_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - took ms ;iPreviousFlushDelay=%d", iPreviousFlushDelay );
         
     //cache flushed
     iBatchItemCount = 0;
 
     TN_DEBUG1("CThumbnailStore::FlushCacheTable() out");
-    OstTrace0( TRACE_NORMAL, DUP21_CTHUMBNAILSTORE_FLUSHCACHETABLE, "CThumbnailStore::FlushCacheTable - out" );
     }
 
 // -----------------------------------------------------------------------------
@@ -2347,7 +2194,7 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
 void CThumbnailStore::StartAutoFlush()
     {
     TN_DEBUG1( "CThumbnailStore::StartAutoFlush()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_STARTAUTOFLUSH, "CThumbnailStore::StartAutoFlush" );
+    
     if(iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::StartAutoFlush() read only, skip..." );
@@ -2368,7 +2215,6 @@ void CThumbnailStore::StartAutoFlush()
     if (err != KErrNone)
         {
         TN_DEBUG2( "CThumbnailStore::StartAutoFlush() - Error creating timer (%d)", err );
-        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_STARTAUTOFLUSH, "CThumbnailStore::StartAutoFlush - - Error creating timer;err=%d", err );
         }
     else
         {
@@ -2384,7 +2230,6 @@ void CThumbnailStore::StartAutoFlush()
 void CThumbnailStore::StopAutoFlush()
     {
     TN_DEBUG1( "CThumbnailStore::StopAutoFlush()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_STOPAUTOFLUSH, "CThumbnailStore::StopAutoFlush" );
     if( iAutoFlushTimer )
         {
         iAutoFlushTimer->Cancel();
@@ -2398,7 +2243,6 @@ void CThumbnailStore::StopAutoFlush()
 void CThumbnailStore::StartMaintenance()
     {
     TN_DEBUG1( "CThumbnailStore::StartMaintenance()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_STARTMAINTENANCE, "CThumbnailStore::StartMaintenance" );
     TInt err = KErrNone;
     
     if( iMaintenanceTimer && iMaintenanceTimer->IsActive() )
@@ -2413,7 +2257,6 @@ void CThumbnailStore::StartMaintenance()
     if (err != KErrNone && !iMaintenanceTimer)
         {
         TN_DEBUG2( "CThumbnailStore::StartMaintenanceTimer() - Error creating timer (%d)", err );
-        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_STARTMAINTENANCE, "CThumbnailStore::StartMaintenance - Error creating timer ;err=%d", err );
         }
     else
         {
@@ -2429,7 +2272,6 @@ void CThumbnailStore::StartMaintenance()
 TInt CThumbnailStore::AutoFlushTimerCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbnailStore::AutoFlushTimerCallBack()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_AUTOFLUSHTIMERCALLBACK, "CThumbnailStore::AutoFlushTimerCallBack" );
     CThumbnailStore* self = static_cast<CThumbnailStore*>( aAny );
     
     self->FlushCacheTable(ETrue);
@@ -2453,32 +2295,26 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
     if(ret != KErrNone || MPXHarvesting)
         {
         TN_DEBUG3( "CThumbnailStore::MaintenanceTimerCallBack() KMPXHarvesting err == %d, MPXHarvesting == %d", ret, MPXHarvesting);
-        OstTraceExt2( TRACE_NORMAL, CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack;ret=%d;MPXHarvesting=%d", ret, MPXHarvesting );
         self->iIdle = EFalse;
         }
     TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() KMPXHarvesting == %d", MPXHarvesting);
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack;MPXHarvesting=%d", MPXHarvesting );
 
     ret = RProperty::Get(KTAGDPSNotification, KDaemonProcessing, DaemonProcessing);
     if(ret != KErrNone || DaemonProcessing)
         {
         TN_DEBUG3( "CThumbnailStore::MaintenanceTimerCallBack() KDaemonProcessing err == %d, DaemonProcessing == %d", ret, DaemonProcessing);
-        OstTraceExt2( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack;ret=%d;DaemonProcessing=%d", ret, DaemonProcessing );
         self->iIdle = EFalse;
         }
     TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() DaemonProcessing == %d", DaemonProcessing);
-    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack;DaemonProcessing=%d", DaemonProcessing );
     
     if (self->iIdle)
         {
         TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - maintenance, store %d", self->iDrive);
-        OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - maintenance, store;self->iDrive=%d", self->iDrive );
     
         // thumbmnail deletion
         if (self->iDeleteThumbs)
             {
             TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - cleanup");
-            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - cleanup" );
         
             TInt deleteCount = 0;
             
@@ -2487,7 +2323,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
             if (err != KErrNone)
                 {
                 TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - cleanup failed, err %d", err);
-                OstTrace1( TRACE_NORMAL, DUP6_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - cleanup failed;err=%d", err );
                 return err;
                 }
             
@@ -2495,7 +2330,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
             if (deleteCount < KStoreMaintenanceDeleteLimit || deleteCount == 0)
                 {
                 TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - cleanup finished, store %d", self->iDrive);
-                OstTrace1( TRACE_NORMAL, DUP7_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - cleanup finished, store;self->iDrive=%d", self->iDrive );
                 self->iDeleteThumbs = EFalse;
                 }     
             }
@@ -2504,7 +2338,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
         else if (self->iCheckFilesExist)
             {
             TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - file existence check");
-            OstTrace0( TRACE_NORMAL, DUP8_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - file existence check" );
         
             TBool finished = EFalse;
         
@@ -2512,7 +2345,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
             if (err != KErrNone)
                 {
                 TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - file existence check failed, err %d", err);
-                OstTrace1( TRACE_NORMAL, DUP9_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - file existence check failed;err=%d", err );
                 return err;
                 }
         
@@ -2520,7 +2352,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
             if (finished)
                 {
                 TN_DEBUG2( "CThumbnailStore::MaintenanceTimerCallBack() - file existence check finished, store %d", self->iDrive);
-                OstTrace1( TRACE_NORMAL, DUP10_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - file existence check finished, store;self->iDrive=%d", self->iDrive );
                 self->iCheckFilesExist = EFalse;
                 }
             }
@@ -2529,13 +2360,11 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
         if (self->iIdle && ( self->iDeleteThumbs || self->iCheckFilesExist) )
             {
             TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - continue maintenance");
-            OstTrace0( TRACE_NORMAL, DUP11_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - continue maintenance" );
             self->StartMaintenance();
             }  
         else if (!self->iDeleteThumbs && !self->iCheckFilesExist)
             {
             TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - no more maintenance");
-            OstTrace0( TRACE_NORMAL, DUP12_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - no more maintenance" );
         
             // no need to monitor activity anymore
             self->iActivityManager->Cancel();
@@ -2544,7 +2373,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
     else
         {
         TN_DEBUG1( "CThumbnailStore::MaintenanceTimerCallBack() - device not idle");
-        OstTrace0( TRACE_NORMAL, DUP13_CTHUMBNAILSTORE_MAINTENANCETIMERCALLBACK, "CThumbnailStore::MaintenanceTimerCallBack - device not idle" );
         }
 
     return KErrNone; // Return value ignored by CPeriodic
@@ -2553,7 +2381,6 @@ TInt CThumbnailStore::MaintenanceTimerCallBack(TAny* aAny)
 TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aModified, TBool& modifiedChanged )
     {
     TN_DEBUG2( "CThumbnailStore::CheckModifiedByPathL() %S", &aPath);
-    OstTraceExt1( TRACE_NORMAL, CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL;aPath=%S", aPath );
     
     if(iReadOnly)
     	{
@@ -2587,7 +2414,6 @@ TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aM
     TBool checkMain = EFalse;
    
     TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- temp" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- temp" );
    
     while(rowStatus == KSqlAtRow || !checkMain)
         {
@@ -2597,26 +2423,21 @@ TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aM
             TInt64 oldModified = stmt->ColumnInt64( column );
            
             TN_DEBUG2( "CThumbnailStore::CheckModifiedL() -- timestamp old %Ld", oldModified);
-            OstTraceExt1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- timestamp old;oldModified=%Ld", oldModified );
             TN_DEBUG2( "CThumbnailStore::CheckModifiedL() -- timestamp mds %Ld", aModified);
-            OstTraceExt1( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- timestamp mds;aModified=%Ld", aModified );
           
             if (oldModified < aModified)
                 {
                 TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is newer than original" );
-                OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- timestamp is newer than original" );
                 modifiedChanged = ETrue;
                 break;
                 }
             else if (oldModified > aModified)
                 {
                 TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is older than original" );
-                OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- timestamp is older than original" );
                 }
             else if (oldModified == aModified)
                 {
                 TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- timestamp is the same as original" );
-                OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- timestamp is the same as original" );
                 }
             
             rowStatus = stmt->Next();
@@ -2626,7 +2447,6 @@ TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aM
         if(rowStatus != KSqlAtRow && !checkMain && !modifiedChanged)
             {
             TN_DEBUG1( "CThumbnailStore::CheckModifiedL() -- main" );
-            OstTrace0( TRACE_NORMAL, DUP7_CTHUMBNAILSTORE_CHECKMODIFIEDBYPATHL, "CThumbnailStore::CheckModifiedByPathL -- main" );
             //come here only once
             checkMain = ETrue;
            
@@ -2665,7 +2485,6 @@ TBool CThumbnailStore::IsReadOnly()
 void CThumbnailStore::PrepareBlacklistedItemsForRetryL()
     {
     TN_DEBUG1( "CThumbnailStore::PrepareBlacklistedItemsForRetry()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_PREPAREBLACKLISTEDITEMSFORRETRYL, "CThumbnailStore::PrepareBlacklistedItemsForRetryL" );
     
     RSqlStatement stmt;
     CleanupClosePushL( stmt );
@@ -2678,7 +2497,6 @@ void CThumbnailStore::PrepareBlacklistedItemsForRetryL()
     TInt err = stmt.Exec();
    
     TN_DEBUG2( "CThumbnailStore::PrepareBlacklistedItemsForRetryL() - main table, err=%d", err );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_PREPAREBLACKLISTEDITEMSFORRETRYL, "CThumbnailStore::PrepareBlacklistedItemsForRetryL - main table;err=%d", err );
     
     CleanupStack::PopAndDestroy( &stmt );
     }
@@ -2690,7 +2508,7 @@ void CThumbnailStore::PrepareBlacklistedItemsForRetryL()
 TInt CThumbnailStore::DeleteMarkedL()
     {
     TN_DEBUG1( "CThumbnailStore::DeleteMarkedL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_DELETEMARKEDL, "CThumbnailStore::DeleteMarkedL" );
+    
     if(iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::DeleteMarkedL() read only, skip..." );
@@ -2755,7 +2573,6 @@ TInt CThumbnailStore::DeleteMarkedL()
        deleteCount++;
        
        TN_DEBUG1( "CThumbnailStore::DeleteMarkedL() - thumbnail deleted" );
-       OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_DELETEMARKEDL, "CThumbnailStore::DeleteMarkedL - thumbnail deleted" );
        
        rowStatus = stmt->Next();
        }
@@ -2775,9 +2592,7 @@ TInt CThumbnailStore::DeleteMarkedL()
     
 #ifdef _DEBUG
     aStop.UniversalTime();
-    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailStore::DeleteMarkedL() took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_DELETEMARKEDL, "CThumbnailStore::DeleteMarkedL - took ms;tookTime=%d", tookTime );
 #endif
     
     return deleteCount;
@@ -2790,7 +2605,7 @@ TInt CThumbnailStore::DeleteMarkedL()
 TInt CThumbnailStore::FileExistenceCheckL()
     {
     TN_DEBUG1( "CThumbnailStore::FileExistenceCheckL()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_FILEEXISTENCECHECKL, "CThumbnailStore::FileExistenceCheckL" );
+	
     if(iReadOnly)
 		{
 		TN_DEBUG1( "CThumbnailStore::FileExistenceCheckL() read only, skip..." );
@@ -2881,9 +2696,7 @@ TInt CThumbnailStore::FileExistenceCheckL()
     
 #ifdef _DEBUG
     aStop.UniversalTime();
-    TInt tookTime = (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000;
     TN_DEBUG2( "CThumbnailStore::FileExistenceCheckL() took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_FILEEXISTENCECHECKL, "CThumbnailStore::FileExistenceCheckL - took ms;tookTime=%d", tookTime );
 #endif
     
     return finished;
@@ -2923,7 +2736,6 @@ TInt CThumbnailStore::CheckDbState()
     if (iUnrecoverable && !iReadOnly)
         {
         TN_DEBUG1( "CThumbnailStore::CheckDbState() - database in unrecoverable state" );
-        OstTrace0( TRACE_NORMAL, CTHUMBNAILSTORE_CHECKDBSTATE, "CThumbnailStore::CheckDbState" );
         __ASSERT_DEBUG( !iUnrecoverable, ThumbnailPanic( EThumbnailDatabaseUnrecoverable ));
         
         return KStoreUnrecoverableErr;
@@ -2937,7 +2749,6 @@ TInt CThumbnailStore::CheckDbState()
 void CThumbnailStore::HandleDiskSpaceNotificationL( TBool aDiskFull )
     {
     TN_DEBUG2( "CThumbnailStore::HandleDiskSpaceNotificationL() aDiskFull = %d", aDiskFull );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_HANDLEDISKSPACENOTIFICATIONL, "CThumbnailStore::HandleDiskSpaceNotificationL;aDiskFull=%u", aDiskFull );
     iDiskFull = aDiskFull;
     }
 
@@ -2948,9 +2759,6 @@ void CThumbnailStore::HandleDiskSpaceError(TInt /*aError*/ )
 #endif
     {
     TN_DEBUG2( "CThumbnailStore::HandleDiskSpaceError() aError = %d", aError );
-#ifdef _DEBUG
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_HANDLEDISKSPACEERROR, "CThumbnailStore::HandleDiskSpaceError;aError=%d", aError );
-#endif
     }
 
 TBool CThumbnailStore::IsDiskFull()
@@ -2970,7 +2778,7 @@ TBool CThumbnailStore::IsDiskFull()
 void CThumbnailStore::ActivityChanged(const TBool aActive)
     {
     TN_DEBUG2( "CThumbnailStore::ActivityChanged() aActive == %d", aActive);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTORE_ACTIVITYCHANGED, "CThumbnailStore::ActivityChanged;aActive=%u", aActive );
+    
     if( iReadOnly )
         {
         TN_DEBUG1( "CThumbnailStore::ActivityChanged() read only, skip..." );
@@ -2990,7 +2798,6 @@ void CThumbnailStore::ActivityChanged(const TBool aActive)
         if(ret != KErrNone || MPXHarvesting)
             {
             TN_DEBUG3( "CThumbnailStore::ActivityChanged() KMPXHarvesting err == %d, MPXHarvesting == %d", ret, MPXHarvesting);
-            OstTraceExt2( TRACE_NORMAL, DUP1_CTHUMBNAILSTORE_ACTIVITYCHANGED, "CThumbnailStore::ActivityChanged;ret=%d;MPXHarvesting=%d", ret, MPXHarvesting );
             iIdle = EFalse;
             return;
             }
@@ -2999,13 +2806,11 @@ void CThumbnailStore::ActivityChanged(const TBool aActive)
         if(ret != KErrNone || DaemonProcessing)
             {
             TN_DEBUG3( "CThumbnailStore::ActivityChanged() KDaemonProcessing err == %d DaemonProcessing == %d", ret, DaemonProcessing );
-            OstTraceExt2( TRACE_NORMAL, DUP2_CTHUMBNAILSTORE_ACTIVITYCHANGED, "CThumbnailStore::ActivityChanged - KDaemonProcessing;ret=%d;DaemonProcessing=%d", ret, DaemonProcessing );
             iIdle = EFalse;
             return;
             }
         
         TN_DEBUG1( "CThumbnailStore::ActivityChanged() - starting maintenance");
-        OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILSTORE_ACTIVITYCHANGED, "CThumbnailStore::ActivityChanged - starting maintenance" );
         iIdle = ETrue;
         StartMaintenance();
         }
@@ -3040,7 +2845,6 @@ CThumbnailStoreDiskSpaceNotifierAO* CThumbnailStoreDiskSpaceNotifierAO::NewLC(
 TDriveNumber CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL( const TDesC& aFilename )
     {
     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_GETDRIVENUMBERL, "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL" );
     TLex driveParser( aFilename );
     
     TChar driveChar = driveParser.Get();
@@ -3048,7 +2852,6 @@ TDriveNumber CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL( const TDesC& a
     if( 0 == driveChar || TChar( ':' ) != driveParser.Peek() )
         {
         TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL() KErrArgument");
-        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_GETDRIVENUMBERL, "CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL - KErrArgument" );
         User::Leave( KErrArgument );
         }
         
@@ -3062,7 +2865,6 @@ TDriveNumber CThumbnailStoreDiskSpaceNotifierAO::GetDriveNumberL( const TDesC& a
 CThumbnailStoreDiskSpaceNotifierAO::~CThumbnailStoreDiskSpaceNotifierAO()
     {
     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::~CThumbnailStoreDiskSpaceNotifierAO()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CTHUMBNAILSTOREDISKSPACENOTIFIERAO, "CThumbnailStoreDiskSpaceNotifierAO::~CThumbnailStoreDiskSpaceNotifierAO" );
     Cancel();
 
     iFileServerSession.Close();
@@ -3071,7 +2873,6 @@ CThumbnailStoreDiskSpaceNotifierAO::~CThumbnailStoreDiskSpaceNotifierAO()
 void CThumbnailStoreDiskSpaceNotifierAO::RunL()
     {   
     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL" );
     TVolumeInfo volumeInfo;
 
     if ( iState == CThumbnailStoreDiskSpaceNotifierAO::ENormal )
@@ -3091,7 +2892,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
                     if( volumeInfo.iFree < iThreshold )
                         {
                         TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL() FULL");
-                        OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - FULL" );
                         iDiskFull = ETrue;
                         iObserver.HandleDiskSpaceNotificationL( iDiskFull );
                         iState = EIterate;
@@ -3104,7 +2904,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
                     else
                         {
                         TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL() NOT FULL");
-                        OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - NOT FULL" );
                         iDiskFull = EFalse;
                         iObserver.HandleDiskSpaceNotificationL( iDiskFull );
                         }
@@ -3112,7 +2911,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
                 else
                     {
                     TN_DEBUG2( "CThumbnailStoreDiskSpaceNotifierAO::RunL() error %d NOT FULL", ret);
-                    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - NOT FULL;ret=%d", ret );
                     iDiskFull = EFalse;
                     iObserver.HandleDiskSpaceNotificationL( iDiskFull );
                     User::Leave( ret );
@@ -3123,7 +2921,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
 
             case KErrArgument:
                 TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL() KErrArgument");
-                OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - KErrArgument" );
                 User::Leave( status );
                 break;
             default:
@@ -3152,7 +2949,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
                 if ( volumeInfo.iFree >= iThreshold )
                     {
                     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL() NOT FULL");
-                    OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - NOT FULL" );
                     iDiskFull = EFalse;
                     }
                 }
@@ -3160,7 +2956,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
         else
             {
             TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL() NOT FULL");
-            OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - NOT FULL" );
             iDiskFull = EFalse;
             }
         iState = ENormal;
@@ -3170,7 +2965,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
     else
         {
         TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::RunL() KErrGeneral");
-        OstTrace0( TRACE_NORMAL, DUP7_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNL, "CThumbnailStoreDiskSpaceNotifierAO::RunL - KErrGeneral" );
         User::Leave( KErrGeneral );
         }
     }
@@ -3178,7 +2972,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::RunL()
 TInt CThumbnailStoreDiskSpaceNotifierAO::RunError(TInt aError)
     {
     TN_DEBUG2( "CThumbnailStoreDiskSpaceNotifierAO::RunError() %d", aError);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_RUNERROR, "CThumbnailStoreDiskSpaceNotifierAO::RunError;aError=%d", aError );
     
     iObserver.HandleDiskSpaceError( aError );
     
@@ -3188,7 +2981,6 @@ TInt CThumbnailStoreDiskSpaceNotifierAO::RunError(TInt aError)
 void CThumbnailStoreDiskSpaceNotifierAO::DoCancel()
     {
     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::DoCancel()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_DOCANCEL, "CThumbnailStoreDiskSpaceNotifierAO::DoCancel" );
     
     if( IsActive() )
         {   
@@ -3202,14 +2994,12 @@ CThumbnailStoreDiskSpaceNotifierAO::CThumbnailStoreDiskSpaceNotifierAO(
     iObserver( aObserver ), iThreshold( aThreshold ), iDrive( aDrive ), iState( CThumbnailStoreDiskSpaceNotifierAO::ENormal ), iDiskFull( EFalse )
     {
     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::CThumbnailStoreDiskSpaceNotifierAO()");
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CTHUMBNAILSTOREDISKSPACENOTIFIERAO, "CThumbnailStoreDiskSpaceNotifierAO::CThumbnailStoreDiskSpaceNotifierAO" );
     CActiveScheduler::Add( this );
     }
 
 void CThumbnailStoreDiskSpaceNotifierAO::ConstructL()
     {   
     TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::ConstructL()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CONSTRUCTL, "CThumbnailStoreDiskSpaceNotifierAO::ConstructL" );
     TInt KMessageSlotCount = 2; // slots for NotifyDiskSpace and NotifyDiskSpaceCancel
 
     User::LeaveIfError( iFileServerSession.Connect( KMessageSlotCount ) );
@@ -3222,14 +3012,12 @@ void CThumbnailStoreDiskSpaceNotifierAO::ConstructL()
         if ( volumeInfo.iFree < iThreshold )
             {
             TN_DEBUG1( "CThumbnailStoreDiskSpaceNotifierAO::ConstructL() FULL");
-            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CONSTRUCTL, "CThumbnailStoreDiskSpaceNotifierAO::ConstructL - FULL" );
             iDiskFull = ETrue;
             }
         }
     else
         {
         TN_DEBUG2( "CThumbnailStoreDiskSpaceNotifierAO::ConstructL() error %d NOT FULL", ret);
-        OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CONSTRUCTL, "CThumbnailStoreDiskSpaceNotifierAO::ConstructL - NOT FULL;ret=%d", ret );
         iDiskFull = EFalse;
         User::Leave( ret );
         }
@@ -3242,7 +3030,6 @@ void CThumbnailStoreDiskSpaceNotifierAO::ConstructL()
 void CThumbnailStoreDiskSpaceNotifierAO::StartNotifier()
     {   
     TN_DEBUG2( "CThumbnailStoreDiskSpaceNotifierAO::StartNotifier() iDrive == %d", iDrive);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILSTOREDISKSPACENOTIFIERAO_STARTNOTIFIER, "CThumbnailStoreDiskSpaceNotifierAO::StartNotifier;iDrive=%d", iDrive );
     iFileServerSession.NotifyDiskSpace( iThreshold, iDrive, iStatus );
     
     SetActive();

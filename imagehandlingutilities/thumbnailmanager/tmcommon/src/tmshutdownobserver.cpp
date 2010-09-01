@@ -21,11 +21,6 @@
 #include "tmshutdownobserver.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "tmshutdownobserverTraces.h"
-#endif
-
 
 // ---------------------------------------------------------------------------
 // CTMShutdownObserver::NewL()
@@ -67,12 +62,10 @@ CTMShutdownObserver::CTMShutdownObserver( MTMShutdownObserver& aObserver,
 void CTMShutdownObserver::ConstructL()
     { 
     TN_DEBUG1( "CTMShutdownObserver::ConstructL()" );
-    OstTrace0( TRACE_NORMAL, CTMSHUTDOWNOBSERVER_CONSTRUCTL, "CTMShutdownObserver::ConstructL" );
     // define P&S property types
     if (iDefineKey)
         {
         TN_DEBUG1( "CTMShutdownObserver::ConstructL() define" );
-        OstTrace0( TRACE_NORMAL, DUP1_CTMSHUTDOWNOBSERVER_CONSTRUCTL, "CTMShutdownObserver::ConstructL - define" );
         RProperty::Define(iKeyCategory,iPropertyKey,
                           RProperty::EInt,KAllowAllPolicy,KPowerMgmtPolicy);
         }
@@ -80,13 +73,11 @@ void CTMShutdownObserver::ConstructL()
     // attach to the property
     TInt err = iProperty.Attach(iKeyCategory,iPropertyKey,EOwnerThread);
     TN_DEBUG2( "CTMShutdownObserver::ConstructL() attach err = %d", err );
-    OstTrace1( TRACE_NORMAL, DUP2_CTMSHUTDOWNOBSERVER_CONSTRUCTL, "CTMShutdownObserver::ConstructL - attach;err=%d", err );
     User::LeaveIfError(err);
     
     // wait for the previously attached property to be updated
     iProperty.Subscribe(iStatus);
     TN_DEBUG1( "CTMShutdownObserver::ConstructL() subscribe" );
-    OstTrace0( TRACE_NORMAL, DUP3_CTMSHUTDOWNOBSERVER_CONSTRUCTL, "CTMShutdownObserver::ConstructL - subscribe" );
     SetActive();
     }
 
@@ -97,7 +88,6 @@ void CTMShutdownObserver::ConstructL()
 CTMShutdownObserver::~CTMShutdownObserver()
     {
     TN_DEBUG1( "CTMShutdownObserver::~CTMShutdownObserver()" );
-    OstTrace0( TRACE_NORMAL, CTMSHUTDOWNOBSERVER_CTMSHUTDOWNOBSERVER, "CTMShutdownObserver::~CTMShutdownObserver" );
     Cancel();
     iProperty.Close();
     }
@@ -109,7 +99,6 @@ CTMShutdownObserver::~CTMShutdownObserver()
 void CTMShutdownObserver::RunL()
     {
     TN_DEBUG2( "CTMShutdownObserver::RunL(%d)", iStatus.Int() );
-    OstTrace1( TRACE_NORMAL, CTMSHUTDOWNOBSERVER_RUNL, "CTMShutdownObserver::RunL;iStatus.Int()=%d", iStatus.Int() );
     // resubscribe before processing new value to prevent missing updates
     iProperty.Subscribe(iStatus);
     SetActive();
@@ -119,7 +108,6 @@ void CTMShutdownObserver::RunL()
     TInt err = iProperty.Get(value);
     
     TN_DEBUG2( "CTMShutdownObserver::RunL() Get err = %d", err );
-    OstTrace1( TRACE_NORMAL, DUP1_CTMSHUTDOWNOBSERVER_RUNL, "CTMShutdownObserver::RunL - get err;err=%d", err );
 
     // observer callback
     if (value)
@@ -135,7 +123,6 @@ void CTMShutdownObserver::RunL()
 void CTMShutdownObserver::DoCancel()
     {
     TN_DEBUG1( "CTMShutdownObserver::DoCancel()" );
-    OstTrace0( TRACE_NORMAL, CTMSHUTDOWNOBSERVER_DOCANCEL, "CTMShutdownObserver::DoCancel" );
     iProperty.Cancel();
     }
 

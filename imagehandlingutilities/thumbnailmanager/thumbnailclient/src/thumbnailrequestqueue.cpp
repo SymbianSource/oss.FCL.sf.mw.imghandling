@@ -19,11 +19,6 @@
 #include "thumbnailrequestqueue.h"
 #include "thumbnailrequestactive.h"
 #include "thumbnaillog.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailrequestqueueTraces.h"
-#endif
-
 
 
 // ======== MEMBER FUNCTIONS ========
@@ -72,12 +67,10 @@ void CThumbnailRequestQueue::ConstructL()
 CThumbnailRequestQueue::~CThumbnailRequestQueue()
     {
     TN_DEBUG1( "CThumbnailRequestQueue::~CThumbnailRequestQueue()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTQUEUE_CTHUMBNAILREQUESTQUEUE, "CThumbnailRequestQueue::~CThumbnailRequestQueue" );
     
     iRequests.ResetAndDestroy();
     
     TN_DEBUG1( "CThumbnailRequestQueue::~CThumbnailRequestQueue() - All requests deleted");
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTQUEUE_CTHUMBNAILREQUESTQUEUE, "CThumbnailRequestQueue::~CThumbnailRequestQueue - All requests deleted" );
     }
 
 
@@ -89,7 +82,6 @@ CThumbnailRequestQueue::~CThumbnailRequestQueue()
 void CThumbnailRequestQueue::Process()
     {
     TN_DEBUG1( "CThumbnailRequestQueue::Process()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTQUEUE_PROCESS, "CThumbnailRequestQueue::Process" );
     
     while ( (iActiveRequests < KMaxClientRequests) &&
             (iRequests.Count() > iActiveRequests) )
@@ -109,9 +101,6 @@ void CThumbnailRequestQueue::Process()
                TN_DEBUG4( "CThumbnailRequestQueue::Process() - candidate at %d, id = %d, (0x%08x)", i, 
                        request->RequestId(), 
                        request);
-               OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILREQUESTQUEUE_PROCESS, "CThumbnailRequestQueue::Process;request->RequestId()=%u", request->RequestId() );
-               OstTrace1( TRACE_NORMAL, DUP5_CTHUMBNAILREQUESTQUEUE_PROCESS, "CThumbnailRequestQueue::Process;request=%o", request );
-               
                reqPriority = request->Priority();
                if ( reqPriority > priority )
                    {
@@ -125,7 +114,6 @@ void CThumbnailRequestQueue::Process()
         if ( selectedRequest )
            {
            TN_DEBUG1( "CThumbnailRequestQueue::Process() - starting next request");
-           OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTQUEUE_PROCESS, "CThumbnailRequestQueue::Process - starting next request" );
                     
            iActiveRequests++;
            
@@ -133,7 +121,6 @@ void CThumbnailRequestQueue::Process()
            if (err != KErrNone)
                {
                TN_DEBUG1( "CThumbnailRequestQueue::Process() - starting request failed");
-               OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILREQUESTQUEUE_PROCESS, "CThumbnailRequestQueue::Process - starting request failed" );
                
                selectedRequest->StartError(err);
                }
@@ -146,7 +133,6 @@ void CThumbnailRequestQueue::Process()
     
     TN_DEBUG3( "CThumbnailRequestQueue::Process() end - requests: %d, active requests: %d",
                iRequests.Count(), iActiveRequests );
-    OstTraceExt2( TRACE_NORMAL, DUP3_CTHUMBNAILREQUESTQUEUE_PROCESS, "CThumbnailRequestQueue::Process;iRequests.Count()=%d;iActiveRequests=%d", iRequests.Count(), iActiveRequests );
     }
 
 
@@ -162,7 +148,6 @@ void CThumbnailRequestQueue::AddRequestL( CThumbnailRequestActive* aRequest )
     
     TN_DEBUG3( "CThumbnailRequestQueue::AddRequestL() end - requests: %d, active requests: %d",
                iRequests.Count(), iActiveRequests );
-    OstTraceExt2( TRACE_NORMAL, CTHUMBNAILREQUESTQUEUE_ADDREQUESTL, "CThumbnailRequestQueue::AddRequestL;iRequests.Count()=%d;iActiveRequests=%d", iRequests.Count(), iActiveRequests );
     }
 
 void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestAO)
@@ -177,9 +162,6 @@ void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestA
              {
              // delete completed task
              TN_DEBUG3( "CThumbnailRequestQueue::RemoveCompleted() - deleted id = %d (0x%08x)", request->RequestId(), request);
-             OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTQUEUE_REMOVECOMPLETED, "CThumbnailRequestQueue::RemoveCompleted;request=%o", request );
-             OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILREQUESTQUEUE_REMOVECOMPLETED, "CThumbnailRequestQueue::RemoveCompleted;request->RequestId()=%u", request->RequestId() );
-             
              delete request;
              request = NULL;
              iRequests.Remove( i );
@@ -193,7 +175,6 @@ void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestA
      
      TN_DEBUG3( "CThumbnailRequestQueue::RemoveCompleted() end - requests: %d, active requests: %d",
                     iRequests.Count(), iActiveRequests );
-     OstTraceExt2( TRACE_NORMAL, DUP3_CTHUMBNAILREQUESTQUEUE_REMOVECOMPLETED, "CThumbnailRequestQueue::RemoveCompleted;iRequests.Count()=%d;iActiveRequests=%d", iRequests.Count(), iActiveRequests );
     }
 
 
@@ -205,7 +186,6 @@ void CThumbnailRequestQueue::RemoveCompleted( CThumbnailRequestActive* aRequestA
 TInt CThumbnailRequestQueue::CancelRequest( const TThumbnailRequestId aRequestId )
     {
     TN_DEBUG2( "CThumbnailRequestQueue::CancelRequest() - request ID: %d", aRequestId);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILREQUESTQUEUE_CANCELREQUEST, "CThumbnailRequestQueue::CancelRequest;aRequestId=%u", aRequestId );
     
     TInt res = KErrNotFound;
 
@@ -220,7 +200,6 @@ TInt CThumbnailRequestQueue::CancelRequest( const TThumbnailRequestId aRequestId
                 iRequests[i]->AsyncCancel();
                 
                 TN_DEBUG2( "CThumbnailRequestQueue::CancelRequest() - canceled request ID: %d", aRequestId);
-                OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTQUEUE_CANCELREQUEST, "CThumbnailRequestQueue::CancelRequest;aRequestId=%u", aRequestId );
                 }
             else
                 {
@@ -229,7 +208,6 @@ TInt CThumbnailRequestQueue::CancelRequest( const TThumbnailRequestId aRequestId
                 iRequests.Remove( i );
                           
                 TN_DEBUG2( "CThumbnailRequestQueue::CancelRequest() - removed request ID: %d", aRequestId);
-                OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILREQUESTQUEUE_CANCELREQUEST, "CThumbnailRequestQueue::CancelRequest;aRequestId=%u", aRequestId );
                 }
 
             res = KErrNone;
@@ -254,7 +232,6 @@ TInt CThumbnailRequestQueue::ChangePriority( const TThumbnailRequestId aRequestI
                                              const TInt aNewPriority )
     {
     TN_DEBUG1( "CThumbnailRequestQueue::ChangePriority()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTQUEUE_CHANGEPRIORITY, "CThumbnailRequestQueue::ChangePriority" );
     
     TInt err = KErrNotFound;
     const TInt count = iRequests.Count();
@@ -282,7 +259,6 @@ TInt CThumbnailRequestQueue::ChangePriority( const TThumbnailRequestId aRequestI
 void CThumbnailRequestQueue::RequestComplete(CThumbnailRequestActive* aRequestAO)
     {
     TN_DEBUG2( "CThumbnailRequestQueue::RequestComplete(0x%08x)", aRequestAO);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILREQUESTQUEUE_REQUESTCOMPLETE, "CThumbnailRequestQueue::RequestComplete;aRequestAO=%o", aRequestAO );
     
     iActiveRequests--;
     if(iActiveRequests <= -1)

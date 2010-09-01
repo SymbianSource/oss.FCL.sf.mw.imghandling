@@ -25,11 +25,6 @@
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailgeneratetask.h"
 #include "thumbnailpanic.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailtaskprocessorTraces.h"
-#endif
-
 
 
 // ======== MEMBER FUNCTIONS ========
@@ -71,21 +66,17 @@ void CThumbnailTaskProcessor::ConstructL()
     // define PS property
     TInt ret = RProperty::Delete(KServerIdle, KIdle);
     TN_DEBUG2( "CThumbnailTaskProcessor::CThumbnailTaskProcessor() Delete KServerIdle %d", ret);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_CONSTRUCTL, "CThumbnailTaskProcessor::ConstructL - Delete KServerIdle;ret=%d", ret );
     
     ret=RProperty::Define(KServerIdle, KIdle, RProperty::EInt);
     TN_DEBUG2( "CThumbnailTaskProcessor::ConstructL() Define KServerIdle %d", ret);
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_CONSTRUCTL, "CThumbnailTaskProcessor::ConstructL - Define KServerIdle;ret=%d", ret );
     
     // attach to the property    
 	ret = iProperty.Attach(KServerIdle, KIdle, EOwnerThread);
     TN_DEBUG2( "CThumbnailTaskProcessor::ConstructL()Attach %d", ret);
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILTASKPROCESSOR_CONSTRUCTL, "CThumbnailTaskProcessor::ConstructL - Attach;ret=%d", ret );
     
 	// set initial PS value
     ret = iProperty.Set( ETrue );
     TN_DEBUG2( "CThumbnailTaskProcessor::ConstructL() Set IDLE ETrue %d", ret );
-    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILTASKPROCESSOR_CONSTRUCTL, "CThumbnailTaskProcessor::ConstructL - Set IDLE ETrue;ret=%d", ret );
     iIdle = ETrue;
     
     iPeriodicTimer = CPeriodic::NewL(CActive::EPriorityIdle);
@@ -108,7 +99,6 @@ CThumbnailTaskProcessor::~CThumbnailTaskProcessor()
     iProperty.Close();
     TInt ret = RProperty::Delete(KServerIdle, KIdle);
     TN_DEBUG2( "CThumbnailTaskProcessor::CThumbnailTaskProcessor() Delete KServerIdle %d", ret);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_CTHUMBNAILTASKPROCESSOR, "CThumbnailTaskProcessor::~CThumbnailTaskProcessor - Delete KServerIdle;ret=%d", ret );
     
     if(iPeriodicTimer)
        {
@@ -127,7 +117,6 @@ CThumbnailTaskProcessor::~CThumbnailTaskProcessor()
 void CThumbnailTaskProcessor::AddTaskL( CThumbnailTask* aTask )
     {
     TN_DEBUG1( "CThumbnailTaskProcessor::AddTaskL()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_ADDTASKL, "CThumbnailTaskProcessor::AddTaskL" );
     __ASSERT_DEBUG(( aTask ), ThumbnailPanic( EThumbnailNullPointer ));
     const TInt taskCount = iTasks.Count();
     iTasks.AppendL( aTask );
@@ -153,7 +142,6 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
     aRequestId )
     {
     TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - request ID: %d", aRequestId.iRequestId);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_REMOVETASK, "CThumbnailTaskProcessor::RemoveTask;aRequestId.iRequestId=%u", aRequestId.iRequestId );
     
     TBool cancel = EFalse;
     TInt res = KErrNotFound;
@@ -171,7 +159,6 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
                 iTasks.Remove( i );
                 
                 TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - removed request ID: %d", aRequestId.iRequestId);
-                OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_REMOVETASK, "CThumbnailTaskProcessor::RemoveTask - removed request ID:;aRequestId.iRequestId=%u", aRequestId.iRequestId );
                 }
             else
                 {
@@ -183,7 +170,6 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
                 cancel = ETrue;
                 
                 TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - canceled & removed request ID: %d", aRequestId.iRequestId);
-                OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILTASKPROCESSOR_REMOVETASK, "CThumbnailTaskProcessor::RemoveTask - canceled & removed request ID:;aRequestId.iRequestId=%u", aRequestId.iRequestId );
                 }
             
             res = KErrNone;
@@ -205,7 +191,7 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
         }
     
     TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTask() - remaining task count: %d", iTasks.Count());
-    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILTASKPROCESSOR_REMOVETASK, "CThumbnailTaskProcessor::RemoveTask -  - remaining task count;iTasks.Count()=%d", iTasks.Count() );
+    
     return res;
     }
 
@@ -217,7 +203,6 @@ TInt CThumbnailTaskProcessor::RemoveTask( const TThumbnailServerRequestId&
 void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
     {
     TN_DEBUG1( "CThumbnailTaskProcessor::RemoveTasks()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_REMOVETASKS, "CThumbnailTaskProcessor::RemoveTasks" );
     
     TBool cancel = EFalse;
     
@@ -237,12 +222,10 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
                 iTasks.Remove( i );
                 
                 TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - removed request ID: %d", id);
-                OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_REMOVETASKS, "CThumbnailTaskProcessor::RemoveTasks - removed request ID;id=%d", id );
                 }
             else
                 {
                 TN_DEBUG1( "CThumbnailTaskProcessor::RemoveTasks() - task still running");
-                OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILTASKPROCESSOR_REMOVETASKS, "CThumbnailTaskProcessor::RemoveTasks - task still running" );
                 
                 TThumbnailRequestId id = task->RequestId().iRequestId;
                 
@@ -254,7 +237,6 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
                 cancel = ETrue;
                 
                 TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - canceled & removed request ID: %d", id);
-                OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILTASKPROCESSOR_REMOVETASKS, "CThumbnailTaskProcessor::RemoveTasks - canceled & removed request ID;id=%d", id );
                 }
             }
         }
@@ -267,7 +249,6 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
         }
     
     TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - remaining task count: %d", iTasks.Count());
-    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILTASKPROCESSOR_REMOVETASKS, "CThumbnailTaskProcessor::RemoveTasks - remaining task count;iTasks.Count()=%d", iTasks.Count() );
     }
 
 // ---------------------------------------------------------------------------
@@ -278,7 +259,6 @@ void CThumbnailTaskProcessor::RemoveTasks( CThumbnailServerSession* aSession )
 void CThumbnailTaskProcessor::RemoveAllTasks()
     {
     TN_DEBUG1( "CThumbnailTaskProcessor::RemoveAllTasks()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_REMOVEALLTASKS, "CThumbnailTaskProcessor::RemoveAllTasks" );
     
     TBool cancel = EFalse;
     
@@ -295,12 +275,10 @@ void CThumbnailTaskProcessor::RemoveAllTasks()
             iTasks.Remove( i );
             
             TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - removed request ID: %d", id);
-            OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_REMOVEALLTASKS, "CThumbnailTaskProcessor::RemoveAllTasks -  removed request ID;id=%d", id );
             }
         else
             {
             TN_DEBUG1( "CThumbnailTaskProcessor::RemoveTasks() - task still running");
-            OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILTASKPROCESSOR_REMOVEALLTASKS, "CThumbnailTaskProcessor::RemoveAllTasks - task still running" );
             
             TThumbnailRequestId id = task->RequestId().iRequestId;
             
@@ -312,7 +290,6 @@ void CThumbnailTaskProcessor::RemoveAllTasks()
             cancel = ETrue;
             
             TN_DEBUG2( "CThumbnailTaskProcessor::RemoveTasks() - canceled & removed request ID: %d", id);
-            OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILTASKPROCESSOR_REMOVEALLTASKS, "CThumbnailTaskProcessor::RemoveAllTasks - canceled & removed request ID;id=%d", id );
             }
         }
     
@@ -324,7 +301,6 @@ void CThumbnailTaskProcessor::RemoveAllTasks()
         }
     
     TN_DEBUG1( "CThumbnailTaskProcessor::RemoveAllTasks() - Task removed because of starting format" );
-    OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILTASKPROCESSOR_REMOVEALLTASKS, "CThumbnailTaskProcessor::RemoveAllTasks - Task removed because of starting format" );
     }
 
 // ---------------------------------------------------------------------------
@@ -363,7 +339,6 @@ void CThumbnailTaskProcessor::RunL()
     
 #ifdef _DEBUG
     TN_DEBUG2( "CThumbnailTaskProcessor::TASKPROCESSOR-COUNTER---------- in, Tasks = %d", iTasks.Count() );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_RUNL, "CThumbnailTaskProcessor::TASKPROCESSOR-COUNTER---------- in, Tasks;iTasks.Count()=%d", iTasks.Count() );
 #endif
     
     // remove completed tasks and run priorised task
@@ -394,7 +369,6 @@ void CThumbnailTaskProcessor::RunL()
                 if(task->GetMessageData().Identity() != KDaemonUid )
                     {
                     TN_DEBUG1( "CThumbnailTaskProcessor::RunL() processingDaemonTasksOnly = EFalse" );
-                    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_RUNL, "CThumbnailTaskProcessor::RunL processingDaemonTasksOnly = EFalse" );
                     processingDaemonTasksOnly = EFalse; 
                     }
                 }
@@ -408,7 +382,6 @@ void CThumbnailTaskProcessor::RunL()
     
 #ifdef _DEBUG
     TN_DEBUG2( "CThumbnailTaskProcessor::TASKPROCESSOR-COUNTER---------- out, Tasks = %d", iTasks.Count() );
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILTASKPROCESSOR_RUNL, "CThumbnailTaskProcessor::TASKPROCESSOR-COUNTER---------- out, Tasks;iTasks.Count()=%d", iTasks.Count() );
 #endif
 
 	//update PS value for Daemon
@@ -422,7 +395,6 @@ void CThumbnailTaskProcessor::RunL()
            }
         TInt ret = iProperty.Set( EFalse );
         TN_DEBUG2( "CThumbnailTaskProcessor::RunL() iProperty Set EFalse %d", ret );
-        OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILTASKPROCESSOR_RUNL, "CThumbnailTaskProcessor::RunL - iProperty Set EFalse;ret=%d", ret );
         iIdle = EFalse;
         }
     else
@@ -438,7 +410,6 @@ void CThumbnailTaskProcessor::RunL()
                  iTimerActive = EFalse;
                  } 
                TN_DEBUG1( "CThumbnailTaskProcessor::RunL() - daemon is the process");
-               OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILTASKPROCESSOR_RUNL, "CThumbnailTaskProcessor::RunL - daemon is the process" );
                TInt ret = iProperty.Set( ETrue );
                TN_DEBUG2( "CThumbnailTaskProcessor::RunL() iProperty Set ETrue %d", ret );
                iIdle = ETrue;
@@ -446,7 +417,6 @@ void CThumbnailTaskProcessor::RunL()
             else
                {
                TN_DEBUG1( "CThumbnailTaskProcessor::RunL() - daemon is not the process - start timer");
-               OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILTASKPROCESSOR_RUNL, "CThumbnailTaskProcessor::RunL - daemon is not the process - start timer" );
                if(iTimerActive)
                   {
                   iPeriodicTimer->Cancel();
@@ -467,7 +437,6 @@ void CThumbnailTaskProcessor::RunL()
 TInt CThumbnailTaskProcessor::RunError( TInt aError )
     {
     TN_DEBUG1( "CThumbnailTaskProcessor::RunError()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_RUNERROR, "CThumbnailTaskProcessor::RunError" );
     if ( iActiveTask )
         {
         // This will complete the task and continue processing from the
@@ -495,7 +464,6 @@ void CThumbnailTaskProcessor::DoCancel()
 void CThumbnailTaskProcessor::TaskComplete( CThumbnailTask*  /*aTask*/ )
     {
     TN_DEBUG1( "CThumbnailTaskProcessor::TaskComplete()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_TASKCOMPLETE, "CThumbnailTaskProcessor::TaskComplete" );
  
     if ( iTasks.Count() && !IsActive())
         {
@@ -514,10 +482,8 @@ void CThumbnailTaskProcessor::TaskComplete( CThumbnailTask*  /*aTask*/ )
               iTimerActive = EFalse;
               } 
             TN_DEBUG1( "CThumbnailTaskProcessor::TaskComplete() - daemon is the process");
-            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_TASKCOMPLETE, "CThumbnailTaskProcessor::TaskComplete - daemon is the process" );
             TInt ret = iProperty.Set( ETrue );
             TN_DEBUG2( "CThumbnailTaskProcessor::TaskComplete() iProperty Set ETrue %d", ret );
-            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILTASKPROCESSOR_TASKCOMPLETE, "CThumbnailTaskProcessor::TaskComplete - iProperty Set ETrue;ret=%d", ret );
             iIdle = ETrue;
             }
         else
@@ -541,7 +507,6 @@ void CThumbnailTaskProcessor::TaskComplete( CThumbnailTask*  /*aTask*/ )
 TInt CThumbnailTaskProcessor::PeriodicTimerCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbnailTaskProcessor::PeriodicTimerCallBack()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_PERIODICTIMERCALLBACK, "CThumbnailTaskProcessor::PeriodicTimerCallBack" );
     
     CThumbnailTaskProcessor* self = static_cast<CThumbnailTaskProcessor*>( aAny );
     
@@ -549,7 +514,6 @@ TInt CThumbnailTaskProcessor::PeriodicTimerCallBack(TAny* aAny)
     self->iPeriodicTimer->Cancel();
     TInt ret = self->iProperty.Set( ETrue );
     TN_DEBUG2( "CThumbnailTaskProcessor::PeriodicTimerCallBack() iProperty Set ETrue %d", ret );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASKPROCESSOR_PERIODICTIMERCALLBACK, "CThumbnailTaskProcessor::PeriodicTimerCallBack - iProperty Set ETrue;ret=%d", ret );
     self->iIdle = ETrue;
 
     return KErrNone; // Return value ignored by CPeriodic
@@ -558,7 +522,6 @@ TInt CThumbnailTaskProcessor::PeriodicTimerCallBack(TAny* aAny)
 void CThumbnailTaskProcessor::SetDaemonAsProcess(TBool aValue)
     {
     TN_DEBUG2( "CThumbnailTaskProcessor::SetDaemonAsProcess() Daemon set %d", aValue );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASKPROCESSOR_SETDAEMONASPROCESS, "CThumbnailTaskProcessor::SetDaemonAsProcess - Daemon set;aValue=%d", aValue );
     iIsDaemonAsProcess = aValue;
     }
 

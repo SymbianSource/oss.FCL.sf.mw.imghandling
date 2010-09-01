@@ -26,11 +26,6 @@
 #include <MetaDataUtility.h>
 #include <MetaDataFieldContainer.h>
 #include "thumbnailmanagerconstants.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailaudioproviderTraces.h"
-#endif
-
 
 
 #ifndef IMPLEMENTATION_PROXY_ENTRY
@@ -62,7 +57,6 @@ CThumbnailAudioProvider* CThumbnailAudioProvider::NewL()
 CThumbnailAudioProvider::CThumbnailAudioProvider()
     {
     TN_DEBUG1( "CThumbnailAudioProvider::CThumbnailAudioProvider()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILAUDIOPROVIDER_CTHUMBNAILAUDIOPROVIDER, "CThumbnailAudioProvider::CThumbnailAudioProvider" );
     }
 
 
@@ -74,8 +68,6 @@ CThumbnailAudioProvider::CThumbnailAudioProvider()
 CThumbnailAudioProvider::~CThumbnailAudioProvider()
     {
     TN_DEBUG1( "CThumbnailAudioProvider::~CThumbnailAudioProvider()" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILAUDIOPROVIDER_CTHUMBNAILAUDIOPROVIDER, "CThumbnailAudioProvider::~CThumbnailAudioProvider" );
-    
     delete iImageDecoderv3;
     iImageDecoderv3 = NULL;
     REComSession::DestroyedImplementation( iDtor_ID_Key );
@@ -92,7 +84,6 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& aFs, RFile64& aFile, const
     const TDisplayMode /*aDisplayMode*/, const CThumbnailManager::TThumbnailQualityPreference /*aQualityPreference*/  )
     {   
     TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - rfile " );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILAUDIOPROVIDER_GETTHUMBNAILL, "CThumbnailAudioProvider::GetThumbnailL - rfile" );
     CMetaDataUtility* metaDataUtil = CMetaDataUtility::NewL();
     CleanupStack::PushL( metaDataUtil );
     
@@ -150,7 +141,6 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8* /* aBuffer 
     const TDisplayMode /* aDisplayMode */, const CThumbnailManager::TThumbnailQualityPreference /*aQualityPreference*/ )
     {
     TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - buffer" );
-	OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILAUDIOPROVIDER_GETTHUMBNAILL, "CThumbnailAudioProvider::GetThumbnailL - buffer" );
 	__ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbnailAudioProvider::GetThumbnailL"), KErrNotSupported));
     }
 
@@ -162,7 +152,6 @@ void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8* /* aBuffer 
 void CThumbnailAudioProvider::GetThumbnailL( RFs& /* aFs */, TDesC8& /*aBuffer */)
     {
     TN_DEBUG1( "CThumbnailAudioProvider::GetThumbnailL() - buffer no mime" );
-	OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILAUDIOPROVIDER_GETTHUMBNAILL, "CThumbnailAudioProvider::GetThumbnailL - buffer no mime" );
 	__ASSERT_DEBUG((EFalse), User::Panic(_L("CThumbnailAudioProvider::GetThumbnailL"), KErrNotSupported));
 	User::Leave( KErrNotSupported );
     }

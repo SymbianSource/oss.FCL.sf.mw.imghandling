@@ -33,10 +33,6 @@
 #include "thumbnailpanic.h"
 
 #include "thumbnaildata.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailmanagerimplTraces.h"
-#endif
 
 
 const TInt KThumbnailMimeTypeListGranularity = 8;
@@ -52,7 +48,6 @@ const TInt KThumbnailMimeTypeListGranularity = 8;
 CThumbnailManagerImpl::~CThumbnailManagerImpl()
     {
     TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - start" );
-	OstTrace0( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_CTHUMBNAILMANAGERIMPL, "CThumbnailManagerImpl::~CThumbnailManagerImpl - start" );
 	
     delete iRequestQueue;  
     iRequestQueue = NULL;
@@ -67,11 +62,9 @@ CThumbnailManagerImpl::~CThumbnailManagerImpl()
         if( --sessionCount == 0 )
             {
 		    TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - Disconnect FBS" );
-            OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILMANAGERIMPL_CTHUMBNAILMANAGERIMPL, "CThumbnailManagerImpl::~CThumbnailManagerImpl - Disconnect FBS" );
             iFbsSession.Disconnect();
             }
 	    TN_DEBUG2( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - update sessionCount == %d to TLS", sessionCount );
-        OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILMANAGERIMPL_CTHUMBNAILMANAGERIMPL, "CThumbnailManagerImpl::~CThumbnailManagerImpl - update sessionCount == %d to TLS", sessionCount );
         Dll::SetTls( (TAny*)sessionCount );
         }
 
@@ -79,7 +72,6 @@ CThumbnailManagerImpl::~CThumbnailManagerImpl()
     iMimeTypeList = NULL;
 	
 	TN_DEBUG1( "CThumbnailManagerImpl::~CThumbnailManagerImpl() - end" );
-    OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILMANAGERIMPL_CTHUMBNAILMANAGERIMPL, "CThumbnailManagerImpl::~CThumbnailManagerImpl - end" );
     }
 
 
@@ -110,7 +102,6 @@ CThumbnailManagerImpl::CThumbnailManagerImpl( MThumbnailManagerObserver&
     {
     // No implementation required
     TN_DEBUG1( "CThumbnailManagerImpl::CThumbnailManagerImpl()" );
-    OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILMANAGERIMPL_CTHUMBNAILMANAGERIMPL, "CThumbnailManagerImpl::CThumbnailManagerImpl" );
     }
 
 
@@ -122,7 +113,6 @@ CThumbnailManagerImpl::CThumbnailManagerImpl( MThumbnailManagerObserver&
 void CThumbnailManagerImpl::ConstructL()
     {
     TN_DEBUG1( "CThumbnailManagerImpl::ConstructL - start");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_CONSTRUCTL, "CThumbnailManagerImpl::ConstructL - start" );
     
     User::LeaveIfError( iSession.Connect());
     User::LeaveIfError( iFs.Connect());
@@ -135,7 +125,6 @@ void CThumbnailManagerImpl::ConstructL()
         User::LeaveIfError( iFbsSession.Connect()); 
         Dll::SetTls( (TAny*)1 ); 
         TN_DEBUG2( "CThumbnailManagerImpl::ConstructL() - update sessionCount == %d to TLS", 1 );
-        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMANAGERIMPL_CONSTRUCTL, "CThumbnailManagerImpl::ConstructL - update sessionCount == %d to TLS", 1 );
         }
     else
         {
@@ -145,14 +134,12 @@ void CThumbnailManagerImpl::ConstructL()
             // Increase the reference count in TLS
             Dll::SetTls( (TAny*)sessionCount );
             TN_DEBUG2( "CThumbnailManagerImpl::ConstructL() - update sessionCount == %d to TLS", sessionCount );
-            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILMANAGERIMPL_CONSTRUCTL, "CThumbnailManagerImpl::ConstructL - update sessionCount == %d to TLS", sessionCount );
             } 
         else
             {
             // Fbs connection was available in the beginning, no need to
             // increase the reference count
             TN_DEBUG1( "CThumbnailManagerImpl::ConstructL - no need to update sessionCount");
-            OstTrace0( TRACE_NORMAL, DUP3_CTHUMBNAILMANAGERIMPL_CONSTRUCTL, "CThumbnailManagerImpl::ConstructL - no need to update sessionCount" );
             }
         }
     
@@ -160,7 +147,6 @@ void CThumbnailManagerImpl::ConstructL()
     iRequestQueue = CThumbnailRequestQueue::NewL();
     
     TN_DEBUG1( "CThumbnailManagerImpl::ConstructL - end");
-    OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILMANAGERIMPL_CONSTRUCTL, "CThumbnailManagerImpl::ConstructL - end" );
     }
 
 
@@ -175,7 +161,6 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL(
     {
     iRequestId++;
     TN_DEBUG4( "CThumbnailManagerImpl::GetThumbnailL() URI==%S, iThumbnailSize==%d, req %d", &aObjectSource.Uri(), iThumbnailSize, iRequestId );
-    OstTraceExt3( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_GETTHUMBNAILL, "CThumbnailManagerImpl::GetThumbnailL;aObjectSource.Uri()=%S;iThumbnailSize=%d;iRequestId=%d", aObjectSource.Uri(), iThumbnailSize, iRequestId );
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
@@ -187,21 +172,21 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL(
     
     if(aObjectSource.Id() > 0)
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), 
-            aObjectSource.MimeType(),iFlags, iQualityPreference, iSize, iDisplayMode, 
-            priority, aClientData, aGeneratePersistentSizesOnly, KNullDesC, iThumbnailSize);
+        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
+            KNullDesC, iThumbnailSize);
         }
     else if ( aObjectSource.Uri().Length())
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(),
-            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
-            priority, aClientData, aGeneratePersistentSizesOnly, KNullDesC, iThumbnailSize );
+        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
+            KNullDesC, iThumbnailSize );
         }
     else
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), 
-            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
-            priority, aClientData, aGeneratePersistentSizesOnly, KNullDesC, iThumbnailSize );
+        getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), iFlags,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
+            KNullDesC, iThumbnailSize );
         }
     
     iRequestQueue->AddRequestL( getThumbnailActive );
@@ -210,7 +195,6 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL(
     iRequestQueue->Process();
     
     TN_DEBUG2( "CThumbnailManagerImpl::GetThumbnailL() - request ID: %d", iRequestId );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMANAGERIMPL_GETTHUMBNAILL, "CThumbnailManagerImpl::GetThumbnailL;iRequestId=%u", iRequestId );
     
     return iRequestId;
     }
@@ -238,7 +222,6 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL( const TThumbnailId
     {
     iRequestId++;
     TN_DEBUG4( "CThumbnailManagerImpl::GetThumbnailL() aThumbnailId==%d, iThumbnailSize==%d, req %d", aThumbnailId, iThumbnailSize, iRequestId );
-    OstTraceExt3( TRACE_NORMAL, DUP2_CTHUMBNAILMANAGERIMPL_GETTHUMBNAILL, "CThumbnailManagerImpl::GetThumbnailL;aThumbnailId=%u;iThumbnailSize=%u;iRequestId=%u", aThumbnailId, iThumbnailSize, iRequestId );
 
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 
@@ -248,9 +231,9 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL( const TThumbnailId
         ( iFs, iSession, iObserver, iRequestObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
     
-    getThumbnailActive->GetThumbnailL( KNullDesC, aThumbnailId, KNullDesC8,
-            iFlags, iQualityPreference, iSize, iDisplayMode, priority, aClientData,
-            EFalse, KNullDesC, iThumbnailSize );
+    getThumbnailActive->GetThumbnailL( KNullDesC, aThumbnailId, iFlags,
+                       iQualityPreference, iSize, iDisplayMode, priority, aClientData,
+                       EFalse, KNullDesC, iThumbnailSize );
     
     iRequestQueue->AddRequestL( getThumbnailActive );
     CleanupStack::Pop( getThumbnailActive );
@@ -258,7 +241,6 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL( const TThumbnailId
     iRequestQueue->Process();
     
     TN_DEBUG2( "CThumbnailManagerImpl::GetThumbnailL() - request ID: %d", iRequestId );
-    OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILMANAGERIMPL_GETTHUMBNAILL, "CThumbnailManagerImpl::GetThumbnailL;iRequestId=%u", iRequestId );
     
     return iRequestId;
     }
@@ -285,15 +267,15 @@ TThumbnailRequestId CThumbnailManagerImpl::ImportThumbnailL(
 
     if ( aObjectSource.Uri().Length())
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), 
-            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
-            priority, aClientData, EFalse, aTargetUri, iThumbnailSize );
+        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
+            iQualityPreference, iSize, iDisplayMode, priority, aClientData,
+            EFalse, aTargetUri, iThumbnailSize );
         }
     else
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), 
-            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode,
-            priority, aClientData, EFalse, aTargetUri, iThumbnailSize );
+            iFlags, iQualityPreference, iSize, iDisplayMode, priority, aClientData,
+            EFalse, aTargetUri, iThumbnailSize );
         }
     
     iRequestQueue->AddRequestL( getThumbnailActive );
@@ -302,7 +284,6 @@ TThumbnailRequestId CThumbnailManagerImpl::ImportThumbnailL(
     iRequestQueue->Process();
     
     TN_DEBUG2( "CThumbnailManagerImpl::ImportThumbnailL() - request ID: %d", iRequestId );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_IMPORTTHUMBNAILL, "CThumbnailManagerImpl::ImportThumbnailL;iRequestId=%u", iRequestId );
     
     return iRequestId;
     }
@@ -357,7 +338,6 @@ TThumbnailRequestId CThumbnailManagerImpl::SetThumbnailL( CThumbnailObjectSource
     iRequestQueue->Process();
     
     TN_DEBUG2( "CThumbnailManagerImpl::SetThumbnailL() - request ID: %d", iRequestId );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_SETTHUMBNAILL, "CThumbnailManagerImpl::SetThumbnailL;iRequestId=%u", iRequestId );
     
     return iRequestId;
     }
@@ -372,7 +352,6 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 	{
 	TRAPD(err,
 		TN_DEBUG2( "CThumbnailManagerImpl::CreateThumbnails() aObjectSource==%S ", &aObjectSource.Uri() );
-		OstTraceExt1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_CREATETHUMBNAILS, "CThumbnailManagerImpl::CreateThumbnails;aObjectSource.Uri()=%S", aObjectSource.Uri() );
 		iRequestId++;
 
 		__ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
@@ -395,9 +374,9 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 		else if( !aObjectSource.Buffer() )
 			{        
 			getThumbnailActive->GetThumbnailL( aObjectSource.Id(), 
-						 aObjectSource.Uri(), aObjectSource.MimeType(), iFlags, 
-						 iQualityPreference, iSize, iDisplayMode, priority, NULL, 
-						 ETrue, aObjectSource.Uri(), EUnknownThumbnailSize);      
+						 aObjectSource.Uri(), iFlags, iQualityPreference, iSize,
+						 iDisplayMode, priority, NULL, ETrue, aObjectSource.Uri(), 
+						 EUnknownThumbnailSize);      
 			}
 		else
 			{
@@ -415,7 +394,6 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 		iRequestQueue->Process();
 		
 		TN_DEBUG2( "CThumbnailManagerImpl::CreateThumbnails() - request ID: %d", iRequestId );
-		OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMANAGERIMPL_CREATETHUMBNAILS, "CThumbnailManagerImpl::CreateThumbnails;iRequestId=%u", iRequestId );
 	);
 	
 	if( err != KErrNone)
@@ -539,7 +517,6 @@ void CThumbnailManagerImpl::DeleteThumbnails( CThumbnailObjectSource&
 	TRAP_IGNORE(
 		iRequestId++;
 		TN_DEBUG2( "CThumbnailManagerImpl::DeleteThumbnails() URI==%S ", &aObjectSource.Uri() );
-		OstTraceExt1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_DELETETHUMBNAILS, "CThumbnailManagerImpl::DeleteThumbnails;aObjectSource.Uri()=%S", aObjectSource.Uri() );
 
 		__ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 		
@@ -583,7 +560,6 @@ void CThumbnailManagerImpl::DeleteThumbnails( const TThumbnailId aItemId )
 	TRAP_IGNORE(
 		iRequestId++;
 		TN_DEBUG2( "CThumbnailManagerImpl::DeleteThumbnails() aItemId==%d ", aItemId );
-		OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMANAGERIMPL_DELETETHUMBNAILS, "CThumbnailManagerImpl::DeleteThumbnails;aItemId=%u", aItemId );
 		
 		__ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
 		
@@ -614,7 +590,6 @@ TInt CThumbnailManagerImpl::CancelRequest( const TThumbnailRequestId aId )
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
     TN_DEBUG2( "CThumbnailManagerImpl::CancelRequest() - request ID: %d", aId );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_CANCELREQUEST, "CThumbnailManagerImpl::CancelRequest;aId=%u", aId );
     
     return iRequestQueue->CancelRequest(aId);
     }
@@ -633,7 +608,6 @@ TInt CThumbnailManagerImpl::ChangePriority( const TThumbnailRequestId aId,
     TInt priority = ValidatePriority(aNewPriority);
     
     TN_DEBUG2( "CThumbnailManagerImpl::ChangePriority() - request ID: %d", aId );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_CHANGEPRIORITY, "CThumbnailManagerImpl::ChangePriority;aId=%u", aId );
     
     return iRequestQueue->ChangePriority(aId, priority);
     }
@@ -672,7 +646,6 @@ void CThumbnailManagerImpl::UpdateThumbnailsL( const TThumbnailId aItemId, const
     {
     iRequestId++;
     TN_DEBUG4( "CThumbnailManagerImpl::UpdateThumbnailsL() URI==%S, aItemId==%d, req %d", &aPath, aItemId, iRequestId); 
-    OstTraceExt3( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_UPDATETHUMBNAILSL, "CThumbnailManagerImpl::UpdateThumbnailsL;aPath=%S;aItemId=%d;iRequestId=%d", aPath, aItemId, iRequestId );
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
@@ -701,7 +674,6 @@ TThumbnailRequestId CThumbnailManagerImpl::RenameThumbnailsL( const TDesC& aCurr
     {
     iRequestId++;
     TN_DEBUG3( "CThumbnailManagerImpl::RenameThumbnailsL() URI==%S, req %d", &aCurrentPath, iRequestId); 
-     OstTraceExt1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_RENAMETHUMBNAILSL, "CThumbnailManagerImpl::RenameThumbnailsL;aCurrentPath=%S", aCurrentPath );
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
@@ -757,13 +729,11 @@ TInt CThumbnailManagerImpl::ValidatePriority( const TInt aPriority )
     if (aPriority < CActive::EPriorityIdle)
         {
         TN_DEBUG2( "CThumbnailManagerImpl::ValidatePriority() - priority %d too low for CActive", aPriority );
-        OstTrace1( TRACE_NORMAL, CTHUMBNAILMANAGERIMPL_VALIDATEPRIORITY, "CThumbnailManagerImpl::ValidatePriority  - priority too low for CActive;aPriority=%d", aPriority );
         return CActive::EPriorityIdle;
         }
     else if (aPriority > CActive::EPriorityHigh)
         {
         TN_DEBUG2( "CThumbnailManagerImpl::ValidatePriority() - priority %d too high for CActive", aPriority );
-        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMANAGERIMPL_VALIDATEPRIORITY, "CThumbnailManagerImpl::ValidatePriority - priority too high for CActive;aPriority=%d", aPriority );
         return CActive::EPriorityHigh;
         }
     else

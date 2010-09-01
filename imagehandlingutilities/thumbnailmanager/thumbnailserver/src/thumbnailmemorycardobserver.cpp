@@ -18,11 +18,6 @@
 
 #include "thumbnailmemorycardobserver.h"
 #include "thumbnaillog.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailmemorycardobserverTraces.h"
-#endif
-
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -52,7 +47,6 @@ CThumbnailMemoryCardObserver::CThumbnailMemoryCardObserver( CThumbnailServer* aS
     {
     TN_DEBUG1( "CThumbnailMemoryCardObserver::CThumbnailMemoryCardObserver()"
         );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILMEMORYCARDOBSERVER_CTHUMBNAILMEMORYCARDOBSERVER, "CThumbnailMemoryCardObserver::CThumbnailMemoryCardObserver" );
     CActiveScheduler::Add( this );
     StartNotify();
     }
@@ -78,7 +72,6 @@ CThumbnailMemoryCardObserver::~CThumbnailMemoryCardObserver()
     {
     TN_DEBUG1( 
         "CThumbnailMemoryCardObserver::~CThumbnailMemoryCardObserver()" );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILMEMORYCARDOBSERVER_CTHUMBNAILMEMORYCARDOBSERVER, "CThumbnailMemoryCardObserver::~CThumbnailMemoryCardObserver" );
     Cancel();
     }
 
@@ -90,7 +83,6 @@ CThumbnailMemoryCardObserver::~CThumbnailMemoryCardObserver()
 void CThumbnailMemoryCardObserver::RunL()
     {
     TN_DEBUG2( "CThumbnailMemoryCardObserver::RunL() iStatus = %d", iStatus.Int());
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMEMORYCARDOBSERVER_RUNL, "CThumbnailMemoryCardObserver::RunL;iStatus.Int()=%d", iStatus.Int() );
     if ( !iStatus.Int() )
         {
         // trap because nothing could be done in RunError
@@ -115,7 +107,6 @@ void CThumbnailMemoryCardObserver::DoCancel()
 void CThumbnailMemoryCardObserver::StartNotify()
     {
     TN_DEBUG1( "CThumbnailMemoryCardObserver::StartNotify()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILMEMORYCARDOBSERVER_STARTNOTIFY, "CThumbnailMemoryCardObserver::StartNotify" );
     
     if (IsActive()) 
         {

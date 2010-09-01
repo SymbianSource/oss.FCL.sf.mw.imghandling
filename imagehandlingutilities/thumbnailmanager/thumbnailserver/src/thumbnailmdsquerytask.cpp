@@ -25,10 +25,6 @@
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
 #include "thumbnailserver.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailmdsquerytaskTraces.h"
-#endif
 
 
 // ======== MEMBER FUNCTIONS ========
@@ -40,11 +36,9 @@
 //
 CThumbnailMDSQueryTask::CThumbnailMDSQueryTask(
         CThumbnailTaskProcessor& aProcessor, TInt aPriority, CMdESession* aMdESession, CThumbnailServer& aServer): 
-        CThumbnailTask( aProcessor, aPriority ), iMdESession( aMdESession ), iQuery(NULL), 
-		iServer(aServer), iUpdateToDb(ETrue)
+        CThumbnailTask( aProcessor, aPriority ), iMdESession( aMdESession ), iQuery(NULL), iServer(aServer), iUpdateToDb(ETrue)
     {
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::CThumbnailMDSQueryTask()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_CTHUMBNAILMDSQUERYTASK, "CThumbnailMDSQueryTask::CThumbnailMDSQueryTask;this=%o", this );
     }
 
 
@@ -56,7 +50,6 @@ CThumbnailMDSQueryTask::CThumbnailMDSQueryTask(
 CThumbnailMDSQueryTask::~CThumbnailMDSQueryTask()
     {
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::~CThumbnailMDSQueryTask()", this);
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMDSQUERYTASK_CTHUMBNAILMDSQUERYTASK, "CThumbnailMDSQueryTask::~CThumbnailMDSQueryTask;this=%o", this );
            
     if (iQuery)
         {
@@ -85,9 +78,6 @@ void CThumbnailMDSQueryTask::HandleQueryNewResults( CMdEQuery& /*aQuery*/,
 void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const TInt aError )
     {
     TN_DEBUG3( "CThumbnailMDSQueryTask::HandleQueryCompleted(0x%08x), aError == %d", this, aError );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_HANDLEQUERYCOMPLETED, "CThumbnailMDSQueryTask::HandleQueryCompleted;this=%o", this );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILMDSQUERYTASK_HANDLEQUERYCOMPLETED, "CThumbnailMDSQueryTask::HandleQueryCompleted;aError=%d", aError );
-    
     
     // if no errors in query
     if (aError == KErrNone && iQuery && iQuery->Count() > 0)
@@ -97,13 +87,11 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
             const CMdEObject* object = &iQuery->Result(0);
             
             TN_DEBUG2( "CThumbnailMDSQueryTask::HandleQueryCompleted() - URI = %S", &object->Uri() );
-            OstTraceExt1( TRACE_NORMAL, DUP2_CTHUMBNAILMDSQUERYTASK_HANDLEQUERYCOMPLETED, "CThumbnailMDSQueryTask::HandleQueryCompleted;object->Uri()=%S", object->Uri() );
                             
             // return path to client side       
             if( iDelete )
                 {
                 TN_DEBUG2( "CThumbnailMDSQueryTask::HandleQueryCompleted() delete %S", &iUri );
-                OstTraceExt1( TRACE_NORMAL, DUP3_CTHUMBNAILMDSQUERYTASK_HANDLEQUERYCOMPLETED, "CThumbnailMDSQueryTask::HandleQueryCompleted - delete;iUri()=%S", iUri );
                 TRAP_IGNORE( iServer.DeleteThumbnailsL( iUri ) );
                 }
             else
@@ -114,7 +102,6 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
         else
             {
             TN_DEBUG1( "CThumbnailMDSQueryTask::HandleQueryCompleted() - Don't ever come here!" );
-            OstTrace0( TRACE_NORMAL, DUP4_CTHUMBNAILMDSQUERYTASK_HANDLEQUERYCOMPLETED, "CThumbnailMDSQueryTask::HandleQueryCompleted - Don't ever come here!" );
             if (ClientThreadAlive())
                 {  
                 Complete( KErrNotFound );
@@ -126,7 +113,6 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
     else
         {
         TN_DEBUG1( "CThumbnailMDSQueryTask::HandleQueryCompleted() - No results." );
-        OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILMDSQUERYTASK_HANDLEQUERYCOMPLETED, "CThumbnailMDSQueryTask::HandleQueryCompleted - No results." );
         if(!iDelete)
             {
             if (ClientThreadAlive())
@@ -146,7 +132,6 @@ void CThumbnailMDSQueryTask::HandleQueryCompleted( CMdEQuery& /*aQuery*/, const 
 void CThumbnailMDSQueryTask::StartL()
     {
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::StartL()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_STARTL, "CThumbnailMDSQueryTask::StartL;this=%o", this );
 
     CThumbnailTask::StartL();
     
@@ -172,7 +157,6 @@ void CThumbnailMDSQueryTask::RunL()
     {
     // No implementation required
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::RunL()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_RUNL, "CThumbnailMDSQueryTask::RunL;this=%o", this );
     }
 
 
@@ -183,7 +167,6 @@ void CThumbnailMDSQueryTask::RunL()
 void CThumbnailMDSQueryTask::DoCancel()
     {
     TN_DEBUG2( "CThumbnailMDSQueryTask(0x%08x)::DoCancel()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_DOCANCEL, "CThumbnailMDSQueryTask::DoCancel;this=%o", this );
     
     iQuery->Cancel();
     }
@@ -195,7 +178,6 @@ void CThumbnailMDSQueryTask::DoCancel()
 void CThumbnailMDSQueryTask::QueryPathByIdL(TThumbnailId aId, TBool aDelete)
     {
     TN_DEBUG1( "CThumbnailMDSQueryTask()::QueryPathByIdL()");
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_QUERYPATHBYIDL, "CThumbnailMDSQueryTask::QueryPathByIdL" );
     iQueryType = EURI;
     iDelete = aDelete;
     CMdENamespaceDef* defNamespace = &iMdESession->GetDefaultNamespaceDefL();
@@ -249,6 +231,5 @@ void CThumbnailMDSQueryTask::ReturnPath(const TDesC& aUri)
 void CThumbnailMDSQueryTask::SetUpdateToDb(const TBool& aUpdateToDb )
     {
     TN_DEBUG2( "CThumbnailMDSQueryTask()::SetCompleteTask() aUpdateToDb == %d", aUpdateToDb);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILMDSQUERYTASK_SETUPDATETODB, "CThumbnailMDSQueryTask::SetUpdateToDb;aUpdateToDb=%u", aUpdateToDb );
     iUpdateToDb = aUpdateToDb;
     }

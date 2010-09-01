@@ -19,11 +19,6 @@
 #include "thumbnaildiskunmountobserver.h"
 #include "thumbnaillog.h"
 #include "thumbnailserver.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnaildiskunmountobserverTraces.h"
-#endif
-
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -55,7 +50,6 @@ CThumbnailDiskUnmountObserver::CThumbnailDiskUnmountObserver( RFs& aFs,
     {
     TN_DEBUG1( "CThumbnailDiskUnmountObserver::CThumbnailDiskUnmountObserver()"
         );
-    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILDISKUNMOUNTOBSERVER_CTHUMBNAILDISKUNMOUNTOBSERVER, "CThumbnailDiskUnmountObserver::CThumbnailDiskUnmountObserver" );
     CActiveScheduler::Add( this );
     StartNotify();
     }
@@ -81,7 +75,6 @@ CThumbnailDiskUnmountObserver::~CThumbnailDiskUnmountObserver()
     {
     TN_DEBUG1( 
         "CThumbnailDiskUnmountObserver::~CThumbnailDiskUnmountObserver()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILDISKUNMOUNTOBSERVER_CTHUMBNAILDISKUNMOUNTOBSERVER, "CThumbnailDiskUnmountObserver::~CThumbnailDiskUnmountObserver" );
     Cancel();
     }
 
@@ -94,7 +87,6 @@ void CThumbnailDiskUnmountObserver::RunL()
     {
     TN_DEBUG2( "CThumbnailDiskUnmountObserver::RunL() iStatus = %d",
         iStatus.Int());
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILDISKUNMOUNTOBSERVER_RUNL, "CThumbnailDiskUnmountObserver::RunL - iStatus =;iStatus.Int()=%d", iStatus.Int() );
     
     if( !iStatus.Int() )
         {       
@@ -125,7 +117,6 @@ void CThumbnailDiskUnmountObserver::DoCancel()
 void CThumbnailDiskUnmountObserver::StartNotify()
     {
     TN_DEBUG1( "CThumbnailDiskUnmountObserver::StartNotify()" );
-    OstTrace0( TRACE_NORMAL, CTHUMBNAILDISKUNMOUNTOBSERVER_STARTNOTIFY, "CThumbnailDiskUnmountObserver::StartNotify" );
     if(!IsActive())
         { 
         iFs.NotifyDismount( iDrive, iStatus, EFsDismountRegisterClient );

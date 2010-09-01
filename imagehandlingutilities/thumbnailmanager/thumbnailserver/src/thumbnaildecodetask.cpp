@@ -26,11 +26,6 @@
 #include "thumbnailserver.h"
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnaildecodetaskTraces.h"
-#endif
-
 
 
 // ======== MEMBER FUNCTIONS ========
@@ -46,8 +41,6 @@ CThumbnailDecodeTask::CThumbnailDecodeTask( CThumbnailTaskProcessor& aProcessor,
     {
     TN_DEBUG3( "CThumbnailDecodeTask(0x%08x)::CThumbnailDecodeTask() aDisplayMode = %d", this
         , iDisplayMode);
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILDECODETASK_CTHUMBNAILDECODETASK, "CThumbnailDecodeTask::CThumbnailDecodeTask;iDisplayMode=%u", iDisplayMode );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILDECODETASK_CTHUMBNAILDECODETASK, "CThumbnailDecodeTask::CThumbnailDecodeTask;this=%o", this );
     }
 
 
@@ -59,8 +52,6 @@ CThumbnailDecodeTask::CThumbnailDecodeTask( CThumbnailTaskProcessor& aProcessor,
 CThumbnailDecodeTask::~CThumbnailDecodeTask()
     {
     TN_DEBUG2( "CThumbnailDecodeTask(0x%08x)::~CThumbnailDecodeTask()", this );
-    OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILDECODETASK_CTHUMBNAILDECODETASK, "CThumbnailDecodeTask::~CThumbnailDecodeTask" );
-    
     if ( iProvider )
         {
         iProvider->CancelGetThumbnail();
@@ -79,7 +70,6 @@ CThumbnailDecodeTask::~CThumbnailDecodeTask()
 void CThumbnailDecodeTask::StartL()
     {
     TN_DEBUG2( "CThumbnailDecodeTask(0x%08x)::StartL()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILDECODETASK_STARTL, "CThumbnailDecodeTask::StartL;this=%o", this );
 
     CThumbnailTask::StartL();
 
@@ -88,7 +78,6 @@ void CThumbnailDecodeTask::StartL()
     iProvider = iServer.ResolveProviderL( mimeType );
     TN_DEBUG3( "CThumbnailDecodeTask(0x%08x) -- provider UID 0x%08x", this,
         iProvider->Uid());
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILDECODETASK_STARTL, "CThumbnailDecodeTask::StartL;this=%o", this );
 
     __ASSERT_DEBUG(( iProvider ), ThumbnailPanic( EThumbnailNullPointer ));
 
@@ -108,7 +97,6 @@ void CThumbnailDecodeTask::RunL()
     {
     // No implementation required
     TN_DEBUG2( "CThumbnailDecodeTask(0x%08x)::RunL()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILDECODETASK_RUNL, "CThumbnailDecodeTask::RunL;this=%o", this );
     }
 
 
@@ -119,7 +107,6 @@ void CThumbnailDecodeTask::RunL()
 void CThumbnailDecodeTask::DoCancel()
     {
     TN_DEBUG2( "CThumbnailDecodeTask(0x%08x)::DoCancel()", this );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILDECODETASK_DOCANCEL, "CThumbnailDecodeTask::DoCancel;this=%o", this );
     if ( iProvider )
         {
         iProvider->CancelGetThumbnail();
@@ -138,9 +125,6 @@ void CThumbnailDecodeTask::ThumbnailProviderReady( const TInt aError,
     {
     TN_DEBUG4( "CThumbnailDecodeTask(0x%08x)::ThumbnailProviderReady(aError=%d, aBitmap=0x%08x)", 
                this, aError, aBitmap );
-    OstTrace1( TRACE_NORMAL, CTHUMBNAILDECODETASK_THUMBNAILPROVIDERREADY, "CThumbnailDecodeTask::ThumbnailProviderReady;this=%o", this );
-    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILDECODETASK_THUMBNAILPROVIDERREADY, "CThumbnailDecodeTask::ThumbnailProviderReady;aError=%d", aError );
-    OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILDECODETASK_THUMBNAILPROVIDERREADY, "CThumbnailDecodeTask::ThumbnailProviderReady;aBitmap=%o", aBitmap );
 
     iOriginalSize = aOriginalSize;
 

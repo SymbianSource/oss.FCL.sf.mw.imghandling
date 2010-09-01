@@ -20,10 +20,6 @@
 #include "thumbnailsession.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnaillog.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbnailsessionTraces.h"
-#endif
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -36,7 +32,6 @@ RThumbnailSession::RThumbnailSession(): RSessionBase()
     {
     // No implementation required
     TN_DEBUG1( "RThumbnailSession::RThumbnailSession");
-    OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_RTHUMBNAILSESSION, "RThumbnailSession::RThumbnailSession" );
     }
 
 
@@ -47,7 +42,6 @@ RThumbnailSession::RThumbnailSession(): RSessionBase()
 TInt RThumbnailSession::Connect()
     { 
     TN_DEBUG1( "RThumbnailSession::Connect - start");
-    OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_CONNECT, "RThumbnailSession::Connect - start" );
     
     StartServer();
     
@@ -64,7 +58,6 @@ TInt RThumbnailSession::Connect()
     while (retry <= 10 && err != KErrNone)
         {
         TN_DEBUG1( "RThumbnailSession::Connect - retry");
-        OstTrace0( TRACE_NORMAL, DUP1_RTHUMBNAILSESSION_CONNECT, "RThumbnailSession::Connect - retry" );
     
         User::After(retry * 50000);
         StartServer();
@@ -73,7 +66,6 @@ TInt RThumbnailSession::Connect()
         }
     
     TN_DEBUG1( "RThumbnailSession::Connect - end");
-    OstTrace0( TRACE_NORMAL, DUP2_RTHUMBNAILSESSION_CONNECT, "RThumbnailSession::Connect - end" );
     
     return err;
     }
@@ -87,7 +79,6 @@ TInt RThumbnailSession::Connect()
 void RThumbnailSession::Close()
     {
     TN_DEBUG1( "RThumbnailSession::Close");
-    OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_CLOSE, "RThumbnailSession::Close" );
     
     RSessionBase::Close();
     }
@@ -113,7 +104,6 @@ TVersion RThumbnailSession::Version()
 TInt RThumbnailSession::StartServer()
     {
     TN_DEBUG1( "RThumbnailSession::StartServer - start");
-    OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_STARTSERVER, "RThumbnailSession::StartServer - start" );
     
     TInt res( KErrNone );
     // create server - if one of this name does not already exist
@@ -124,7 +114,6 @@ TInt RThumbnailSession::StartServer()
         // we don't exist already
         {
         TN_DEBUG1( "RThumbnailSession::StartServer - server process doesn't exist yet");
-        OstTrace0( TRACE_NORMAL, DUP1_RTHUMBNAILSESSION_STARTSERVER, "RThumbnailSession::StartServer - server process doesn't exist yet" );
     
         RProcess server;
         // Create the server process
@@ -133,12 +122,10 @@ TInt RThumbnailSession::StartServer()
         if ( res != KErrNone )
             {
             TN_DEBUG2( "RThumbnailSession::StartServer - error creating process: %d", res);
-            OstTrace1( TRACE_NORMAL, DUP2_RTHUMBNAILSESSION_STARTSERVER, "RThumbnailSession::StartServer;res=%d", res );
             return res;
             }
         
         TN_DEBUG1( "RThumbnailSession::StartServer - process created");
-        OstTrace0( TRACE_NORMAL, DUP3_RTHUMBNAILSESSION_STARTSERVER, "RThumbnailSession::StartServer - process created" );
 
         // Process created successfully
         TRequestStatus status;
@@ -151,7 +138,6 @@ TInt RThumbnailSession::StartServer()
         if ( status != KErrNone )
             {
             TN_DEBUG2( "RThumbnailSession::StartServer - status: %d, closing", status.Int() );
-            OstTrace1( TRACE_NORMAL, DUP4_RTHUMBNAILSESSION_STARTSERVER, "RThumbnailSession::StartServer;status.Int()=%d", status.Int() );
         
             server.Close();
             return status.Int();
@@ -162,7 +148,6 @@ TInt RThumbnailSession::StartServer()
         }
     
     TN_DEBUG1( "RThumbnailSession::StartServer - end");
-    OstTrace0( TRACE_NORMAL, DUP5_RTHUMBNAILSESSION_STARTSERVER, "RThumbnailSession::StartServer - end" );
     
     return res;
     }
@@ -240,7 +225,6 @@ void RThumbnailSession::RequestSetThumbnailL(
     if( !aBuffer )
         {
         TN_DEBUG1( "RThumbnailSession::RequestSetThumbnailL() - !aBuffer KErrArgument");
-        OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_REQUESTSETTHUMBNAILL, "RThumbnailSession::RequestSetThumbnailL - !aBuffer KErrArgument" );
         User::Leave( KErrArgument );
         }
     
@@ -257,7 +241,6 @@ void RThumbnailSession::RequestSetThumbnailL(
     if( !aBitmapHandle )
         {
         TN_DEBUG1( "RThumbnailSession::RequestSetThumbnailL() - !aBitmapHandle KErrArgument");
-        OstTrace0( TRACE_NORMAL, DUP1_RTHUMBNAILSESSION_REQUESTSETTHUMBNAILL, "RThumbnailSession::RequestSetThumbnailL - !aBitmapHandle KErrArgument" );
         User::Leave( KErrArgument );
         }
     
@@ -276,7 +259,6 @@ void RThumbnailSession::ReleaseBitmap( TInt aBitmapHandle )
     while ( err == KErrServerBusy )
         {
         TN_DEBUG1( "RThumbnailSession::ReleaseBitmap() - server slots full");
-        OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_RELEASEBITMAP, "RThumbnailSession::ReleaseBitmap - server slots full" );
     
         err = Send( EReleaseBitmap, TIpcArgs( aBitmapHandle ));
         }
@@ -293,7 +275,6 @@ TInt RThumbnailSession::CancelRequest( TThumbnailRequestId aRequestId )
     while ( err == KErrServerBusy )
         {
         TN_DEBUG1( "RThumbnailSession::CancelRequest() - server slots full");
-        OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_CANCELREQUEST, "RThumbnailSession::CancelRequest - server slots full" );
     
         err = Send( ECancelRequest, TIpcArgs( aRequestId ));
         }
@@ -312,7 +293,6 @@ TInt RThumbnailSession::ChangePriority( TThumbnailRequestId aRequestId, TInt
     while ( err == KErrServerBusy )
         {
         TN_DEBUG1( "RThumbnailSession::ChangePriority() - server slots full");
-        OstTrace0( TRACE_NORMAL, RTHUMBNAILSESSION_CHANGEPRIORITY, "RThumbnailSession::ChangePriority - server slots full" );
     
         err = Send( EChangePriority, TIpcArgs( aRequestId, aNewPriority ));
         }

@@ -28,10 +28,6 @@
 #include "thumbnaillog.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailmanagerprivatecrkeys.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbagaudioobserverTraces.h"
-#endif
 
 
 // ---------------------------------------------------------------------------
@@ -41,7 +37,6 @@
 CThumbAGAudioObserver* CThumbAGAudioObserver::NewLC(CThumbAGProcessor* aProcessor)
     {
     TN_DEBUG1( "CThumbAGAudioObserver::NewLC() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_NEWLC, "CThumbAGAudioObserver::NewLC" );
     
 	CThumbAGAudioObserver* self = new (ELeave) CThumbAGAudioObserver(aProcessor);
 	CleanupStack::PushL( self );
@@ -79,7 +74,6 @@ CThumbAGAudioObserver::CThumbAGAudioObserver(CThumbAGProcessor* aProcessor)
 void CThumbAGAudioObserver::ConstructL()
 	{
 	TN_DEBUG1( "CThumbAGAudioObserver::ConstructL() - begin" );
-	OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_CONSTRUCTL, "CThumbAGAudioObserver::ConstructL - begin" );
 	
 #ifdef _DEBUG
     iAddCounter = 0;
@@ -89,7 +83,6 @@ void CThumbAGAudioObserver::ConstructL()
     InitializeL();
     	
 	TN_DEBUG1( "CThumbAGAudioObserver::ConstructL() - end" );
-	OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_CONSTRUCTL, "CThumbAGAudioObserver::ConstructL - end" );
 	}
 
 // ---------------------------------------------------------------------------
@@ -99,10 +92,9 @@ void CThumbAGAudioObserver::ConstructL()
 void CThumbAGAudioObserver::InitializeL()
     {
     TN_DEBUG1( "CThumbAGAudioObserver::InitializeL() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_INITIALIZEL, "CThumbAGAudioObserver::InitializeL - begin" );
+    
    
         TN_DEBUG1( "CThumbAGAudioObserver::InitializeL() - create observers" );
-        OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_INITIALIZEL, "CThumbAGAudioObserver::InitializeL - create observers" );
         
         // create shutdown observer
         if(iMDSShutdownObserver)
@@ -127,7 +119,6 @@ void CThumbAGAudioObserver::InitializeL()
             }
         
         TN_DEBUG1( "CThumbAGAudioObserver::InitializeL() - connect to MDS" );
-        OstTrace0( TRACE_FATAL, DUP2_CTHUMBAGAUDIOOBSERVER_INITIALIZEL, "CThumbAGAudioObserver::InitializeL - connect to MDS" );
         
         if(iMdESession)
             {
@@ -143,7 +134,6 @@ void CThumbAGAudioObserver::InitializeL()
         iSessionError = EFalse;
       
         TN_DEBUG1( "CThumbAGAudioObserver::InitializeL() - end" );
-        OstTrace0( TRACE_FATAL, DUP3_CTHUMBAGAUDIOOBSERVER_INITIALIZEL, "CThumbAGAudioObserver::InitializeL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -153,20 +143,17 @@ void CThumbAGAudioObserver::InitializeL()
 CThumbAGAudioObserver::~CThumbAGAudioObserver()
     {
     TN_DEBUG1( "CThumbAGAudioObserver::~CThumbAGAudioObserver() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_CTHUMBAGAUDIOOBSERVER, "CThumbAGAudioObserver::~CThumbAGAudioObserver - begin" );
     
     iShutdown = ETrue;    
     
     Shutdown();
     
     TN_DEBUG1( "CThumbAGAudioObserver::~CThumbAGAudioObserver() - end" );
-    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_CTHUMBAGAUDIOOBSERVER, "CThumbAGAudioObserver::~CThumbAGAudioObserver - end" );
     }
 
 void CThumbAGAudioObserver::Shutdown()
     {
     TN_DEBUG1( "CThumbAGAudioObserver::Shutdown()" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_SHUTDOWN, "CThumbAGAudioObserver::Shutdown" );
     
     delete iMDSShutdownObserver;
     iMDSShutdownObserver = NULL;
@@ -198,7 +185,6 @@ void CThumbAGAudioObserver::Shutdown()
 void CThumbAGAudioObserver::HandleSessionOpened( CMdESession& /* aSession */, TInt aError )
     {
     TN_DEBUG1( "CThumbAGAudioObserver::HandleSessionOpened");
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_HANDLESESSIONOPENED, "CThumbAGAudioObserver::HandleSessionOpened" );
     
     if (aError == KErrNone)
         {
@@ -206,13 +192,11 @@ void CThumbAGAudioObserver::HandleSessionOpened( CMdESession& /* aSession */, TI
         if (err != KErrNone)
             {
             TN_DEBUG2( "CThumbAGAudioObserver::HandleSessionOpened, AddObserversL error == %d", err );
-            OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_HANDLESESSIONOPENED, "CThumbAGAudioObserver::HandleSessionOpened;err=%d", err );
             }
         }
     else
         {
         TN_DEBUG2( "CThumbAGAudioObserver::HandleSessionOpened error == %d", aError );
-        OstTrace1( TRACE_FATAL, DUP2_CTHUMBAGAUDIOOBSERVER_HANDLESESSIONOPENED, "CThumbAGAudioObserver::HandleSessionOpened;aError=%d", aError );
         }
     }
 
@@ -223,7 +207,6 @@ void CThumbAGAudioObserver::HandleSessionOpened( CMdESession& /* aSession */, TI
 void CThumbAGAudioObserver::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbAGAudioObserver::HandleSessionError == %d", aError );
-    OstTrace1( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_HANDLESESSIONERROR, "CThumbAGAudioObserver::HandleSessionError;aError=%d", aError );
     if (aError != KErrNone && !iSessionError)
         {
         iSessionError = ETrue;
@@ -236,7 +219,6 @@ void CThumbAGAudioObserver::HandleSessionError( CMdESession& /*aSession*/, TInt 
                                    TCallBack(ReconnectCallBack, this));
                 
                 TN_DEBUG1( "CThumbAGAudioObserver::HandleSessionError() - reconnect timer started" );
-                OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_HANDLESESSIONERROR, "CThumbAGAudioObserver::HandleSessionError - reconnect timer started" );
                 }
             }
 
@@ -252,7 +234,6 @@ void CThumbAGAudioObserver::HandleObjectNotification( CMdESession& /*aSession*/,
                                                const RArray<TItemId>& aObjectIdArray )
     {
     TN_DEBUG1( "CThumbAGAudioObserver::HandleObjectNotification() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - begin" );
 
     // no processor or shutting down
     if ( iShutdown || !iProcessor)
@@ -264,13 +245,11 @@ void CThumbAGAudioObserver::HandleObjectNotification( CMdESession& /*aSession*/,
     if (aType == ENotifyAdd)
         {
         TN_DEBUG2( "CThumbAGAudioObserver::HandleObjectNotification() - ENotifyAdd %d", aObjectIdArray.Count() );
-        OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - ENotifyAdd;aObjectIdArray.Count()=%d", aObjectIdArray.Count() );
         iAddCounter = aObjectIdArray.Count();
         }
     else if (aType == ENotifyModify)
         {
         TN_DEBUG2( "CThumbAGAudioObserver::HandleObjectNotification() - ENotifyModify %d", aObjectIdArray.Count() );
-        OstTrace1( TRACE_FATAL, DUP2_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - ENotifyModify;aObjectIdArray.Count()=%d", aObjectIdArray.Count() );
         iModCounter = aObjectIdArray.Count();
         }
 #endif
@@ -278,7 +257,6 @@ void CThumbAGAudioObserver::HandleObjectNotification( CMdESession& /*aSession*/,
     if ( (aType == ENotifyAdd || aType == ENotifyModify ) && (aObjectIdArray.Count() > 0) )
         {
         TN_DEBUG1( "CThumbAGAudioObserver::HandleObjectNotification() - AddToQueueL" );
-        OstTrace0( TRACE_FATAL, DUP3_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - AddToQueueL" );
 
         // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
@@ -286,24 +264,20 @@ void CThumbAGAudioObserver::HandleObjectNotification( CMdESession& /*aSession*/,
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGAudioObserver::HandleObjectNotification() - error adding to queue" );
-            OstTrace0( TRACE_FATAL, DUP4_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - error adding to queue" );
             }
         }
     else
         {
         TN_DEBUG1( "CThumbAGAudioObserver::HandleObjectNotification() - bad notification" );
-        OstTrace0( TRACE_FATAL, DUP5_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - bad notification" );
         }
     
 #ifdef _DEBUG
     TN_DEBUG3( "CThumbAGAudioObserver::IN-COUNTERS---------- Add = %d Modify = %d", iAddCounter, iModCounter );
-    OstTraceExt2( TRACE_FATAL, DUP6_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification;iAddCounter=%u;iModCounter=%u", iAddCounter, iModCounter );
     iModCounter = 0;
     iAddCounter = 0;
 #endif
 
     TN_DEBUG1( "CThumbAGAudioObserver::HandleObjectNotification() - end" );
-    OstTrace0( TRACE_FATAL, DUP7_CTHUMBAGAUDIOOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGAudioObserver::HandleObjectNotification - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -313,12 +287,10 @@ void CThumbAGAudioObserver::HandleObjectNotification( CMdESession& /*aSession*/,
 void CThumbAGAudioObserver::ShutdownNotification()
     {
     TN_DEBUG1( "CThumbAGAudioObserver::ShutdownNotification()" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_SHUTDOWNNOTIFICATION, "CThumbAGAudioObserver::ShutdownNotification" );
     
     if (!iShutdown)
         {
         TN_DEBUG1( "CThumbAGAudioObserver::ShutdownNotification() shutdown" );
-        OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_SHUTDOWNNOTIFICATION, "CThumbAGAudioObserver::ShutdownNotification - shutdown" );
         iShutdown = ETrue;
         }
     }
@@ -330,7 +302,6 @@ void CThumbAGAudioObserver::ShutdownNotification()
 void CThumbAGAudioObserver::AddObserversL()
     {
     TN_DEBUG1( "CThumbAGAudioObserver::AddObserversL() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_ADDOBSERVERSL, "CThumbAGAudioObserver::AddObserversL - begin" );
     
     CMdENamespaceDef& defaultNamespace = iMdESession->GetDefaultNamespaceDefL();
     CMdEObjectDef& audioDef = defaultNamespace.GetObjectDefL( MdeConstants::Audio::KAudioObject );
@@ -353,7 +324,6 @@ void CThumbAGAudioObserver::AddObserversL()
    CleanupStack::Pop( 4, addCondition );
      
     TN_DEBUG1( "CThumbAGAudioObserver::AddObserversL() - end" );
-    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_ADDOBSERVERSL, "CThumbAGAudioObserver::AddObserversL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -363,7 +333,6 @@ void CThumbAGAudioObserver::AddObserversL()
 TInt CThumbAGAudioObserver::ReconnectCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbAGAudioObserver::ReconnectCallBack() - reinitialize");
-    OstTrace0( TRACE_FATAL, CTHUMBAGAUDIOOBSERVER_RECONNECTCALLBACK, "CThumbAGAudioObserver::ReconnectCallBack - reinitialize" );
     
     CThumbAGAudioObserver* self = static_cast<CThumbAGAudioObserver*>( aAny );
     
@@ -373,7 +342,6 @@ TInt CThumbAGAudioObserver::ReconnectCallBack(TAny* aAny)
     TRAP_IGNORE( self->InitializeL() );
     
     TN_DEBUG1( "CThumbAGAudioObserver::ReconnectCallBack() - done");
-    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGAUDIOOBSERVER_RECONNECTCALLBACK, "CThumbAGAudioObserver::ReconnectCallBack - done" );
     
     return KErrNone;
     }

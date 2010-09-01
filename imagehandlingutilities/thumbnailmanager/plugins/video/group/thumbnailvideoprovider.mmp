@@ -35,7 +35,7 @@ SOURCE  thumbnailvideoprovider.cpp
 MW_LAYER_SYSTEMINCLUDE
 
 USERINCLUDE ../inc
-USERINCLUDE ../../../inc ../traces
+USERINCLUDE ../../../inc
 
 SYSTEMINCLUDE /epoc32/include/ecom
 

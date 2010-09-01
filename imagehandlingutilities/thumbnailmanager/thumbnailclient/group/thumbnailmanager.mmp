@@ -42,7 +42,7 @@ SOURCE                  thumbnaildataimpl.cpp thumbnailrequestqueue.cpp
 MW_LAYER_SYSTEMINCLUDE
 
 USERINCLUDE             ../inc
-USERINCLUDE             ../../inc ../traces
+USERINCLUDE             ../../inc
 
 LIBRARY                 fbscli.lib
 LIBRARY                 euser.lib

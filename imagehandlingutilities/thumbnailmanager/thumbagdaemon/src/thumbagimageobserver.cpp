@@ -28,10 +28,6 @@
 #include "thumbnaillog.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailmanagerprivatecrkeys.h"
-#include "OstTraceDefinitions.h"
-#ifdef OST_TRACE_COMPILER_IN_USE
-#include "thumbagimageobserverTraces.h"
-#endif
 
 
 // ---------------------------------------------------------------------------
@@ -41,7 +37,6 @@
 CThumbAGImageObserver* CThumbAGImageObserver::NewLC(CThumbAGProcessor* aProcessor)
     {
     TN_DEBUG1( "CThumbAGImageObserver::NewLC() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_NEWLC, "CThumbAGImageObserver::NewLC - begin" );
     
 	CThumbAGImageObserver* self = new (ELeave) CThumbAGImageObserver(aProcessor);
 	CleanupStack::PushL( self );
@@ -56,7 +51,6 @@ CThumbAGImageObserver* CThumbAGImageObserver::NewLC(CThumbAGProcessor* aProcesso
 CThumbAGImageObserver* CThumbAGImageObserver::NewL(CThumbAGProcessor* aProcessor)
 	{
 	TN_DEBUG1( "CThumbAGImageObserver::NewL() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_NEWL, "CThumbAGImageObserver::NewL - begin" );
     
 	CThumbAGImageObserver* self = CThumbAGImageObserver::NewLC(aProcessor);
 	CleanupStack::Pop( self );
@@ -80,7 +74,6 @@ CThumbAGImageObserver::CThumbAGImageObserver(CThumbAGProcessor* aProcessor)
 void CThumbAGImageObserver::ConstructL()
 	{
 	TN_DEBUG1( "CThumbAGImageObserver::ConstructL() - begin" );
-	OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_CONSTRUCTL, "CThumbAGImageObserver::ConstructL - begin" );
 	
 #ifdef _DEBUG
     iAddCounter = 0;
@@ -90,7 +83,6 @@ void CThumbAGImageObserver::ConstructL()
     InitializeL();
     	
 	TN_DEBUG1( "CThumbAGImageObserver::ConstructL() - end" );
-	OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_CONSTRUCTL, "CThumbAGImageObserver::ConstructL - end" );
 	}
 
 // ---------------------------------------------------------------------------
@@ -100,10 +92,9 @@ void CThumbAGImageObserver::ConstructL()
 void CThumbAGImageObserver::InitializeL()
     {
     TN_DEBUG1( "CThumbAGImageObserver::InitializeL() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_INITIALIZEL, "CThumbAGImageObserver::InitializeL - begin" );
+    
    
         TN_DEBUG1( "CThumbAGImageObserver::InitializeL() - create observers" );
-        OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_INITIALIZEL, "CThumbAGImageObserver::InitializeL - create observers" );
         
         // create shutdown observer
         if(iMDSShutdownObserver)
@@ -128,7 +119,6 @@ void CThumbAGImageObserver::InitializeL()
             }
         
         TN_DEBUG1( "CThumbAGImageObserver::InitializeL() - connect to MDS" );
-        OstTrace0( TRACE_FATAL, DUP2_CTHUMBAGIMAGEOBSERVER_INITIALIZEL, "CThumbAGImageObserver::InitializeL - connect to MDS" );
         
         if(iMdESession)
             {
@@ -144,7 +134,6 @@ void CThumbAGImageObserver::InitializeL()
         iSessionError = EFalse;
       
         TN_DEBUG1( "CThumbAGImageObserver::InitializeL() - end" );
-        OstTrace0( TRACE_FATAL, DUP3_CTHUMBAGIMAGEOBSERVER_INITIALIZEL, "CThumbAGImageObserver::InitializeL - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +143,6 @@ void CThumbAGImageObserver::InitializeL()
 CThumbAGImageObserver::~CThumbAGImageObserver()
     {
     TN_DEBUG1( "CThumbAGImageObserver::~CThumbAGImageObserver() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_CTHUMBAGIMAGEOBSERVER, "CThumbAGImageObserver::~CThumbAGImageObserver - begin" );
     
     iShutdown = ETrue;    
     
@@ -182,7 +170,6 @@ CThumbAGImageObserver::~CThumbAGImageObserver()
         }
     
     TN_DEBUG1( "CThumbAGImageObserver::~CThumbAGImageObserver() - end" );
-    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_CTHUMBAGIMAGEOBSERVER, "CThumbAGImageObserver::~CThumbAGImageObserver - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -192,7 +179,6 @@ CThumbAGImageObserver::~CThumbAGImageObserver()
 void CThumbAGImageObserver::HandleSessionOpened( CMdESession& /* aSession */, TInt aError )
     {
     TN_DEBUG1( "CThumbAGImageObserver::HandleSessionOpened");
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_HANDLESESSIONOPENED, "CThumbAGImageObserver::HandleSessionOpened" );
     
     if (aError == KErrNone)
         {
@@ -200,13 +186,11 @@ void CThumbAGImageObserver::HandleSessionOpened( CMdESession& /* aSession */, TI
         if (err != KErrNone)
             {
             TN_DEBUG2( "CThumbAGImageObserver::HandleSessionOpened, AddObserversL error == %d", err );
-            OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_HANDLESESSIONOPENED, "CThumbAGImageObserver::HandleSessionOpened, AddObserversL error;err=%d", err );
             }
         }
     else
         {
         TN_DEBUG2( "CThumbAGImageObserver::HandleSessionOpened error == %d", aError );
-        OstTrace1( TRACE_FATAL, DUP2_CTHUMBAGIMAGEOBSERVER_HANDLESESSIONOPENED, "CThumbAGImageObserver::HandleSessionOpened;aError=%d", aError );
         }
     }
 
@@ -217,7 +201,6 @@ void CThumbAGImageObserver::HandleSessionOpened( CMdESession& /* aSession */, TI
 void CThumbAGImageObserver::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
     TN_DEBUG2( "CThumbAGImageObserver::HandleSessionError == %d", aError );
-    OstTrace1( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_HANDLESESSIONERROR, "CThumbAGImageObserver::HandleSessionError;aError=%d", aError );
     if (aError != KErrNone && !iSessionError)
         {
         iSessionError = ETrue;
@@ -230,7 +213,6 @@ void CThumbAGImageObserver::HandleSessionError( CMdESession& /*aSession*/, TInt 
                                    TCallBack(ReconnectCallBack, this));
                 
                 TN_DEBUG1( "CThumbAGImageObserver::HandleSessionError() - reconnect timer started" );
-                OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_HANDLESESSIONERROR, "CThumbAGImageObserver::HandleSessionError - reconnect timer started" );
                 }
             }
 
@@ -246,7 +228,6 @@ void CThumbAGImageObserver::HandleObjectNotification( CMdESession& /*aSession*/,
                                                const RArray<TItemId>& aObjectIdArray )
     {
     TN_DEBUG1( "CThumbAGImageObserver::HandleObjectNotification() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - begin" );
 
     // no processor or shutting down
     if (iShutdown || !iProcessor)
@@ -258,13 +239,11 @@ void CThumbAGImageObserver::HandleObjectNotification( CMdESession& /*aSession*/,
     if (aType == ENotifyAdd)
         {
         TN_DEBUG2( "CThumbAGImageObserver::HandleObjectNotification() - ENotifyAdd %d", aObjectIdArray.Count() );
-        OstTrace1( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - ENotifyAdd;aObjectIdArray.Count()=%d", aObjectIdArray.Count() );
         iAddCounter = aObjectIdArray.Count();
         }
     else if (aType == ENotifyModify)
         {
         TN_DEBUG2( "CThumbAGImageObserver::HandleObjectNotification() - ENotifyModify %d", aObjectIdArray.Count() );
-        OstTrace1( TRACE_FATAL, DUP2_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - ENotifyModify;aObjectIdArray.Count()=%d", aObjectIdArray.Count() );
         iModCounter = aObjectIdArray.Count();
         }
 #endif
@@ -272,7 +251,6 @@ void CThumbAGImageObserver::HandleObjectNotification( CMdESession& /*aSession*/,
     if ( (aType == ENotifyAdd || aType == ENotifyModify) && aObjectIdArray.Count() > 0 )
         {
         TN_DEBUG1( "CThumbAGImageObserver::HandleObjectNotification() - AddToQueueL" );
-		OstTrace0( TRACE_FATAL, DUP3_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - AddToQueueL" );
 		
         // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
@@ -280,25 +258,21 @@ void CThumbAGImageObserver::HandleObjectNotification( CMdESession& /*aSession*/,
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGImageObserver::HandleObjectNotification() - error adding to queue" );
-            OstTrace0( TRACE_FATAL, DUP4_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - error adding to queue" );
             }
         }
     else
         {
         TN_DEBUG1( "CThumbAGImageObserver::HandleObjectNotification() - bad notification" );
-        OstTrace0( TRACE_FATAL, DUP5_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - bad notification" );
         }
     
 #ifdef _DEBUG
     TN_DEBUG3( "CThumbAGImageObserver::IN-COUNTERS---------- Add = %d Modify = %d", iAddCounter, iModCounter );
-    OstTraceExt2( TRACE_FATAL, DUP6_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HIN-COUNTERS---------- Add, Modify;iAddCounter=%u;iModCounter=%u", iAddCounter, iModCounter );
     iModCounter = 0;
     iAddCounter = 0;
     
 #endif
 
     TN_DEBUG1( "CThumbAGImageObserver::HandleObjectNotification() - end" );
-    OstTrace0( TRACE_FATAL, DUP7_CTHUMBAGIMAGEOBSERVER_HANDLEOBJECTNOTIFICATION, "CThumbAGImageObserver::HandleObjectNotification - end" );
     }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +282,6 @@ void CThumbAGImageObserver::HandleObjectNotification( CMdESession& /*aSession*/,
 void CThumbAGImageObserver::AddObserversL()
     {
     TN_DEBUG1( "CThumbAGImageObserver::AddObserversL() - begin" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_ADDOBSERVERSL, "CThumbAGImageObserver::AddObserversL - begin" );
     
     CMdENamespaceDef& defaultNamespace = iMdESession->GetDefaultNamespaceDefL();
     CMdEObjectDef& objectDef = defaultNamespace.GetObjectDefL( MdeConstants::Object::KBaseObject );
@@ -340,7 +313,6 @@ void CThumbAGImageObserver::AddObserversL()
     CleanupStack::Pop( 6, addCondition );
 
     TN_DEBUG1( "CThumbAGImageObserver::AddObserversL() - end" );
-    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_ADDOBSERVERSL, "CThumbAGImageObserver::AddObserversL - end" );
     }
 
 
@@ -351,12 +323,10 @@ void CThumbAGImageObserver::AddObserversL()
 void CThumbAGImageObserver::ShutdownNotification()
     {
     TN_DEBUG1( "CThumbAGImageObserver::ShutdownNotification()" );
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_SHUTDOWNNOTIFICATION, "CThumbAGImageObserver::ShutdownNotification" );
     
     if (!iShutdown)
         {
         TN_DEBUG1( "CThumbAGImageObserver::ShutdownNotification() shutdown" );
-        OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_SHUTDOWNNOTIFICATION, "CThumbAGImageObserver::ShutdownNotification - shutdown" );
         iShutdown = ETrue;
         }
     }
@@ -368,7 +338,6 @@ void CThumbAGImageObserver::ShutdownNotification()
 TInt CThumbAGImageObserver::ReconnectCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbAGImageObserver::ReconnectCallBack() - reinitialize");
-    OstTrace0( TRACE_FATAL, CTHUMBAGIMAGEOBSERVER_RECONNECTCALLBACK, "CThumbAGImageObserver::ReconnectCallBack - reinitialize" );
     
     CThumbAGImageObserver* self = static_cast<CThumbAGImageObserver*>( aAny );
     
@@ -378,7 +347,6 @@ TInt CThumbAGImageObserver::ReconnectCallBack(TAny* aAny)
     TRAP_IGNORE( self->InitializeL() );
     
     TN_DEBUG1( "CThumbAGImageObserver::ReconnectCallBack() - done");
-    OstTrace0( TRACE_FATAL, DUP1_CTHUMBAGIMAGEOBSERVER_RECONNECTCALLBACK, "CThumbAGImageObserver::ReconnectCallBack - done" );
     
     return KErrNone;
     }

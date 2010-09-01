@@ -68,7 +68,7 @@ MW_LAYER_SYSTEMINCLUDE
 
 USERINCLUDE             ../inc
 USERINCLUDE             ../../inc
-USERINCLUDE             ../../tmcommon/inc ../traces
+USERINCLUDE             ../../tmcommon/inc
 
 LIBRARY                 fbscli.lib
 LIBRARY                 euser.lib
