@@ -25,6 +25,11 @@
 #include "thumbnailpanic.h"
 #include "thumbnailserversession.h"  // ConvertSqlErrToE32Err()
 #include "thumbnailmanagerconstants.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailtaskTraces.h"
+#endif
+
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -85,6 +90,9 @@ CThumbnailTask::TTaskState CThumbnailTask::State()const
 void CThumbnailTask::StartL()
     {
     TN_DEBUG3( "CThumbnailTask(0x%08x)::StartL() iState == %d ", this, iState );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASK_STARTL, "CThumbnailTask::StartL;this=%o", this );
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASK_STARTL, "CThumbnailTask::StartL;iState=%u", iState );
+    
     __ASSERT_DEBUG(( iState != ERunning ), ThumbnailPanic( EThumbnailAlreadyRunning ));
     iState = ERunning;
     }
@@ -108,6 +116,8 @@ void CThumbnailTask::Complete( TInt aReason )
     {
     TN_DEBUG4( "CThumbnailTask(0x%08x)::Complete(aReason=%d) iState was %d",
         this, aReason, iState );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASK_COMPLETE, "CThumbnailTask::Complete;this=%o", this );
+    OstTraceExt2( TRACE_NORMAL, DUP1_CTHUMBNAILTASK_COMPLETE, "CThumbnailTask::Complete;aReason=%d;iState=%u", aReason, iState );
     
     if ( iState != EComplete )
         {
@@ -156,6 +166,9 @@ void CThumbnailTask::StartError( TInt aError )
     // This is called if StartL() left. Complete this task with an error and
     // continue processing.
     TN_DEBUG3( "CThumbnailTask(0x%08x)::StartError(aError=%d)", this, aError );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILTASK_STARTERROR, "CThumbnailTask::StartError;this=%o", this );
+    OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASK_STARTERROR, "CThumbnailTask::StartError;aError=%d", aError );
+    
     Complete( aError );
     }
 
@@ -189,6 +202,7 @@ void CThumbnailTask::SetMessageData( const TThumbnailServerRequestId&
     else
         {
         TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - message null", this);
+        OstTrace1( TRACE_NORMAL, CTHUMBNAILTASK_SETMESSAGEDATA, "CThumbnailTask::SetMessageData - message null;this=%o", this );
         }
     }
 
@@ -247,6 +261,7 @@ void CThumbnailTask::CancelMessage()
 TBool CThumbnailTask::ClientThreadAlive(const TBool aGetThread)
     {
     TN_DEBUG1( "CThumbnailTask::ClientThreadAlive()");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILTASK_CLIENTTHREADALIVE, "CThumbnailTask::ClientThreadAlive" );
     
     if ( iMessage.Handle())
         {
@@ -257,6 +272,7 @@ TBool CThumbnailTask::ClientThreadAlive(const TBool aGetThread)
             if (err != KErrNone)
                 {
                 TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - client thread not found", this);
+                OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILTASK_CLIENTTHREADALIVE, "CThumbnailTask::ClientThreadAlive - client thread not found;this=%o", this );
             
                 ResetMessageData();
                 
@@ -269,6 +285,7 @@ TBool CThumbnailTask::ClientThreadAlive(const TBool aGetThread)
         if( exitType != EExitPending )
             {
             TN_DEBUG2( "CThumbnailTask(0x%08x)::ClientThreadAlive() - client thread died", this);
+            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILTASK_CLIENTTHREADALIVE, "CThumbnailTask::ClientThreadAlive -  client thread died;this=%o", this );
         
             ResetMessageData();
             

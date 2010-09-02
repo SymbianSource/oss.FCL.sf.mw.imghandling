@@ -31,6 +31,11 @@
 #include "thumbnaillog.h"
 
 #include "thumbnailmanagerimpl.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailrequestactiveTraces.h"
+#endif
+
 
 // ======== MEMBER FUNCTIONS ========
 
@@ -100,6 +105,7 @@ CThumbnailRequestActive::CThumbnailRequestActive( RFs& aFs, RThumbnailSession&
     {
     CActiveScheduler::Add( this );
     TN_DEBUG2( "CThumbnaiRequestActive::CThumbnailRequestActive() AO's priority = %d", Priority());
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_CTHUMBNAILREQUESTACTIVE, "CThumbnailRequestActive::CThumbnailRequestActive - AO's priority;Priority()=%d", Priority() );
     
     iBitmap = NULL;
     iRequestCompleted = EFalse;
@@ -132,6 +138,7 @@ void CThumbnailRequestActive::ConstructL()
 void CThumbnailRequestActive::StartL()
     {
     TN_DEBUG3( "CThumbnailRequestActive::StartL(0x%08x) reqid = %d", this, iRequestId );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_STARTL, "CThumbnailRequestActive::StartL;iRequestId=%u", iRequestId );
     
     iRequestActive = ETrue;
 
@@ -139,6 +146,8 @@ void CThumbnailRequestActive::StartL()
     TTime stop;
     stop.UniversalTime();
     TN_DEBUG3( "CThumbnailRequestActive::StartL() req id = %d, queuing time %d ms",
+               iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+    OstTraceExt2( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTACTIVE_STARTL, "CThumbnailRequestActive::StartL - req id = %d, queuing time %d ms",
                iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
 #endif
     
@@ -157,11 +166,13 @@ void CThumbnailRequestActive::StartL()
                 iParams.iOriginalControlFlags != EThumbnailGeneratePersistentSizesOnly)
                 {
                 TN_DEBUG1( "CThumbnaiRequestActive::StartL()- custom size request" );
+                OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILREQUESTACTIVE_STARTL, "CThumbnailRequestActive::StartL - custom size request" );
                   
                 iFile.Close();
                 User::LeaveIfError( iFile.Open( iFs, iPath, EFileShareReadersOrWriters ) );  
                 
                 TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iPath );
+                OstTraceExt1( TRACE_NORMAL, DUP3_CTHUMBNAILREQUESTACTIVE_STARTL, "CThumbnailRequestActive::StartL;iPath=%S", iPath );
                 
                 CleanupClosePushL( iFile );
                 
@@ -204,6 +215,7 @@ void CThumbnailRequestActive::StartL()
             User::LeaveIfError( iFile.Open( iFs, iTargetUri, EFileShareReadersOrWriters ) );  
             
             TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iTargetUri );
+            OstTraceExt1( TRACE_NORMAL, DUP4_CTHUMBNAILREQUESTACTIVE_STARTL, "CThumbnailRequestActive::StartL - file handle opened;iTargetUri=%S", iTargetUri );
             
             CleanupClosePushL( iFile );
             
@@ -244,6 +256,7 @@ void CThumbnailRequestActive::StartL()
             User::LeaveIfError( iFile.Open( iFs, iParams.iFileName, EFileShareReadersOrWriters ) );  
             
             TN_DEBUG2( "CThumbnailRequestActive::StartL() - file handle opened for %S", &iParams.iFileName );
+            OstTraceExt1( TRACE_NORMAL, DUP5_CTHUMBNAILREQUESTACTIVE_STARTL, "CThumbnailRequestActive::StartL;iParams.iFileName=%S", iParams.iFileName );
             
             CleanupClosePushL( iFile );
             
@@ -280,6 +293,7 @@ void CThumbnailRequestActive::StartL()
 void CThumbnailRequestActive::RunL()
     {
     TN_DEBUG2( "CThumbnailRequestActive::RunL() - request ID: %d", iParams.iRequestId );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;iParams.iRequestId=%u", iParams.iRequestId );
  
     if ( iParams.iControlFlags == EThumbnailPreviewThumbnail )
         {
@@ -313,6 +327,8 @@ void CThumbnailRequestActive::RunL()
     stop.UniversalTime();
     TN_DEBUG3( "CThumbnailRequestActive::RunL() total execution time of req %d is %d ms",
                 iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+    OstTraceExt2( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - total execution time of req %d is %d ms",
+                iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
 #endif
         }
     else if (iCanceled || iRequestType == EReqRenameThumbnails)
@@ -337,12 +353,15 @@ void CThumbnailRequestActive::RunL()
     stop.UniversalTime();
     TN_DEBUG3( "CThumbnailRequestActive::RunL() total execution time of req %d is %d ms",
                 iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+    OstTraceExt2( TRACE_NORMAL, DUP2_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - total execution time of req %d is %d ms",
+                iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
 #endif
         }
     else if ( iStatus.Int() == KThumbnailErrThumbnailNotFound && iParams.iFileName.Length() && 
          !( iParams.iFlags& CThumbnailManager::EDoNotCreate ))
         {
         TN_DEBUG2( "CThumbnaiRequestActive::RunL() - no thumbnail found - lets try with file handle %S", &iParams.iFileName );
+        OstTraceExt1( TRACE_NORMAL, DUP3_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - no thumbnail found - lets try with file handle;iParams.iFileName=%S", iParams.iFileName );
         iRequestCompleted = EFalse;
         
         // We tried to get thumbnail using file path, but it was not found in
@@ -351,11 +370,13 @@ void CThumbnailRequestActive::RunL()
         iFile.Close();
         TInt err = iFile.Open( iFs, iParams.iFileName, EFileShareReadersOrWriters );
         TN_DEBUG2( "CThumbnaiRequestActive::RunL() - file handle open err = %d", err );
+        OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - file handle open err;err=%d", err );
         User::LeaveIfError( err );
         
         CleanupClosePushL( iFile );
         
         TN_DEBUG2( "CThumbnaiRequestActive::RunL() - file handle opened for %S", &iParams.iFileName );
+        OstTraceExt1( TRACE_NORMAL, DUP5_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;iParams.iFileName=%S", iParams.iFileName );
         
         iSession.RequestThumbnailL( iFile, iParams.iFileName, iParamsPckg, iStatus );
         CleanupStack::PopAndDestroy( &iFile );
@@ -375,9 +396,11 @@ void CThumbnailRequestActive::RunL()
     else if (iParams.iOriginalControlFlags == EThumbnailGeneratePersistentSizesOnly && !iProcessingPreview)
 	    {
 	    TN_DEBUG1( "CThumbnaiRequestActive::RunL()- generate persistent sizes thumbnailready" );
+	    OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - generate persistent sizes thumbnailready" );
 	    iBitmapHandle = iParams.iBitmapHandle;
 	    
 	    TN_DEBUG2( "CThumbnaiRequestActive::RunL() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+	    OstTrace1( TRACE_NORMAL, DUP7_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;iParams.iRequestId=%u", iParams.iRequestId );
 	    iObserver.ThumbnailReady( iStatus.Int(), *iCallbackThumbnail, iParams.iRequestId );
 	  
 	    ReleaseServerBitmap();
@@ -392,6 +415,9 @@ void CThumbnailRequestActive::RunL()
             stop.UniversalTime();
             TN_DEBUG3( "CThumbnailRequestActive::RunL() total execution time %d, %d ms",
                        iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+            OstTraceExt2( TRACE_NORMAL, DUP8_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - total execution time %d, %d ms",
+                       iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+            
         #endif
 	    }
     //1st round preview ready from too low quality exif/exif not found (not-stored)
@@ -399,9 +425,11 @@ void CThumbnailRequestActive::RunL()
     else if (iParams.iOriginalControlFlags == EThumbnailGeneratePersistentSizesOnly && iProcessingPreview)
         {
         TN_DEBUG1( "CThumbnaiRequestActive::RunL()- generate persistent sizes thumbnailpreviewready" );
+        OstTrace0( TRACE_NORMAL, DUP9_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - generate persistent sizes thumbnailpreviewready" );
         iBitmapHandle = iParams.iBitmapHandle;
         
         TN_DEBUG2( "CThumbnaiRequestActive::RunL() - iObserver.ThumbnailPreviewReady %d", iParams.iRequestId );
+        OstTrace1( TRACE_NORMAL, DUP10_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;iParams.iRequestId=%u", iParams.iRequestId );
         iObserver.ThumbnailPreviewReady( *iCallbackThumbnail, iParams.iRequestId );
         
         iProcessingPreview = EFalse;
@@ -433,6 +461,7 @@ void CThumbnailRequestActive::RunL()
     else
         {
         TN_DEBUG1( "CThumbnailRequestActive::RunL() - succesful" );
+        OstTrace0( TRACE_NORMAL, DUP11_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - succesful" );
         
         // Success
         iBitmapHandle = iParams.iBitmapHandle;
@@ -447,6 +476,7 @@ void CThumbnailRequestActive::RunL()
             // reduce bpp value (displaymode to match reqested bits per pixel)
             #ifdef _DEBUG
             TN_DEBUG2( "CThumbnailRequestActive::RunL() - displaymode is %d", bitmap->DisplayMode());
+            OstTrace1( TRACE_NORMAL, DUP12_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;bitmap->DisplayMode()=%u", bitmap->DisplayMode() );
             #endif
             
             if( bitmap->DisplayMode() > iParams.iDisplayMode )
@@ -454,6 +484,7 @@ void CThumbnailRequestActive::RunL()
                 bitmap->SetDisplayMode( iParams.iDisplayMode );
                 #ifdef _DEBUG
                 TN_DEBUG2( "CThumbnailRequestActive::RunL() - displaymode is now %d", bitmap->DisplayMode());
+                OstTrace1( TRACE_NORMAL, DUP13_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;bitmap->DisplayMode()=%u", bitmap->DisplayMode() );
                 #endif
                 }
             
@@ -464,6 +495,7 @@ void CThumbnailRequestActive::RunL()
         if ( iProcessingPreview )
             {
             TN_DEBUG2( "CThumbnailRequestActive::RunL() - iObserver.ThumbnailPreviewReady %d", iParams.iRequestId );
+			OstTrace1( TRACE_NORMAL, DUP14_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL - iObserver.ThumbnailPreviewReady;iParams.iRequestId=%u", iParams.iRequestId );
 			
             //increase priority of 2nd round (both, AO and request itself)
             this->SetPriority(this->Priority() + 1);
@@ -480,6 +512,7 @@ void CThumbnailRequestActive::RunL()
         else
             {
             TN_DEBUG2( "CThumbnailRequestActive::RunL() - iObserver.ThumbnailReady %d", iParams.iRequestId );
+            OstTrace1( TRACE_NORMAL, DUP15_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;iParams.iRequestId=%u", iParams.iRequestId );
             
             iObserver.ThumbnailReady( iStatus.Int(), * iCallbackThumbnail, iParams.iRequestId );
             ReleaseServerBitmap();    
@@ -492,8 +525,11 @@ void CThumbnailRequestActive::RunL()
 #ifdef _DEBUG
         TTime stop;
         stop.UniversalTime();
+        TInt tookTime = (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000;
         TN_DEBUG4( "CThumbnailRequestActive::RunL(0x%08x) total execution time of req %d is %d ms",
                 this, iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
+        OstTrace1( TRACE_NORMAL, DUP16_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;this=%o", this );
+        OstTraceExt2( TRACE_NORMAL, DUP17_CTHUMBNAILREQUESTACTIVE_RUNL, "CThumbnailRequestActive::RunL;iParams.iRequestId=%u;tookTime=%d", iParams.iRequestId, tookTime );
 #endif
             }
         }
@@ -516,6 +552,7 @@ void CThumbnailRequestActive::RunL()
 TInt CThumbnailRequestActive::RunError( TInt aError )
     {
     TN_DEBUG1( "CThumbnailRequestActive::RunError");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_RUNERROR, "CThumbnailRequestActive::RunError" );
     
     iTimer->Cancel();
     
@@ -535,6 +572,7 @@ TInt CThumbnailRequestActive::RunError( TInt aError )
 void CThumbnailRequestActive::DoCancel()
     {
     TN_DEBUG1( "CThumbnailRequestActive::DoCancel");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_DOCANCEL, "CThumbnailRequestActive::DoCancel" );
     iTimer->Cancel();
     
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
@@ -552,6 +590,7 @@ void CThumbnailRequestActive::DoCancel()
 void CThumbnailRequestActive::AsyncCancel()
     {
     TN_DEBUG1( "CThumbnailRequestActive::AsyncCancel");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_ASYNCCANCEL, "CThumbnailRequestActive::AsyncCancel" );
 
     __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
     
@@ -573,6 +612,7 @@ void CThumbnailRequestActive::ReleaseServerBitmap()
     if ( iBitmapHandle && iSession.Handle())
         {
     	TN_DEBUG1( "CThumbnailRequestActive::ReleaseServerBitmap");
+    	OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_RELEASESERVERBITMAP, "CThumbnailRequestActive::ReleaseServerBitmap" );
     
         iSession.ReleaseBitmap( iBitmapHandle );
         iBitmapHandle = 0;
@@ -588,6 +628,7 @@ void CThumbnailRequestActive::ReleaseServerBitmap()
 void CThumbnailRequestActive::HandleError()
     {
     TN_DEBUG1( "CThumbnailRequestActive::HandleError");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_HANDLEERROR, "CThumbnailRequestActive::HandleError" );
     
     if ( iError )
         {
@@ -598,16 +639,19 @@ void CThumbnailRequestActive::HandleError()
             if (connErr != KErrNone)
                 {
                 TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - session reconnect err %d", connErr );
+                OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTACTIVE_HANDLEERROR, "CThumbnailRequestActive::HandleError;err=%d", connErr );
                 }
             else
                 {
                 TN_DEBUG1( "CThumbnailRequestActive::HandleError() - session reconnected");
+                OstTrace0( TRACE_NORMAL, DUP2_CTHUMBNAILREQUESTACTIVE_HANDLEERROR, "CThumbnailRequestActive::HandleError - session reconnected" );
                 }
             }
 
         if (iRequestObserver && iRequestType == EReqDeleteThumbnails)
              {
              TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - iRequestObserver->ThumbnailRequestReady %d", iParams.iRequestId );
+             OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILREQUESTACTIVE_HANDLEERROR, "CThumbnailRequestActive::HandleError;iParams.iRequestId=%u", iParams.iRequestId );
              iRequestObserver->ThumbnailRequestReady(iError, ERequestDeleteThumbnails ,iParams.iRequestId);
              }
         else
@@ -628,6 +672,7 @@ void CThumbnailRequestActive::HandleError()
                     {
                     iRetry++;
                     TN_DEBUG2( "CThumbnaiRequestActive::HandleError() - KErrServerTerminated, retry %d", iRetry);
+                    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILREQUESTACTIVE_HANDLEERROR, "CThumbnailRequestActive::HandleError - KErrServerTerminated;iRetry=%d", iRetry );
                     iError = KErrNone;
                     TRAPD(err, StartL());
                     return;
@@ -635,6 +680,7 @@ void CThumbnailRequestActive::HandleError()
 	            }
 #endif
 	        TN_DEBUG3( "CThumbnaiRequestActive::HandleError() - iObserver.ThumbnailReady req=%d err=%d", iParams.iRequestId, iError );
+	        OstTrace1( TRACE_NORMAL, DUP5_CTHUMBNAILREQUESTACTIVE_HANDLEERROR, "CThumbnailRequestActive::HandleError - iObserver.ThumbnailReady %u", iParams.iRequestId );
 	        iObserver.ThumbnailReady( iError, *iCallbackThumbnail, iParams.iRequestId );
 	            
             }
@@ -659,7 +705,7 @@ void CThumbnailRequestActive::HandleError()
 // ---------------------------------------------------------------------------
 //
 void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId aThumbnailId,
-    CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
+    const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
     ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
     TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
     const TDesC& aTargetUri, TThumbnailSize aThumbnailSize)
@@ -680,6 +726,7 @@ void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId 
     						EThumbnailGeneratePersistentSizesOnly :
     						EThumbnailNoControlFlags);    
     iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
     iParams.iBitmapHandle = 0;
     iParams.iSize = aSize;
     iParams.iDisplayMode = aDisplayMode;
@@ -714,8 +761,8 @@ void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId 
 // ---------------------------------------------------------------------------
 //
 void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
-    const TDesC& aPath, CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
-    ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
+    const TDesC& aPath, const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, 
+    CThumbnailManager::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
     TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
     const TDesC& aTargetUri, TThumbnailSize aThumbnailSize)
     {
@@ -726,6 +773,7 @@ void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
                             EThumbnailGeneratePersistentSizesOnly :
                             EThumbnailNoControlFlags);
     iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
     iParams.iBitmapHandle = 0;
     iParams.iSize = aSize;
     iParams.iDisplayMode = aDisplayMode;
@@ -758,7 +806,7 @@ void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
 // ---------------------------------------------------------------------------
 //
 void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aThumbnailId,
-    CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
+    const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
     ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
     TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
     const TDesC& aTargetUri, TThumbnailSize aThumbnailSize)
@@ -770,6 +818,7 @@ void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aT
     						EThumbnailGeneratePersistentSizesOnly :
     						EThumbnailNoControlFlags);
     iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
     iParams.iBitmapHandle = 0;
     iParams.iSize = aSize;
     iParams.iDisplayMode = aDisplayMode;
@@ -898,6 +947,7 @@ void CThumbnailRequestActive::SetThumbnailL( CFbsBitmap* aBitmap, TThumbnailId a
         {
         // memory low, create thumbs using filehandle
         TN_DEBUG1( "CThumbnaiRequestActive::SetThumbnailbyBitmap() - memory low, create thumbs using filehandle!" );
+        OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_SETTHUMBNAILL, "CThumbnailRequestActive::SetThumbnailL - memory low, create thumbs using filehandle!" );
         delete aBitmap;
         aBitmap = NULL;
         iParams.iPriority = aPriority - 1;
@@ -1025,6 +1075,7 @@ void CThumbnailRequestActive::SetThumbnailL( const TDesC& aPath, const TDesC8& a
 void CThumbnailRequestActive::Get2ndPhaseThumbnailL()
     {
     TN_DEBUG2( "CThumbnailRequestActive::Get2ndPhaseThumbnailL() %d", iParams.iRequestId );
+    OstTrace1( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_GET2NDPHASETHUMBNAILL, "CThumbnailRequestActive::Get2ndPhaseThumbnailL;iParams.iRequestId=%u", iParams.iRequestId );
     
     iParams.iQualityPreference = CThumbnailManager::EOptimizeForQuality;
     iParams.iControlFlags = EThumbnailNoControlFlags;
@@ -1049,6 +1100,7 @@ void CThumbnailRequestActive::Get2ndPhaseThumbnailL()
 void CThumbnailRequestActive::ChangePriority( const TInt aNewPriority )
     {
     TN_DEBUG1( "CThumbnailRequestActive::ChangePriority");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_CHANGEPRIORITY, "CThumbnailRequestActive::ChangePriority" );
     
     iParams.iPriority = aNewPriority;
     
@@ -1070,6 +1122,7 @@ void CThumbnailRequestActive::ChangePriority( const TInt aNewPriority )
 void CThumbnailRequestActive::StartError( const TInt aErr )
     {
     TN_DEBUG1( "CThumbnailRequestActive::StartError");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_STARTERROR, "CThumbnailRequestActive::StartError" );
     
     iStartError = aErr;
     iRequestActive = ETrue;
@@ -1088,6 +1141,7 @@ void CThumbnailRequestActive::StartError( const TInt aErr )
 TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     {
     TN_DEBUG1( "CThumbnailRequestActive::TimerCallBack() - request timeout");
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_TIMERCALLBACK, "CThumbnailRequestActive::TimerCallBack" );
     
     CThumbnailRequestActive* self = static_cast<CThumbnailRequestActive*>( aAny );
     
@@ -1107,6 +1161,7 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     self->HandleError();
     
     TN_DEBUG1( "CThumbnailRequestActive::TimerCallBack() - end");
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILREQUESTACTIVE_TIMERCALLBACK, "CThumbnailRequestActive::TimerCallBack - end" );
     
     return KErrNone;
     }
@@ -1129,6 +1184,7 @@ TBool CThumbnailRequestActive::IsVirtualUri( const TDesC& aPath )
     else
         {
         TN_DEBUG1( "CThumbnailRequestActive::IsVirtualUri() - yes");
+        OstTrace0( TRACE_NORMAL, CTHUMBNAILREQUESTACTIVE_ISVIRTUALURI, "CThumbnailRequestActive::IsVirtualUri - yes" );
         return ETrue;
         }    
     }

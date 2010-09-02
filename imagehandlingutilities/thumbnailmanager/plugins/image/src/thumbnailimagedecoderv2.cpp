@@ -26,6 +26,11 @@
 #include "thumbnaillog.h"
 #include "thumbnailpanic.h"
 #include "thumbnailmanagerconstants.h"
+#include "OstTraceDefinitions.h"
+#ifdef OST_TRACE_COMPILER_IN_USE
+#include "thumbnailimagedecoderv2Traces.h"
+#endif
+
 
 // ============================ MEMBER FUNCTIONS ===============================
 //------------------------------------------------------------------------
@@ -59,6 +64,7 @@ CThumbnailImageDecoderv2::~CThumbnailImageDecoderv2()
 void CThumbnailImageDecoderv2::CreateL(TDesC8& aBuffer, MThumbnailProviderObserver& aObserver)
     {
     TN_DEBUG1( "CThumbnailImageDecoderv2::CreateL() start" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILIMAGEDECODERV2_CREATEL, "CThumbnailImageDecoderv2::CreateL - start" );
 
     iBuffer = &aBuffer;
     iObserver = &aObserver;
@@ -66,6 +72,7 @@ void CThumbnailImageDecoderv2::CreateL(TDesC8& aBuffer, MThumbnailProviderObserv
     CreateDecoderL();
     
     TN_DEBUG1( "CThumbnailImageDecoderv2::CreateL() end" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILIMAGEDECODERV2_CREATEL, "CThumbnailImageDecoderv2::CreateL - end" );
     }
 
 // -----------------------------------------------------------------------------
@@ -76,6 +83,7 @@ void CThumbnailImageDecoderv2::CreateL(TDesC8& aBuffer, MThumbnailProviderObserv
 void CThumbnailImageDecoderv2::DecodeL( )
     {
     TN_DEBUG1( "CThumbnailImageDecoderv2::DecodeL() start" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILIMAGEDECODERV2_DECODEL, "CThumbnailImageDecoderv2::DecodeL - start" );
     
     // Create the bitmap
     if ( !iBitmap )
@@ -97,6 +105,7 @@ void CThumbnailImageDecoderv2::DecodeL( )
     SetActive();  
     
     TN_DEBUG1( "CThumbnailImageDecoderv2::DecodeL() end" );
+    OstTrace0( TRACE_NORMAL, DUP1_CTHUMBNAILIMAGEDECODERV2_DECODEL, "CThumbnailImageDecoderv2::DecodeL - end" );
     }
 
 
@@ -165,6 +174,7 @@ void CThumbnailImageDecoderv2::RunL()
 void CThumbnailImageDecoderv2::CreateDecoderL()
     {
     TN_DEBUG1( "CThumbnailImageDecoderv2::CreateDecoderL() start" );
+    OstTrace0( TRACE_NORMAL, CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - start" );
     
     delete iDecoder;
     iDecoder = NULL;
@@ -178,12 +188,14 @@ void CThumbnailImageDecoderv2::CreateDecoderL()
     if ( decErr != KErrNone )
         {
         TN_DEBUG2( "CThumbnailImageDecoderv2::CreateDecoderL() - HW CExtJpegDecoder failed = %d", decErr );
+        OstTrace1( TRACE_NORMAL, DUP1_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - HW CExtJpegDecoder failed;decErr=%d", decErr );
         TRAP( decErr, iDecoder = CExtJpegDecoder::DataNewL(
                 CExtJpegDecoder::ESwImplementation, iFs, *iBuffer, options ));
         
         if ( decErr != KErrNone )
             {
             TN_DEBUG2( "CThumbnailImageDecoderv2::CreateDecoderL() - SW CExtJpegDecoder failed %d", decErr);
+            OstTrace1( TRACE_NORMAL, DUP2_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - SW CExtJpegDecoder failed;decErr=%d", decErr );
             LeaveIfCorruptL( decErr );
             
             TRAP( decErr, iDecoder = CImageDecoder::DataNewL( iFs, *iBuffer, KJpegMime(), options ) );
@@ -191,6 +203,7 @@ void CThumbnailImageDecoderv2::CreateDecoderL()
             if ( decErr != KErrNone )
                 {                  
                 TN_DEBUG2( "CThumbnailImageDecoderv2::CreateDecoderL() - CImageDecoder failed %d", decErr);
+                OstTrace1( TRACE_NORMAL, DUP3_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - CImageDecoder failed;decErr=%d", decErr );
                 LeaveIfCorruptL( decErr );
             
                 // don't force any mime type
@@ -198,23 +211,28 @@ void CThumbnailImageDecoderv2::CreateDecoderL()
                 if ( decErr != KErrNone )
                     {                    
                     TN_DEBUG2( "CThumbnailImageDecoderv2::CImageDecoder() - CImageDecoder no mime error %d", decErr  );
+                    OstTrace1( TRACE_NORMAL, DUP4_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - CImageDecoder no mime error;decErr=%d", decErr );
                     User::Leave( decErr );
                     }
                 }
             
             TN_DEBUG1( "CThumbnailImageDecoderv2::CreateDecoderL() - CImageDecoder created" );
+            OstTrace0( TRACE_NORMAL, DUP5_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - CImageDecoder created" );
             }
         else
             {
             TN_DEBUG1( "CThumbnailImageDecoderv2:CreateDecoderL() - SW CExtJpegDecoder created" );
+            OstTrace0( TRACE_NORMAL, DUP6_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - SW CExtJpegDecoder created" );
             }               
         }
     else
         {
         TN_DEBUG1( "CThumbnailImageDecoderv2::CreateDecoderL() - HW CExtJpegDecoder created" );
+        OstTrace0( TRACE_NORMAL, DUP7_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - HW CExtJpegDecoder created" );
         }
      
     TN_DEBUG1( "CThumbnailImageDecoderv2::CreateDecoderL() end" );
+    OstTrace0( TRACE_NORMAL, DUP8_CTHUMBNAILIMAGEDECODERV2_CREATEDECODERL, "CThumbnailImageDecoderv2::CreateDecoderL - end" );
     }
 
 // -----------------------------------------------------------------------------
