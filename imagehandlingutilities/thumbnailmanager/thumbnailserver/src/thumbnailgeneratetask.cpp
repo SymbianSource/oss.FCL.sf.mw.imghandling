@@ -369,7 +369,8 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
         {
         const TInt count = iMissingSizes->Count();
         
-        for ( TInt i( 0 ); i < count; i++ )
+        // scale small thumbs first, because fullscreen encoding takes longer
+        for ( TInt i( count-1 ); i >= 0; i-- )
             {
             TThumbnailSize size = (*iMissingSizes)[ i ].iType;
 #ifdef _DEBUG
@@ -383,7 +384,8 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                 if ( size == EFullScreenThumbnailSize ||
                      size == EVideoFullScreenThumbnailSize ||
                      size == EAudioFullScreenThumbnailSize ||
-                     size == EImageFullScreenThumbnailSize )
+                     size == EImageFullScreenThumbnailSize || 
+                     size == EContactFullScreenThumbnailSize )
                     {
                     TInt mis_width = (*iMissingSizes)[ i ].iSize.iWidth;
                     TN_DEBUG2( "*iMissingSizes)[ i ].iWidth == %d", (*iMissingSizes)[ i ].iSize.iWidth );
@@ -445,7 +447,8 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             if ( iThumbnailSize == EFullScreenThumbnailSize ||
                  iThumbnailSize == EVideoFullScreenThumbnailSize ||
                  iThumbnailSize == EAudioFullScreenThumbnailSize ||
-                 iThumbnailSize == EImageFullScreenThumbnailSize )
+                 iThumbnailSize == EImageFullScreenThumbnailSize ||
+                 iThumbnailSize == EContactFullScreenThumbnailSize)
                 {
                 TInt width = iSize.iWidth; 
                 iSize.iWidth = iSize.iHeight;

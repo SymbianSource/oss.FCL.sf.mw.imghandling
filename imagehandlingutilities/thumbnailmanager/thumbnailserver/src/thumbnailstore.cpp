@@ -1370,8 +1370,10 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 flags |= KThumbnailDbFlagBlacklisted;
                 }
             
-            if( (aThumbnailSize == EImageFullScreenThumbnailSize || aThumbnailSize == EVideoFullScreenThumbnailSize ||
-                 aThumbnailSize == EAudioFullScreenThumbnailSize) && !aBlackListed )
+            if( (aThumbnailSize == EImageFullScreenThumbnailSize || 
+                 aThumbnailSize == EVideoFullScreenThumbnailSize ||
+                 aThumbnailSize == EAudioFullScreenThumbnailSize ||
+                 aThumbnailSize == EContactFullScreenThumbnailSize) && !aBlackListed )
                 {
                 TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - encode jpg" );
                 OstTrace0( TRACE_NORMAL, DUP11_CTHUMBNAILSTORE_STORETHUMBNAILL, "CThumbnailStore::StoreThumbnailL - encode jpg" );
