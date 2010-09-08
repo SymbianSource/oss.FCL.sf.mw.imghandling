@@ -1,0 +1,43 @@
+##
+# This is Default Licence added by TraceCompiler
+# Copyright (c) 2010 Nokia Corporation and/or its subsidiary(-ies).
+# All rights reserved.
+# This component and the accompanying materials are made available
+# under the terms of "Eclipse Public License v1.0"
+# which accompanies this distribution, and is available
+# at the URL "http://www.eclipse.org/legal/epl-v10.html".
+#
+# Initial Contributors:
+# Nokia Corporation - initial contribution.
+#
+# Contributors:
+#
+# Description: 
+#
+##
+#Fixed group and trace id definitions. If this file is removed, the identifiers are rebuilt.
+[GROUP]TRACE_NORMAL=0x86
+[TRACE]TRACE_NORMAL[0x86]_DUP10__MAINL=0xa
+[TRACE]TRACE_NORMAL[0x86]_DUP11__MAINL=0xb
+[TRACE]TRACE_NORMAL[0x86]_DUP12__MAINL=0xc
+[TRACE]TRACE_NORMAL[0x86]_DUP13__MAINL=0xd
+[TRACE]TRACE_NORMAL[0x86]_DUP14__MAINL=0xe
+[TRACE]TRACE_NORMAL[0x86]_DUP15__MAINL=0xf
+[TRACE]TRACE_NORMAL[0x86]_DUP16__MAINL=0x10
+[TRACE]TRACE_NORMAL[0x86]_DUP17__MAINL=0x11
+[TRACE]TRACE_NORMAL[0x86]_DUP18__MAINL=0x12
+[TRACE]TRACE_NORMAL[0x86]_DUP19__MAINL=0x13
+[TRACE]TRACE_NORMAL[0x86]_DUP1__MAINL=0x1
+[TRACE]TRACE_NORMAL[0x86]_DUP20__MAINL=0x14
+[TRACE]TRACE_NORMAL[0x86]_DUP21__MAINL=0x15
+[TRACE]TRACE_NORMAL[0x86]_DUP22__MAINL=0x16
+[TRACE]TRACE_NORMAL[0x86]_DUP23__MAINL=0x17
+[TRACE]TRACE_NORMAL[0x86]_DUP2__MAINL=0x2
+[TRACE]TRACE_NORMAL[0x86]_DUP3__MAINL=0x3
+[TRACE]TRACE_NORMAL[0x86]_DUP4__MAINL=0x4
+[TRACE]TRACE_NORMAL[0x86]_DUP5__MAINL=0x5
+[TRACE]TRACE_NORMAL[0x86]_DUP6__MAINL=0x6
+[TRACE]TRACE_NORMAL[0x86]_DUP7__MAINL=0x7
+[TRACE]TRACE_NORMAL[0x86]_DUP8__MAINL=0x8
+[TRACE]TRACE_NORMAL[0x86]_DUP9__MAINL=0x9
+[TRACE]TRACE_NORMAL[0x86]__MAINL=0x18
