@@ -1,20 +1,4 @@
-/*
-* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
-* All rights reserved.
-* This component and the accompanying materials are made available
-* under the terms of "Eclipse Public License v1.0"
-* which accompanies this distribution, and is available
-* at the URL "http://www.eclipse.org/legal/epl-v10.html".
-*
-* Initial Contributors:
-* Nokia Corporation - initial contribution.
-*
-* Contributors:
-*
-* Description:  Server side session for Thumbnail Manager Server
- *
-*/
-// Created by TraceCompiler 2.3.0
+// Created by TraceCompiler 2.2.3
 // DO NOT EDIT, CHANGES WILL BE LOST
 
 #ifndef __THUMBNAILSERVERSESSIONTRACES_H__
@@ -85,14 +69,6 @@
 #define CTHUMBNAILSERVERSESSION_CLIENTTHREADALIVE 0x8600ec
 #define DUP1_CTHUMBNAILSERVERSESSION_CLIENTTHREADALIVE 0x8600ed
 #define DUP2_CTHUMBNAILSERVERSESSION_CLIENTTHREADALIVE 0x8600ee
-#define DUP10_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL 0x8601ed
-#define DUP11_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL 0x8601ee
-#define DUP12_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYFILEHANDLEASYNCL 0x8601ef
-#define DUP7_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL 0x8601f0
-#define DUP8_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL 0x8601f1
-#define DUP9_CTHUMBNAILSERVERSESSION_REQUESTTHUMBBYPATHASYNCL 0x8601f2
-#define CTHUMBNAILSERVERSESSION_SETJPEGBUFFERL 0x8601f3
-#define CTHUMBNAILSERVERSESSION_GETJPEGBUFFERL 0x8601f4
 
 
 #ifndef __KERNEL_MODE__

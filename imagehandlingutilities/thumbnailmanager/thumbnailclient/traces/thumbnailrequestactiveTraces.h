@@ -1,20 +1,4 @@
-/*
-* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
-* All rights reserved.
-* This component and the accompanying materials are made available
-* under the terms of "Eclipse Public License v1.0"
-* which accompanies this distribution, and is available
-* at the URL "http://www.eclipse.org/legal/epl-v10.html".
-*
-* Initial Contributors:
-* Nokia Corporation - initial contribution.
-*
-* Contributors:
-*
-* Description:  Active object for an asynchronous thumbnail request
- *
-*/
-// Created by TraceCompiler 2.3.0
+// Created by TraceCompiler 2.2.3
 // DO NOT EDIT, CHANGES WILL BE LOST
 
 #ifndef __THUMBNAILREQUESTACTIVETRACES_H__
@@ -64,7 +48,6 @@
 #define CTHUMBNAILREQUESTACTIVE_TIMERCALLBACK 0x860048
 #define DUP1_CTHUMBNAILREQUESTACTIVE_TIMERCALLBACK 0x860049
 #define CTHUMBNAILREQUESTACTIVE_ISVIRTUALURI 0x86004a
-#define DUP18_CTHUMBNAILREQUESTACTIVE_RUNL 0x86006d
 
 
 #ifndef __OSTTRACEGEN2_TUINT32_TINT_TINT__

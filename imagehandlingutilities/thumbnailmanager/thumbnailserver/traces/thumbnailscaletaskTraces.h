@@ -1,20 +1,4 @@
-/*
-* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
-* All rights reserved.
-* This component and the accompanying materials are made available
-* under the terms of "Eclipse Public License v1.0"
-* which accompanies this distribution, and is available
-* at the URL "http://www.eclipse.org/legal/epl-v10.html".
-*
-* Initial Contributors:
-* Nokia Corporation - initial contribution.
-*
-* Contributors:
-*
-* Description:  Task for scaling thumbnails.
- *
-*/
-// Created by TraceCompiler 2.3.0
+// Created by TraceCompiler 2.2.3
 // DO NOT EDIT, CHANGES WILL BE LOST
 
 #ifndef __THUMBNAILSCALETASKTRACES_H__
@@ -45,16 +29,6 @@
 #define DUP7_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL 0x86005e
 #define DUP8_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL 0x86005f
 #define DUP9_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL 0x860060
-#define CTHUMBNAILSCALETASK_ENCODEL 0x8601e3
-#define DUP1_CTHUMBNAILSCALETASK_ENCODEL 0x8601e4
-#define DUP2_CTHUMBNAILSCALETASK_ENCODEL 0x8601e5
-#define DUP3_CTHUMBNAILSCALETASK_ENCODEL 0x8601e6
-#define DUP4_CTHUMBNAILSCALETASK_ENCODEL 0x8601e7
-#define DUP5_CTHUMBNAILSCALETASK_ENCODEL 0x8601e8
-#define DUP6_CTHUMBNAILSCALETASK_ENCODEL 0x8601e9
-#define DUP7_CTHUMBNAILSCALETASK_ENCODEL 0x8601ea
-#define DUP8_CTHUMBNAILSCALETASK_ENCODEL 0x8601eb
-#define DUP10_CTHUMBNAILSCALETASK_STOREANDCOMPLETEL 0x8601ec
 
 
 #ifndef __KERNEL_MODE__

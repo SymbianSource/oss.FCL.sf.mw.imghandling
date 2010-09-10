@@ -1,20 +1,4 @@
-/*
-* Copyright (c) 2006-2007 Nokia Corporation and/or its subsidiary(-ies). 
-* All rights reserved.
-* This component and the accompanying materials are made available
-* under the terms of "Eclipse Public License v1.0"
-* which accompanies this distribution, and is available
-* at the URL "http://www.eclipse.org/legal/epl-v10.html".
-*
-* Initial Contributors:
-* Nokia Corporation - initial contribution.
-*
-* Contributors:
-*
-* Description:  Store for thumbnails.
- *
-*/
-// Created by TraceCompiler 2.3.0
+// Created by TraceCompiler 2.2.3
 // DO NOT EDIT, CHANGES WILL BE LOST
 
 #ifndef __THUMBNAILSTORETRACES_H__
@@ -187,7 +171,6 @@
 #define DUP1_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CONSTRUCTL 0x860191
 #define DUP2_CTHUMBNAILSTOREDISKSPACENOTIFIERAO_CONSTRUCTL 0x860192
 #define CTHUMBNAILSTOREDISKSPACENOTIFIERAO_STARTNOTIFIER 0x860193
-#define CTHUMBNAILSTORE_STORETHUMBNAILL 0x8601f5
 #define DUP3_CTHUMBNAILSTORE_RECREATEDATABASEL 0x810001
 #define DUP5_CTHUMBNAILSTORE_RECREATEDATABASEL 0x810002
 #define DUP6_CTHUMBNAILSTORE_RECREATEDATABASEL 0x810003
