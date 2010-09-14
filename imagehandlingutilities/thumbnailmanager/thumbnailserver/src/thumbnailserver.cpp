@@ -1408,10 +1408,14 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
     else if ( ext.CompareF( K3gpExt ) == 0 )
         {
         aMimeType = TDataType( KVideo3gppMime );
+        return KErrNotFound; 
+        // 3gp can contain video or audio, should go to recognizer
         } 
     else if ( ext.CompareF( K3gppExt ) == 0 )
         {
         aMimeType = TDataType( KVideo3gppMime );
+        return KErrNotFound; 
+        // 3gp can contain video or audio, should go to recognizer
         }
     else if ( ext.CompareF( KAmrExt ) == 0 )
         {

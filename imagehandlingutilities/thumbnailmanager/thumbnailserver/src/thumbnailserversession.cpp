@@ -291,8 +291,26 @@ void CThumbnailServerSession::UpdateThumbnailsL( const RMessage2& aMessage )
         TInt sourceType = 0;
         TInt err = Server()->MimeTypeFromFileExt( params.iFileName, mimeType );
         
+        // need to use recognizer
+        if (err == KErrNotFound)
+            {
+            Server()->Fs().ShareProtected();
+            RFile64 file;
+            CleanupClosePushL( file );
+          
+            User::LeaveIfError( file.Open( Server()->Fs(), params.iFileName, EFileShareReadersOrWriters )); 
+            TN_DEBUG2( "CThumbnailServerSession::UpdateThumbnailsL - file handle opened for %S", &params.iFileName );
+          
+            mimeType = Server()->ResolveMimeTypeL(file);
+          
+            file.Close();
+            TN_DEBUG1("CThumbnailServerSession::UpdateThumbnailsL - file handle closed");
+          
+            CleanupStack::Pop( &file );    
+            }
+        
         // get missing sizes
-        if ( err == KErrNone && ( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly ) != 0 )
+        if ( ( params.iControlFlags & EThumbnailGeneratePersistentSizesOnly ) != 0 )
             {
             sourceType = Server()->SourceTypeFromMimeType( mimeType );
             

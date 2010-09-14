@@ -659,7 +659,7 @@ void CThumbnailRequestActive::HandleError()
 // ---------------------------------------------------------------------------
 //
 void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId aThumbnailId,
-    CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
+    const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
     ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
     TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
     const TDesC& aTargetUri, TThumbnailSize aThumbnailSize)
@@ -680,6 +680,7 @@ void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId 
     						EThumbnailGeneratePersistentSizesOnly :
     						EThumbnailNoControlFlags);    
     iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
     iParams.iBitmapHandle = 0;
     iParams.iSize = aSize;
     iParams.iDisplayMode = aDisplayMode;
@@ -714,8 +715,8 @@ void CThumbnailRequestActive::GetThumbnailL( const RFile64& aFile, TThumbnailId 
 // ---------------------------------------------------------------------------
 //
 void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
-    const TDesC& aPath, CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
-    ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
+    const TDesC& aPath, const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, 
+    CThumbnailManager::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
     TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
     const TDesC& aTargetUri, TThumbnailSize aThumbnailSize)
     {
@@ -726,6 +727,7 @@ void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
                             EThumbnailGeneratePersistentSizesOnly :
                             EThumbnailNoControlFlags);
     iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
     iParams.iBitmapHandle = 0;
     iParams.iSize = aSize;
     iParams.iDisplayMode = aDisplayMode;
@@ -758,7 +760,7 @@ void CThumbnailRequestActive::GetThumbnailL( TThumbnailId aThumbnailId,
 // ---------------------------------------------------------------------------
 //
 void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aThumbnailId,
-    CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
+    const TDesC8& aMimeType, CThumbnailManager::TThumbnailFlags aFlags, CThumbnailManager
     ::TThumbnailQualityPreference aQualityPreference, const TSize& aSize, const
     TDisplayMode aDisplayMode, const TInt aPriority, TAny* aClientData, TBool aGeneratePersistentSizesOnly,
     const TDesC& aTargetUri, TThumbnailSize aThumbnailSize)
@@ -770,6 +772,7 @@ void CThumbnailRequestActive::GetThumbnailL( const TDesC& aPath, TThumbnailId aT
     						EThumbnailGeneratePersistentSizesOnly :
     						EThumbnailNoControlFlags);
     iParams.iOriginalControlFlags = iParams.iControlFlags;
+    iParams.iMimeType = TDataType( aMimeType );
     iParams.iBitmapHandle = 0;
     iParams.iSize = aSize;
     iParams.iDisplayMode = aDisplayMode;

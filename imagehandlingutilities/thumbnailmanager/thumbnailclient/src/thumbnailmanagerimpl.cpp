@@ -172,21 +172,21 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL(
     
     if(aObjectSource.Id() > 0)
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
-            KNullDesC, iThumbnailSize);
+        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), 
+            aObjectSource.MimeType(),iFlags, iQualityPreference, iSize, iDisplayMode, 
+            priority, aClientData, aGeneratePersistentSizesOnly, KNullDesC, iThumbnailSize);
         }
     else if ( aObjectSource.Uri().Length())
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
-            KNullDesC, iThumbnailSize );
+        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(),
+            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
+            priority, aClientData, aGeneratePersistentSizesOnly, KNullDesC, iThumbnailSize );
         }
     else
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, priority, aClientData, aGeneratePersistentSizesOnly,
-            KNullDesC, iThumbnailSize );
+        getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), 
+            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
+            priority, aClientData, aGeneratePersistentSizesOnly, KNullDesC, iThumbnailSize );
         }
     
     iRequestQueue->AddRequestL( getThumbnailActive );
@@ -231,9 +231,9 @@ TThumbnailRequestId CThumbnailManagerImpl::GetThumbnailL( const TThumbnailId
         ( iFs, iSession, iObserver, iRequestObserver, iRequestId, priority, iRequestQueue );
     CleanupStack::PushL( getThumbnailActive );
     
-    getThumbnailActive->GetThumbnailL( KNullDesC, aThumbnailId, iFlags,
-                       iQualityPreference, iSize, iDisplayMode, priority, aClientData,
-                       EFalse, KNullDesC, iThumbnailSize );
+    getThumbnailActive->GetThumbnailL( KNullDesC, aThumbnailId, KNullDesC8,
+            iFlags, iQualityPreference, iSize, iDisplayMode, priority, aClientData,
+            EFalse, KNullDesC, iThumbnailSize );
     
     iRequestQueue->AddRequestL( getThumbnailActive );
     CleanupStack::Pop( getThumbnailActive );
@@ -267,15 +267,15 @@ TThumbnailRequestId CThumbnailManagerImpl::ImportThumbnailL(
 
     if ( aObjectSource.Uri().Length())
         {
-        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), iFlags,
-            iQualityPreference, iSize, iDisplayMode, priority, aClientData,
-            EFalse, aTargetUri, iThumbnailSize );
+        getThumbnailActive->GetThumbnailL( aObjectSource.Uri(), aObjectSource.Id(), 
+            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode, 
+            priority, aClientData, EFalse, aTargetUri, iThumbnailSize );
         }
     else
         {
         getThumbnailActive->GetThumbnailL( aObjectSource.FileHandle(), aObjectSource.Id(), 
-            iFlags, iQualityPreference, iSize, iDisplayMode, priority, aClientData,
-            EFalse, aTargetUri, iThumbnailSize );
+            aObjectSource.MimeType(), iFlags, iQualityPreference, iSize, iDisplayMode,
+            priority, aClientData, EFalse, aTargetUri, iThumbnailSize );
         }
     
     iRequestQueue->AddRequestL( getThumbnailActive );
@@ -374,9 +374,9 @@ TThumbnailRequestId CThumbnailManagerImpl::CreateThumbnails(
 		else if( !aObjectSource.Buffer() )
 			{        
 			getThumbnailActive->GetThumbnailL( aObjectSource.Id(), 
-						 aObjectSource.Uri(), iFlags, iQualityPreference, iSize,
-						 iDisplayMode, priority, NULL, ETrue, aObjectSource.Uri(), 
-						 EUnknownThumbnailSize);      
+						 aObjectSource.Uri(), aObjectSource.MimeType(), iFlags, 
+						 iQualityPreference, iSize, iDisplayMode, priority, NULL, 
+						 ETrue, aObjectSource.Uri(), EUnknownThumbnailSize);      
 			}
 		else
 			{
