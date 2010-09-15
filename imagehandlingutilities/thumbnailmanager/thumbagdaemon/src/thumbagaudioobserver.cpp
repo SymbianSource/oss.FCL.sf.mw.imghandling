@@ -308,12 +308,10 @@ void CThumbAGAudioObserver::AddObserversL()
     
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    CMdEObjectCondition& addObjectCondition = addCondition->AddObjectConditionL( audioDef );
-    CleanupStack::PushL( &addObjectCondition );
+    addCondition->AddObjectConditionL( audioDef );
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    CMdEObjectCondition& modifyObjectCondition = modifyCondition->AddObjectConditionL( audioDef );
-    CleanupStack::PushL( &modifyObjectCondition );
+    modifyCondition->AddObjectConditionL( audioDef );
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
@@ -321,7 +319,7 @@ void CThumbAGAudioObserver::AddObserversL()
    // modify observer
    iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
    
-   CleanupStack::Pop( 4, addCondition );
+   CleanupStack::Pop( 2, addCondition );
      
     TN_DEBUG1( "CThumbAGAudioObserver::AddObserversL() - end" );
     }

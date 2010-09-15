@@ -241,7 +241,8 @@ void CThumbnailScaleTask::CalculateTargetSize()
     if ( (iThumbnailSize == EFullScreenThumbnailSize ||
           iThumbnailSize == EImageFullScreenThumbnailSize ||
           iThumbnailSize == EVideoFullScreenThumbnailSize ||
-          iThumbnailSize == EAudioFullScreenThumbnailSize) &&
+          iThumbnailSize == EAudioFullScreenThumbnailSize ||
+          iThumbnailSize == EContactFullScreenThumbnailSize) &&
           iOriginalSize.iHeight < iTargetSize.iHeight && 
           iOriginalSize.iWidth < iTargetSize.iWidth )
         {

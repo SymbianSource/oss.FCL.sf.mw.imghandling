@@ -810,7 +810,8 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
         
         TSize bitmapSize = bitmap->SizeInPixels();
         
-        for ( TInt i( 0 ); i < count; i++ )
+        // scale small thumbs first, because fullscreen encoding takes longer
+        for ( TInt i( count-1 ); i >= 0; i-- )
             {           
             if( bitmapSize.iWidth < bitmapSize.iHeight )
                {
@@ -819,7 +820,8 @@ void CThumbnailServerSession::RequestSetThumbnailByBitmapL( const RMessage2& aMe
                if ( size == EFullScreenThumbnailSize ||
                     size == EVideoFullScreenThumbnailSize ||
                     size == EAudioFullScreenThumbnailSize ||
-                    size == EImageFullScreenThumbnailSize )
+                    size == EImageFullScreenThumbnailSize ||
+                    size == EContactFullScreenThumbnailSize )
                    {
                    TInt height = (*missingSizes)[i].iSize.iHeight;
                    (*missingSizes)[i].iSize.iHeight = (*missingSizes)[i].iSize.iWidth;

@@ -1048,23 +1048,18 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
         rootCondition.SetOperator( ELogicConditionOperatorOr );
         
         CMdEObjectCondition& imagePHObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
-        CleanupStack::PushL( &imagePHObjectCondition );
         imagePHObjectCondition.SetPlaceholderOnly( ETrue );
         imagePHObjectCondition.SetNotPresent( aPresent );
         
         CMdEObjectCondition& videoPHObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
-        CleanupStack::PushL( &videoPHObjectCondition );
         videoPHObjectCondition.SetPlaceholderOnly( ETrue );
         videoPHObjectCondition.SetNotPresent( aPresent );
         
         CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
-        CleanupStack::PushL( &audioPHObjectCondition );
         audioPHObjectCondition.SetPlaceholderOnly( ETrue );
         audioPHObjectCondition.SetNotPresent( aPresent );
         
         iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryBatchSize);   
-       
-        CleanupStack::Pop(3, &imagePHObjectCondition );
         }
 	
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - end" );
@@ -1131,7 +1126,7 @@ void CThumbAGProcessor::RunL()
             err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypeMMC | EHEObserverTypePlaceholder, 20 );
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
             
-            if( !err )
+            if( err != KErrNone )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer failed");
                 // if we fail observer harvester, fake it
@@ -1890,18 +1885,11 @@ void CThumbAGProcessor::QueryAllItemsL()
     CMdELogicCondition& rootCondition = iQueryAllItems->Conditions();
     rootCondition.SetOperator( ELogicConditionOperatorOr );
     
-    CMdEObjectCondition& imageObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
-	CleanupStack::PushL( &imageObjectCondition );
-    
-    CMdEObjectCondition& videoObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
-	CleanupStack::PushL( &videoObjectCondition );
-    
-    CMdEObjectCondition& audioObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
-	CleanupStack::PushL( &audioObjectCondition );
+    rootCondition.AddObjectConditionL(imageObjDef);   
+    rootCondition.AddObjectConditionL(videoObjDef);   
+    rootCondition.AddObjectConditionL(audioObjDef);
     
     iQueryAllItems->FindL(KMaxTInt, KMaxQueryBatchSize);  
-	
-	CleanupStack::Pop(3, &imageObjectCondition);
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - end" );
     }

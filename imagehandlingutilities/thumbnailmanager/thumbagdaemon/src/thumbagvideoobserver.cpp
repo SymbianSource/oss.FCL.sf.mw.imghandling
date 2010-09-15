@@ -301,19 +301,14 @@ void CThumbAGVideoObserver::AddObserversL()
     
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
+	addCondition->AddObjectConditionL( videoDef );
 	
-	CMdEObjectCondition& addObjectCondition =  addCondition->AddObjectConditionL( videoDef );
-	CleanupStack::PushL( &addObjectCondition );
-	
-	CMdEPropertyCondition& addPropertyCondition  = addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-	CleanupStack::PushL( &addPropertyCondition );
+	addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-	CMdEObjectCondition& modifyObjectCondition =  modifyCondition->AddObjectConditionL( videoDef );
-	CleanupStack::PushL( &modifyObjectCondition );
-	
-	CMdEPropertyCondition& modifyPropertyCondition =  modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-	CleanupStack::PushL( &modifyPropertyCondition );
+	modifyCondition->AddObjectConditionL( videoDef );
+
+	modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
@@ -321,7 +316,7 @@ void CThumbAGVideoObserver::AddObserversL()
     // modify observer
     iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
 	
-	CleanupStack::Pop( 6, addCondition );
+	CleanupStack::Pop( 2, addCondition );
      
     TN_DEBUG1( "CThumbAGVideoObserver::AddObserversL() - end" );
     }
