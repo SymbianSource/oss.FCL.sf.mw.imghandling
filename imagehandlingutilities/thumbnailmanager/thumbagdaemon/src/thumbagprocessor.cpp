@@ -1210,7 +1210,7 @@ void CThumbAGProcessor::RunL()
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
             OstTrace1( TRACE_NORMAL, DUP9_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - iHarvesterClient observer;err=%d", err );
             
-            if( !err )
+            if( err != KErrNone )
                 {
                 TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer failed");
                 OstTrace0( TRACE_NORMAL, DUP10_CTHUMBAGPROCESSOR_RUNL, "CThumbAGProcessor::RunL - add iHarvesterClient observer failed" );
@@ -2043,18 +2043,11 @@ void CThumbAGProcessor::QueryAllItemsL()
     CMdELogicCondition& rootCondition = iQueryAllItems->Conditions();
     rootCondition.SetOperator( ELogicConditionOperatorOr );
     
-    CMdEObjectCondition& imageObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
-	CleanupStack::PushL( &imageObjectCondition );
-    
-    CMdEObjectCondition& videoObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
-	CleanupStack::PushL( &videoObjectCondition );
-    
-    CMdEObjectCondition& audioObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
-	CleanupStack::PushL( &audioObjectCondition );
+    rootCondition.AddObjectConditionL(imageObjDef);   
+    rootCondition.AddObjectConditionL(videoObjDef);   
+    rootCondition.AddObjectConditionL(audioObjDef);
     
     iQueryAllItems->FindL(KMdEQueryDefaultMaxCount, KMaxQueryBatchSize);  
-	
-	CleanupStack::Pop(3, &imageObjectCondition);
     
     TN_DEBUG1( "CThumbAGProcessor::QueryAllItemsL - end" );
     OstTrace0( TRACE_NORMAL, DUP3_CTHUMBAGPROCESSOR_QUERYALLITEMSL, "CThumbAGProcessor::QueryAllItemsL" );
