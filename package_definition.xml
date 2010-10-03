@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <SystemDefinition schema="3.0.0" xmlns:qt="http://www.nokia.com/qt">
- <package id="imghandling" name="Image Handling" levels="lib util if">
+ <package id="imghandling" name="Image Handling" version="2.0.0" levels="lib util if">
   <collection id="imagehandling_plat" name="Image Handling Platform Interfaces" level="if">
    <component id="image_handling_library_api" name="Image Handling Library API" class="api" filter="s60">
     <meta rel="Api" href="imagehandling_plat/image_handling_library_api/image_handling_library_api.metaxml"/>
