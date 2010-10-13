@@ -24,7 +24,6 @@
 
 // ---------------------------------------------------------------------------
 // CThumbnailObjectSource::NewL()
-// CThumbnailObjectSource::NewLC()
 // Two-phased constructor.
 // ---------------------------------------------------------------------------
 //
@@ -37,6 +36,12 @@ EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( const TDesC&
     return self;
     }
 
+
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::NewLC()
+// Two-phased constructor.
+// ---------------------------------------------------------------------------
+//
 EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const TDesC&
     aUri, const TDesC& aMimeType )
     {
@@ -46,6 +51,11 @@ EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const TDesC&
     return self;
     }
 
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::NewL()
+// Two-phased constructor.
+// ---------------------------------------------------------------------------
+//
 EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( const RFile64&
     aFile, const TDesC& aMimeType )
     {
@@ -55,6 +65,12 @@ EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( const RFile64&
     return self;
     }
 
+
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::NewLC()
+// Two-phased constructor.
+// ---------------------------------------------------------------------------
+//
 EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const RFile64&
     aFile, const TDesC& aMimeType )
     {
@@ -64,16 +80,15 @@ EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const RFile64&
     return self;
     }
 
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( CFbsBitmap*  aBitmap, 
-    const TDesC& aUri )
+
+EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( CFbsBitmap*  aBitmap, const TDesC& aUri )
     {
     CThumbnailObjectSource* self = CThumbnailObjectSource::NewLC( aBitmap, aUri );
     CleanupStack::Pop( self );
     return self;   
     }
 
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( CFbsBitmap*  aBitmap,
-    const TDesC& aUri )
+EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( CFbsBitmap*  aBitmap, const TDesC& aUri )
     {
     CThumbnailObjectSource* self = new( ELeave )CThumbnailObjectSource();
     CleanupStack::PushL( self );
@@ -81,60 +96,21 @@ EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( CFbsBitmap*  aBi
     return self;
     }
 
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( TDesC8* aBuffer,
-    TDesC& aMimeType, const TDesC& aUri)
+EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( TDesC8* aBuffer,  TDesC& aMimeType, const TDesC& aUri)
     {
-    CThumbnailObjectSource* self = CThumbnailObjectSource::NewLC( aBuffer, 
-        aMimeType, aUri );
+    CThumbnailObjectSource* self = CThumbnailObjectSource::NewLC( aBuffer, aMimeType, aUri );
     CleanupStack::Pop( self );
     return self;   
     }
 
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( TDesC8* aBuffer, 
-    TDesC& aMimeType, const TDesC& aUri)
+EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( TDesC8* aBuffer,  TDesC& aMimeType, const TDesC& aUri)
     {
     CThumbnailObjectSource* self = new( ELeave )CThumbnailObjectSource();
     CleanupStack::PushL( self );
     self->ConstructL( aBuffer, aMimeType, aUri );
     return self;
     }
-
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( const TDesC& 
-    aUri, const TThumbnailId aThumbnailId, const TDesC& aMimeType )
-    {
-    CThumbnailObjectSource* self = CThumbnailObjectSource::NewLC( aUri,
-        aThumbnailId, aMimeType );
-    CleanupStack::Pop( self );
-    return self;
-    }
-
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const TDesC& aUri, 
-    const TThumbnailId aThumbnailId, const TDesC& aMimeType )
-    {
-    CThumbnailObjectSource* self = new( ELeave )CThumbnailObjectSource();
-    CleanupStack::PushL( self );
-    self->ConstructL( aUri, aMimeType, aThumbnailId );
-    return self;
-    }
-
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( const TDesC& aUri, 
-    const TDesC& aTargetUri, const TDesC& aMimeType )
-    {
-    CThumbnailObjectSource* self = CThumbnailObjectSource::NewLC( aUri, aTargetUri,
-        aMimeType );
-    CleanupStack::Pop( self );
-    return self;   
-    }
-
-EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const TDesC& aUri, 
-    const TDesC& aTargetUri, const TDesC& aMimeType )
-    {
-    CThumbnailObjectSource* self = new( ELeave )CThumbnailObjectSource();
-    CleanupStack::PushL( self );
-    self->ConstructL( aUri, aTargetUri, aMimeType );
-    return self;
-    }
-
+   
 
 // ---------------------------------------------------------------------------
 // CThumbnailObjectSource::CThumbnailObjectSource()
@@ -158,11 +134,15 @@ void CThumbnailObjectSource::ConstructL( const TDesC& aUri, const TDesC&
     iUri = aUri.AllocL();
     iMimeType = HBufC8::NewL( aMimeType.Length() );
     iMimeType->Des().Copy( aMimeType );
-    iThumbnailId = 0;
     iBitmap = NULL;
-    iTargetUri = NULL;
     }
 
+
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::ConstructL()
+// Symbian 2nd phase constructor can leave.
+// ---------------------------------------------------------------------------
+//
 void CThumbnailObjectSource::ConstructL( const RFile64& aFile, const TDesC&
     aMimeType )
     {
@@ -171,18 +151,26 @@ void CThumbnailObjectSource::ConstructL( const RFile64& aFile, const TDesC&
     iMimeType->Des().Copy( aMimeType );
     iThumbnailId = 0;
     iBitmap = NULL;
-    iTargetUri = NULL;
     }
 
-void CThumbnailObjectSource::ConstructL( CFbsBitmap* aBitmap, const TDesC& 
-    aUri )
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::ConstructL()
+// Symbian 2nd phase constructor can leave.
+// ---------------------------------------------------------------------------
+//
+void CThumbnailObjectSource::ConstructL( CFbsBitmap* aBitmap, const TDesC&
+        aUri )
     {
     iBitmap = aBitmap;
     iUri = aUri.AllocL();
     iThumbnailId = 0;
-    iTargetUri = NULL;
     }
 
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::ConstructL()
+// Symbian 2nd phase constructor can leave.
+// ---------------------------------------------------------------------------
+//
 void CThumbnailObjectSource::ConstructL( TDesC8* aBuffer, const TDesC&
     aMimeType, const TDesC& aUri )
     {
@@ -192,9 +180,13 @@ void CThumbnailObjectSource::ConstructL( TDesC8* aBuffer, const TDesC&
     iUri = aUri.AllocL(); 
     iThumbnailId = 0;
     iBitmap = NULL;
-    iTargetUri = NULL;
     }
 
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::ConstructL()
+// Symbian 2nd phase constructor can leave.
+// ---------------------------------------------------------------------------
+//
 void CThumbnailObjectSource::ConstructL( const TDesC& aUri, const TDesC&
     aMimeType, TThumbnailId aThumbnailId )
     {
@@ -202,18 +194,6 @@ void CThumbnailObjectSource::ConstructL( const TDesC& aUri, const TDesC&
     iMimeType = HBufC8::NewL( aMimeType.Length() );
     iMimeType->Des().Copy( aMimeType );
     iThumbnailId = aThumbnailId;
-    iTargetUri = NULL;
-    }
-
-void CThumbnailObjectSource::ConstructL( const TDesC& aUri, const TDesC& 
-    aTargetUri, const TDesC& aMimeType )
-    {
-    iUri = aUri.AllocL();
-    iTargetUri = aTargetUri.AllocL();
-    iMimeType = HBufC8::NewL( aMimeType.Length() );
-    iMimeType->Des().Copy( aMimeType );
-    iThumbnailId = 0;
-    iBitmap = NULL;
     }
 
 
@@ -239,10 +219,11 @@ CThumbnailObjectSource::~CThumbnailObjectSource()
 // CThumbnailObjectSourceImpl::FileHandle()
 // ---------------------------------------------------------------------------
 //
-EXPORT_C RFile64& CThumbnailObjectSource::FileHandle()
+EXPORT_C  RFile64& CThumbnailObjectSource::FileHandle()
     {
     return iFile;
     }
+
 
 // ---------------------------------------------------------------------------
 // CThumbnailObjectSourceImpl::Uri()
@@ -290,15 +271,35 @@ EXPORT_C const TDesC8& CThumbnailObjectSource::MimeType()
     return KNullDesC8;
     }
 
-// ---------------------------------------------------------------------------
-// CThumbnailObjectSourceImpl::Id()
-// ---------------------------------------------------------------------------
-//
 EXPORT_C TThumbnailId CThumbnailObjectSource::Id()
     {
     return iThumbnailId;
     }
 	
+EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewL( const TDesC&
+aUri, const TThumbnailId aThumbnailId, const TDesC& aMimeType )
+{
+CThumbnailObjectSource* self = CThumbnailObjectSource::NewLC( aUri,
+        aThumbnailId, aMimeType );
+CleanupStack::Pop( self );
+return self;
+    }
+
+
+// ---------------------------------------------------------------------------
+// CThumbnailObjectSource::NewLC()
+// Two-phased constructor.
+// ---------------------------------------------------------------------------
+//
+EXPORT_C CThumbnailObjectSource* CThumbnailObjectSource::NewLC( const TDesC& aUri, 
+	const TThumbnailId aThumbnailId, const TDesC& aMimeType )
+    {
+    CThumbnailObjectSource* self = new( ELeave )CThumbnailObjectSource();
+    CleanupStack::PushL( self );
+    self->ConstructL( aUri, aMimeType, aThumbnailId );
+    return self;
+    }
+
 // ---------------------------------------------------------------------------
 // CThumbnailObjectSourceImpl::Bitmap()
 // ---------------------------------------------------------------------------
@@ -318,19 +319,5 @@ EXPORT_C CFbsBitmap* CThumbnailObjectSource::GetBitmapOwnership()
     iBitmap = NULL;
     return temp;
     }
-
-// ---------------------------------------------------------------------------
-// CThumbnailObjectSourceImpl::TargetUri()
-// ---------------------------------------------------------------------------
-//
-EXPORT_C const TDesC& CThumbnailObjectSource::TargetUri()
-    {
-    if ( iTargetUri )
-        {
-        return * iTargetUri;
-        }
-    return KNullDesC;
-    }
-
 
 // End of file

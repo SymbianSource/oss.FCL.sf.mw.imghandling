@@ -149,51 +149,42 @@ const TInt KMaxPriority = KMaxTInt; // For scaling tasks
 const TInt KImeiBufferSize = CTelephony::KPhoneSerialNumberSize;
 const TInt KCheckValue = 123456;
 
-_LIT8( KJpegMime, "image/jpeg" ); _LIT( KJpegExt, ".jpeg" );            
-_LIT8( KJpeg2000Mime, "image/jp2" ); _LIT( KJpeg2000Ext, ".jp2" );
-_LIT8( KJpgMime, "image/jpeg" ); _LIT( KJpgExt, ".jpg" );
-_LIT8( KGifMime, "image/gif" ); _LIT( KGifExt, ".gif" );
-_LIT8( KPngMime, "image/png" ); _LIT( KPngExt, ".png" ); 
-_LIT8( KSvgMime, "image/svg+xml" ); _LIT( KSvgExt, ".svg" ); 
-_LIT8( KMpgMime1, "video/mpeg"); _LIT( KMpgExt1, ".mpg" );
-_LIT8( KMpeg4Mime, "video/mpeg4" ); _LIT( KMpeg4Ext,".mpeg4" );
-_LIT8( KMp4Mime, "video/mp4" ); _LIT( KMp4Ext, ".mp4" ); _LIT( KM4vExt, ".m4v" );
-_LIT8( KAviMime, "video/x-msvideo" ); _LIT( KAviExt, ".avi" );
-_LIT8( KMp3Mime, "audio/mpeg" ); _LIT( KMp3Ext, ".mp3" );
-_LIT8( KNonEmbeddArtMime, "audio/mpeg" ); _LIT( KNonEmbeddArtExt, ".alb" );
-_LIT8( KM4aMime, "audio/mp4" ); _LIT( KM4aExt, ".m4a" );
-_LIT8( KAacMime, "audio/aac" ); _LIT( KAacExt, ".aac" );
-_LIT8( KWmaMime, "audio/x-ms-wma" ); _LIT( KWmaExt, ".wma" );
-_LIT8( KBmpMime, "image/bmp" ); _LIT( KBmpExt, ".bmp" );
-_LIT8( KAudio3gppMime, "audio/3gpp" ); 
-_LIT8( KVideo3gppMime, "video/3gpp" ); _LIT( K3gpExt, ".3gp" ); _LIT( K3gppExt, ".3gpp" );
-_LIT8( KAudioAmrMime, "audio/AMR" ); _LIT( KAmrExt, ".amr" );
-_LIT8( KVideoWmvMime, "video/x-ms-wmv" ); _LIT( KWmvExt, ".wmv" );
-_LIT8( KRealAudioMime, "audio/vnd.rn-realaudio" ); _LIT( KRealAudioExt, ".ra" );
-_LIT8( KPmRealAudioPluginMime, "audio/x-pn-realaudio-plugin" ); _LIT( KPmRealAudioPluginExt, ".rpm" );
-_LIT8( KPmRealVideoPluginMime, "video/x-pn-realvideo" ); _LIT( KPmRealVideoPluginExt, ".rm" );
-_LIT8( KPmRealVbVideoPluginMime, "video/x-pn-realvideo" ); _LIT( KPmRealVbVideoPluginExt, ".rmvb" );
-_LIT8( KPmRealAudioMime, "audio/x-pn-realaudio" ); _LIT( KPmRealAudioExt, ".ra" );
-_LIT8( KRealVideoMime, "video/vnd.rn-realvideo" ); _LIT( KRealVideoExt, ".rv" );
-_LIT8( KFlashVideoMime, "video/x-flv" ); _LIT( KFlashVideoExt, ".flv" );
-_LIT8( KMatroskaVideoMime, "video/x-matroska" ); _LIT( KMatroskaVideoExt, ".mkv" );
-_LIT8( KContactMime, "contact/x-vcard" ); _LIT( KContactExt, ".vcf" );
-
-_LIT( KNonEmbeddedArtExt, ".alb" );
-
-_LIT8( KAlbumArtMime, "audio/albumart" ); _LIT( KAlbumArtExt, ".maa" );
-
+_LIT8( KJpegMime,    "image/jpeg" );            _LIT( KJpegExt, ".jpeg" );
+_LIT8( KJpeg2000Mime,    "image/jp2" );            _LIT( KJpeg2000Ext, ".jp2" );
+_LIT8( KJpgMime,    "image/jpeg" );            _LIT( KJpgExt, ".jpg" );
+_LIT8( KGifMime,     "image/gif" );             _LIT( KGifExt,  ".gif" );
+_LIT8( KPngMime,     "image/png" );             _LIT( KPngExt,  ".png" ); 
+_LIT8( KSvgMime,     "image/svg+xml" );             _LIT( KSvgExt,  ".svg" ); 
+_LIT8( KMpgMime1,    "video/mpeg");             _LIT( KMpgExt1,  ".mpg" );
+_LIT8( KMpeg4Mime,   "video/mpeg4" );           _LIT( KMpeg4Ext,".mpeg4" );
+_LIT8( KMp4Mime,     "video/mp4" );             _LIT( KMp4Ext,  ".mp4" );
+_LIT8( KAviMime,    "video/x-msvideo" );       _LIT( KAviExt,  ".avi" );
+_LIT8( KMp3Mime,    "audio/mpeg" );           _LIT( KMp3Ext,  ".mp3" );
+_LIT8( KNonEmbeddArtMime,    "audio/mpeg" );           _LIT( KNonEmbeddArtExt,  ".alb" );
+_LIT8( KM4aMime,    "audio/mp4" );           _LIT( KM4aExt,  ".m4a" );
+_LIT8( KAacMime,     "audio/aac" );             _LIT( KAacExt,  ".aac" );
+_LIT8( KWmaMime,     "audio/x-ms-wma" );        _LIT( KWmaExt,  ".wma" );
+_LIT8( KBmpMime,     "image/bmp" );             _LIT( KBmpExt,  ".bmp" );
+_LIT8( KAudio3gppMime,     "audio/3gpp" ); 
+_LIT8( KVideo3gppMime,     "video/3gpp" );  _LIT( K3gpExt,  ".3gp" ); _LIT( K3gppExt,  ".3gpp" );
+_LIT8( KAudioAmrMime,     "audio/AMR" );     _LIT( KAmrExt,  ".amr" );
+_LIT8( KVideoWmvMime, "video/x-ms-wmv" );     _LIT( KWmvExt,    ".wmv" );
+_LIT8( KRealAudioMime, "audio/vnd.rn-realaudio" );        _LIT( KRealAudioExt,    ".ra" );
+_LIT8( KPmRealAudioPluginMime, "audio/x-pn-realaudio-plugin" ); _LIT( KPmRealAudioPluginExt,    ".rpm" );
+_LIT8( KPmRealVideoPluginMime, "video/x-pn-realvideo" ); _LIT( KPmRealVideoPluginExt,    ".rm" );
+_LIT8( KPmRealVbVideoPluginMime, "video/x-pn-realvideo" ); _LIT( KPmRealVbVideoPluginExt,    ".rmvb" );
+_LIT8( KPmRealAudioMime, "audio/x-pn-realaudio" );        _LIT( KPmRealAudioExt,    ".ra" );
+_LIT8( KRealVideoMime, "video/vnd.rn-realvideo" );        _LIT( KRealVideoExt,    ".rv" );
+_LIT8( KFlashVideoMime,    "video/x-flv" );       _LIT( KFlashVideoExt,  ".flv" );
+_LIT8( KMatroskaVideoMime,    "video/x-matroska" );       _LIT( KMatroskaVideoExt,  ".mkv" );
 _LIT( KImageMime, "image/*" );
 _LIT( KVideoMime, "video/*" );
 _LIT( KAudioMime, "audio/*" );
+_LIT( KM4vExt,  ".m4v" );
+_LIT( KNonEmbeddedArtExt, ".alb" );
 
 _LIT( KPrivateFolder, ":\\private\\");
 _LIT( KSysFolder, ":\\sys\\");
-
-_LIT( KDrv, ":");
-_LIT( KBackSlash, "\\");
-
-const TInt KExtLength = 4;
 
 /**
  *  Control flags set by the server for handling specific situations
@@ -325,16 +316,6 @@ public:
      * Overwrite old thumbs (SetThumbnailL)
      */
     TBool iOverwrite;
-    
-    /**
-     * URI is virtual
-     */
-    TBool iVirtualUri;
-    
-    /**
-     * Target differs from source
-     */
-    TBool iImport;
     };
 
 

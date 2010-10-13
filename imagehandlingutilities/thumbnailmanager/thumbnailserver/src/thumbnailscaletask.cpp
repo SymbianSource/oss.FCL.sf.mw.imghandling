@@ -42,15 +42,14 @@ CThumbnailScaleTask* CThumbnailScaleTask::NewL( CThumbnailTaskProcessor&
     aBitmap, const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
     TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
     const TThumbnailSize aThumbnailSize, const TInt64 aModified,
-    TBool aBitmapToPool, const TBool aEXIF, const TThumbnailServerRequestId aRequestId,
-    const TBool aImportVirtual)
+    TBool aBitmapToPool, const TBool aEXIF, const TThumbnailServerRequestId aRequestId)
     {
     // We take ownership of aBitmap
     CleanupStack::PushL( aBitmap );
     CThumbnailScaleTask* self = new( ELeave )CThumbnailScaleTask( aProcessor,
         aServer, aFilename, aBitmap, aOriginalSize, aTargetSize, aCrop,
         aDisplayMode, aPriority, aTargetUri, aThumbnailSize, aModified,
-        aBitmapToPool, aEXIF, aRequestId, aImportVirtual);
+        aBitmapToPool, aEXIF, aRequestId);
     CleanupStack::Pop( aBitmap );
     CleanupStack::PushL( self );
     self->ConstructL();
@@ -69,13 +68,12 @@ CThumbnailScaleTask::CThumbnailScaleTask( CThumbnailTaskProcessor& aProcessor,
     const TSize& aOriginalSize, const TSize& aTargetSize, TBool aCrop,
     TDisplayMode aDisplayMode, TInt aPriority, const TDesC& aTargetUri,
     const TThumbnailSize aThumbnailSize, const TInt64 aModified,
-    TBool aBitmapToPool, const TBool aEXIF, const TThumbnailServerRequestId aRequestId,
-    const TBool aVirtualUri):
+    TBool aBitmapToPool, const TBool aEXIF, const TThumbnailServerRequestId aRequestId):
     CThumbnailTask( aProcessor, aPriority ), iServer( aServer ), iOwnBitmap( aBitmap ),
     iOriginalSize( aOriginalSize ), iTargetSize(aTargetSize), iTargetSizeTN( aTargetSize ), iCrop( aCrop ),
     iDisplayMode( aDisplayMode ), iFilename( aFilename ), iTargetUri( aTargetUri ),
     iThumbnailSize(aThumbnailSize), iModified(aModified),
-    iBitmapToPool(aBitmapToPool), iEXIF(aEXIF), iVirtualUri( aVirtualUri )
+    iBitmapToPool(aBitmapToPool), iEXIF(aEXIF)
     {
     TN_DEBUG2( "CThumbnailScaleTask(0x%08x)::CThumbnailScaleTask()", this );
     
@@ -121,7 +119,6 @@ CThumbnailScaleTask::~CThumbnailScaleTask()
 
     // Scaled bitmap is owned by us, delete now
     delete iScaledBitmap;
-    iScaledBitmap = NULL;
     }
 
 
@@ -241,8 +238,7 @@ void CThumbnailScaleTask::CalculateTargetSize()
     if ( (iThumbnailSize == EFullScreenThumbnailSize ||
           iThumbnailSize == EImageFullScreenThumbnailSize ||
           iThumbnailSize == EVideoFullScreenThumbnailSize ||
-          iThumbnailSize == EAudioFullScreenThumbnailSize ||
-          iThumbnailSize == EContactFullScreenThumbnailSize) &&
+          iThumbnailSize == EAudioFullScreenThumbnailSize) &&
           iOriginalSize.iHeight < iTargetSize.iHeight && 
           iOriginalSize.iWidth < iTargetSize.iWidth )
         {
@@ -352,20 +348,17 @@ void CThumbnailScaleTask::StoreAndCompleteL()
             if (iFilename != KNullDesC && iFilename.CompareF(iTargetUri) == 0)
                 {
                 // filename and target URI match, so thumb created from associated path
-                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, 
-                                         iThumbnailSize, iModified, !iVirtualUri, !iVirtualUri );
+                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iModified, ETrue );
                 }
             else
                 {
                 // thumb not created from associated path
-                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, 
-                                         iThumbnailSize, iModified, !iVirtualUri, EFalse );
+                iServer.StoreThumbnailL( iTargetUri, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iModified, EFalse, EFalse );
                 }  
             }
         else if (iFilename != KNullDesC)
             {
-            iServer.StoreThumbnailL( iFilename, iScaledBitmap, iOriginalSize, iCrop, 
-                                     iThumbnailSize, iModified, !iVirtualUri, !iVirtualUri );
+            iServer.StoreThumbnailL( iFilename, iScaledBitmap, iOriginalSize, iCrop, iThumbnailSize, iModified, ETrue );
             }
         }    
     

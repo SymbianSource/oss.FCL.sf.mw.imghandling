@@ -142,7 +142,7 @@ class TThumbnailPersistentSize
     };
     
 public:
-    enum TThumbnailSourceType { EUnknownSourceType, EImage, EVideo, EAudio, EContact };
+    enum TThumbnailSourceType { EUnknownSourceType, EImage, EVideo, EAudio };
     enum TThumbnailSizeType { EUnknownSizeType, EGrid, EList, EFullscreen }; 
     
 public:
@@ -203,10 +203,7 @@ public:
     TBool iVideoFullscreen;
     TBool iAudioGrid;
     TBool iAudioList;
-    TBool iAudioFullscreen;
-    TBool iContactGrid;
-    TBool iContactList;
-    TBool iContactFullscreen; 
+    TBool iAudioFullscreen;    
 };
 
 #endif // THUMBNAILCENREP_H

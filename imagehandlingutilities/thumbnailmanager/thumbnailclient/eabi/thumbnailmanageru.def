@@ -21,7 +21,4 @@ EXPORTS
 	_ZN22CThumbnailObjectSource6BitmapEv @ 20 NONAME
 	_ZTI22CThumbnailRequestQueue @ 21 NONAME
 	_ZTV22CThumbnailRequestQueue @ 22 NONAME
-	_ZN22CThumbnailObjectSource4NewLERK7TDesC16S2_S2_ @ 23 NONAME
-	_ZN22CThumbnailObjectSource5NewLCERK7TDesC16S2_S2_ @ 24 NONAME
-	_ZN22CThumbnailObjectSource9TargetUriEv @ 25 NONAME
 

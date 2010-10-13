@@ -43,7 +43,6 @@ _LIT8( KThumbnailMimeWildCard, "*" );
 _LIT8( KThumbnailMimeImage, "image" );
 _LIT8( KThumbnailMimeVideo, "video" );
 _LIT8( KThumbnailMimeAudio, "audio" );
-_LIT8( KThumbnailMimeContact, "contact" );
 
 const TChar KThumbnailMimeSeparatorChar = '/';
 const TChar KThumbnailMimeWildCardChar = '*';
@@ -416,7 +415,6 @@ void CThumbnailServer::ThreadFunctionL()
             "CThumbnailServer::ThreadFunctionL() -- CActiveScheduler::Start() out" );
         // Comes here if server gets shut down
         delete server;
-        server = NULL;
         CleanupStack::PopAndDestroy( scheduler );
         }
     }
@@ -463,7 +461,7 @@ void CThumbnailServer::DropSession(CThumbnailServerSession* aSession)
             {
             TN_DEBUG2( "CThumbnailServer::DropSession() - ref->iSession = 0x%08x", ref->iSession );
         
-            delete ref->iBitmap;
+            delete ref->iBitmap;            
             bpiter.RemoveCurrent();
                         
             TN_DEBUG2( "CThumbnailServer::DropSession() - deleted bitmap, left=%d", iBitmapPool.Count());
@@ -560,12 +558,12 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     if (!aCheckExist)
         {
         StoreForPathL( aPath )->StoreThumbnailL( aPath, aBitmap, aOriginalSize,
-                       aCropped, aThumbnailSize, aModified, aThumbFromPath, EFalse );
+                       aCropped, aThumbnailSize, aModified, aThumbFromPath );
         }    
     else if(BaflUtils::FileExists( iFs, aPath))
         {
         StoreForPathL( aPath )->StoreThumbnailL( aPath, aBitmap, aOriginalSize,
-                       aCropped, aThumbnailSize, aModified, aThumbFromPath, EFalse );
+                       aCropped, aThumbnailSize, aModified, aThumbFromPath );
         }
     else
         {
@@ -574,7 +572,7 @@ void CThumbnailServer::StoreThumbnailL( const TDesC& aPath, CFbsBitmap* aBitmap,
     
     if( iFetchedChecker )    
         {
-        iFetchedChecker->SetFetchResult( aPath, aThumbnailSize, KErrNone );
+        iFetchedChecker->SetFetchResult( aPath, KErrNone );
         }
     }
 
@@ -589,7 +587,7 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     TN_DEBUG3( "CThumbnailServer::FetchThumbnailL(aPath=%S aThumbnailSize=%d)", &aPath, aThumbnailSize );
     if( iFetchedChecker )
         {
-        TInt err( iFetchedChecker->LastFetchResult( aPath, aThumbnailSize ) );
+        TInt err( iFetchedChecker->LastFetchResult( aPath ) );
         if ( err == KErrNone ) // To avoid useless sql gets that fails for sure
             {
             // custom sizes are not stored to db, skip fetching
@@ -601,7 +599,7 @@ void CThumbnailServer::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
             TRAP( err, StoreForPathL( aPath )->FetchThumbnailL( aPath, aThumbnail, aData, aThumbnailSize, aOriginalSize) );
             if ( err != KErrNone )
                 {
-                iFetchedChecker->SetFetchResult( aPath, aThumbnailSize, err );
+                iFetchedChecker->SetFetchResult( aPath, err );
                 }
             }
         User::LeaveIfError( err );
@@ -670,7 +668,7 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
     
     if( iFetchedChecker ) 
         {
-        iFetchedChecker->DeleteFetchResult( aPath );
+        iFetchedChecker->SetFetchResult( aPath, KErrNone );
         }
     }
 
@@ -856,7 +854,7 @@ TInt CThumbnailServer::DequeTask( const TThumbnailServerRequestId& aRequestId )
         if ( ref->iSession == aRequestId.iSession && 
              ref->iRequestId == aRequestId.iRequestId )
             {            
-            delete ref->iBitmap;
+            delete ref->iBitmap;            
             bpiter.RemoveCurrent();                        
                         
             TN_DEBUG2( "CThumbnailServer::DequeTask() - deleted bitmap, left=%d", 
@@ -948,7 +946,7 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
         }
     else
         {
-        if( iFormatting )
+        if(iFormatting)
            {
            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - FORMATTING! - ABORT");
            User::Leave( KErrNotSupported );
@@ -957,31 +955,17 @@ CThumbnailStore* CThumbnailServer::StoreForDriveL( const TInt aDrive )
         TVolumeInfo volumeInfo;
         TInt err = iFs.Volume( volumeInfo, aDrive );
         
-        if ( err )
-            {
-            // Locked
-            TN_DEBUG2( "CThumbnailServer::StoreForDriveL() - err %d", err);
-            User::Leave( err);
-            }
-        else if( volumeInfo.iDrive.iMediaAtt& KMediaAttLocked )
-            {
-            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - locked");
-            User::Leave( KErrAccessDenied );
-            }
-		else if ( volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
+        if ( err || volumeInfo.iDrive.iDriveAtt& KDriveAttRom ||
             volumeInfo.iDrive.iDriveAtt& KDriveAttRemote ||
-            volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected )
+            volumeInfo.iDrive.iMediaAtt& KMediaAttWriteProtected ||
+            volumeInfo.iDrive.iMediaAtt& KMediaAttLocked )
             {
-            // We support ROM disks and remote disks in read only mode.
-            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - rom/remote/write protected");
-            res = CThumbnailStore::NewL( iFs, aDrive, iImei, this, ETrue );
+            // We don't support ROM disks or remote mounts. Media
+            // must be read-write and not locked.
+            User::Leave( KErrAccessDenied);
             }
-        else
-            {
-            TN_DEBUG1( "CThumbnailServer::StoreForDriveL() - normal");
-            res = CThumbnailStore::NewL( iFs, aDrive, iImei, this, EFalse );
-            }
-			
+        
+        res = CThumbnailStore::NewL( iFs, aDrive, iImei, this );
         CleanupStack::PushL( res );
         iStores.InsertL( aDrive, res );
         res->SetPersistentSizes(iPersistentSizes);
@@ -1075,7 +1059,6 @@ void CThumbnailServer::CloseStoreForDriveL( const TInt aDrive )
     if (store)
         {
         delete *store;
-        *store = NULL;
         iStores.Remove( aDrive );
         }
     }
@@ -1164,7 +1147,7 @@ void CThumbnailServer::MemoryCardStatusChangedL()
           // If drive-list entry is zero, drive is not available
             continue;
            }
-
+            
         TInt err = iFs.Volume(volumeInfo, drive);
         TInt err_drive = iFs.Drive(driveInfo, drive);    
         
@@ -1279,45 +1262,62 @@ TBool CThumbnailServer::UpdateThumbnailsL( const TDesC& aPath,
     TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL()");
     
     // 1. check path change
-    // 2. check timestamp change
+    // 2. check orientation change
+    // 3. check timestamp change
+
+    TBool orientationChanged = EFalse;
     TBool modifiedChanged = EFalse;
     
     CThumbnailStore* store = StoreForPathL( aPath );
    
-    TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - exist");
+    // placeholder for orientation check
+    orientationChanged = EFalse;
+    
+    if (orientationChanged)
+        {
+        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - orientation updated");
         
-    TBool exists = store->CheckModifiedByPathL(aPath, aModified, modifiedChanged);
-       
-    if(!exists)
-        {
-        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - exists NO");
-        //not found, needs to be generated
-        return EFalse;
-        }
-    
-    TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified ?");
-    
-    if (modifiedChanged)
-        {
-        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified YES");
-            
-        // delete old thumbs
-        store->DeleteThumbnailsL(aPath, ETrue);
-            
-        if( iFetchedChecker ) 
-            {
-            iFetchedChecker->DeleteFetchResult( aPath );
-            }
-            
-        // need to create new thumbs
+        // orientation updated, no need to check further
+        return ETrue;
         }
     else
         {
-        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified NO");
+        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - exist");
         
-        // not modified
-        return ETrue;
+        TBool exists = store->CheckModifiedByPathL(aPath, aModified, modifiedChanged);
+       
+        if(!exists)
+            {
+            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - exists NO");
+            //not found, needs to be generated
+            return EFalse;
+            }
+        
+        TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified ?");
+        
+        if (modifiedChanged)
+            {
+            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified YES");
+            
+            // delete old thumbs
+            store->DeleteThumbnailsL(aPath, ETrue);
+            
+            if( iFetchedChecker ) 
+                {
+                iFetchedChecker->SetFetchResult( aPath, KErrNone );
+                }
+            
+            // need to create new thumbs
+            }
+        else
+            {
+            TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - modified NO");
+            
+            // not modified
+            return ETrue;
+            }
         }
+  
     
     TN_DEBUG1( "CThumbnailServer::UpdateThumbnailsL() - no thumbs found, create new");
     
@@ -1336,7 +1336,8 @@ void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC
     
     if( iFetchedChecker ) 
         {
-        iFetchedChecker->RenameFetchResultL( aNewPath, aCurrentPath );
+        iFetchedChecker->SetFetchResult( aNewPath, iFetchedChecker->LastFetchResult(aCurrentPath) );
+        iFetchedChecker->SetFetchResult( aCurrentPath, KErrNone );
         }
     }
 
@@ -1347,7 +1348,8 @@ void CThumbnailServer::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC
 TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& aMimeType )
     {
     TBool found = ETrue;
-    TPtrC ext( aFileName.Right(KExtLength) ); // tparse panics with virtual URI
+    TParsePtrC parse( aFileName );
+    TPtrC ext( parse.Ext() );
     
     if ( ext.CompareF( KJpegExt ) == 0 || ext.CompareF( KJpgExt ) == 0)
         {
@@ -1461,14 +1463,6 @@ TInt CThumbnailServer::MimeTypeFromFileExt( const TDesC& aFileName, TDataType& a
         {
         aMimeType = TDataType( KMatroskaVideoMime );
         } 
-    else if ( ext.CompareF( KContactExt ) == 0 )
-        {
-        aMimeType = TDataType( KContactMime );
-        } 
-    else if ( ext.CompareF( KAlbumArtExt ) == 0 )
-        {
-        aMimeType = TDataType( KAlbumArtMime );
-        }
     else
         {
         aMimeType = TDataType( KNullDesC8 );
@@ -1506,10 +1500,6 @@ TInt CThumbnailServer::SourceTypeFromMimeType( const TDataType& aMimeType )
         {
         return TThumbnailPersistentSize::EAudio;
         }
-    else if (mediaType.Compare(KThumbnailMimeContact) == 0)
-        {
-        return TThumbnailPersistentSize::EContact;
-        }
 
     return TThumbnailPersistentSize::EUnknownSourceType;        
     }
@@ -1539,11 +1529,6 @@ TInt CThumbnailServer::SourceTypeFromSizeType( const TInt aSizeType )
         case EAudioFullScreenThumbnailSize:
             sourceType = TThumbnailPersistentSize::EAudio;
             break;
-        case EContactListThumbnailSize:
-        case EContactGridThumbnailSize:
-        case EContactFullScreenThumbnailSize:
-            sourceType = TThumbnailPersistentSize::EContact;
-            break;
         default:
             sourceType = TThumbnailPersistentSize::EUnknownSourceType;  
         }
@@ -1563,30 +1548,24 @@ TBool CThumbnailServer::SupportedMimeType( const TDataType& aMimeType )
          mimeType.CompareF( KJpeg2000Mime ) == 0 ||
          mimeType.CompareF( KGifMime ) == 0 ||
          mimeType.CompareF( KPngMime ) == 0 ||
-         mimeType.CompareF( KSvgMime ) == 0 ||
+         mimeType.CompareF( KBmpMime ) == 0 ||
          mimeType.CompareF( KMpgMime1 ) == 0 ||
          mimeType.CompareF( KMpeg4Mime ) == 0 ||
          mimeType.CompareF( KMp4Mime ) == 0 ||
          mimeType.CompareF( KAviMime ) == 0 ||
+         mimeType.CompareF( KVideo3gppMime ) == 0 ||
+         mimeType.CompareF( KVideoWmvMime ) == 0 ||
+         mimeType.CompareF( KRealVideoMime ) == 0 ||
          mimeType.CompareF( KMp3Mime ) == 0 ||
-         mimeType.CompareF( KNonEmbeddArtMime ) == 0 ||
-         mimeType.CompareF( KM4aMime ) == 0  ||
          mimeType.CompareF( KAacMime ) == 0 ||
          mimeType.CompareF( KWmaMime ) == 0 ||
-         mimeType.CompareF( KBmpMime ) == 0 ||         
-         mimeType.CompareF( KAudio3gppMime ) == 0 ||
-         mimeType.CompareF( KVideo3gppMime ) == 0 ||
          mimeType.CompareF( KAudioAmrMime ) == 0 ||
-         mimeType.CompareF( KVideoWmvMime ) == 0 ||
          mimeType.CompareF( KRealAudioMime ) == 0 ||
-         mimeType.CompareF( KPmRealAudioPluginMime ) == 0 ||
+         mimeType.CompareF( KM4aMime ) == 0  ||
+         mimeType.CompareF( KFlashVideoMime ) == 0 ||
          mimeType.CompareF( KPmRealVideoPluginMime ) == 0 ||
          mimeType.CompareF( KPmRealVbVideoPluginMime ) == 0 ||
-         mimeType.CompareF( KRealVideoMime ) == 0 ||
-         mimeType.CompareF( KFlashVideoMime ) == 0 ||
-         mimeType.CompareF( KMatroskaVideoMime ) == 0 ||
-         mimeType.CompareF( KContactMime ) == 0 ||
-         mimeType.CompareF( KAlbumArtMime ) == 0 )
+         mimeType.CompareF( KPmRealAudioPluginMime ) == 0 )
         {
         return ETrue;
         }
@@ -1620,7 +1599,6 @@ TInt E32Main()
             "CThumbnailServer::E32Main() -- thread function out, result=%d",
             result );
         delete cleanup;
-        cleanup = NULL;
         }
     if ( result != KErrNone )
         {

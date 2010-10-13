@@ -134,45 +134,6 @@ private:
      */
     void ConstructL( const RFile64& aFile, const TDesC& aMimeType );
 
-    /**
-     * Symbian 2nd phase constructor can leave.
-     *
-     * @since S60 v5.0
-     * @param aURI URI.
-     * @param aMimeType MimeType.
-     * @param aThumbnailId ThumbnailId
-     */
-    void ConstructL( const TDesC& aUri, const TDesC& aMimeType, TThumbnailId aThumbnailId );
-
-    /**
-     * Symbian 2nd phase constructor can leave.
-     *
-     * @since S60 v5.0
-     * @param aBitmap Bitmap.
-     * @param aURI URI.
-     */   
-    void ConstructL( CFbsBitmap* aBitmap, const TDesC& aUri );
-
-    /**
-     * Symbian 2nd phase constructor can leave.
-     *
-     * @since S60 v5.0
-     * @param aBuffer Buffer.
-     * @param aMimeType MIME type. Optional, but should be specified if known.
-     * @param aURI URI.
-     */
-    void ConstructL( TDesC8* aBuffer, const TDesC& aMimeType, const TDesC& aUri );    
-    
-    /**
-     * Symbian 2nd phase constructor can leave.
-     *
-     * @since Symbian^3
-     * @param aUri Object URI or a full path to a file in the file system.
-     * @param aTargetUri      For linking the thumbnail to a different URI.
-     * @param aMimeType MIME type. Optional, but should be specified if known.
-     */
-    void ConstructL( const TDesC& aUri, const TDesC& aTargetUri, const TDesC& aMimeType );
-    
 private:
     // data
 
@@ -199,19 +160,25 @@ private:
     /**
      * Bitmap
      */
+
     CFbsBitmap* iBitmap; // own
     
     /**
      * ThumbnailId
-     */    
-    TThumbnailId iThumbnailId; //own
-    
-    /**
-     * Uri
      */
-    HBufC* iTargetUri; // own
+    
+    TThumbnailId iThumbnailId; //own
 	
 public:
+    /**
+     * Symbian 2nd phase constructor can leave.
+     *
+     * @since S60 v5.0
+     * @param aURI URI.
+     * @param aMimeType MimeType.
+     * @param aThumbnailId ThumbnailId
+     */
+	void ConstructL( const TDesC& aUri, const TDesC& aMimeType, TThumbnailId aThumbnailId );
 	    
     /**
      * Construct a new CThumbnailObjectSource referring to a buffer 
@@ -244,8 +211,7 @@ public:
      * @since S60 v5.0
      * @return New CThumbnailObjectSource instance.
      */       
-    IMPORT_C static CThumbnailObjectSource* NewL( TDesC8* aBuffer,  TDesC& aMimeType, 
-        const TDesC& aUri );
+    IMPORT_C static CThumbnailObjectSource* NewL( TDesC8* aBuffer,  TDesC& aMimeType, const TDesC& aUri );
     
     /**
      * Construct a new CThumbnailObjectSource referring to a buffer 
@@ -257,8 +223,7 @@ public:
      * @since S60 v5.0
      * @return New CThumbnailObjectSource instance.
      */       
-    IMPORT_C static CThumbnailObjectSource* NewLC( TDesC8* aBuffer,  TDesC& aMimeType, 
-        const TDesC& aUri);
+    IMPORT_C static CThumbnailObjectSource* NewLC( TDesC8* aBuffer,  TDesC& aMimeType, const TDesC& aUri);
 
     /**
      * Construct a new CThumbnailObjectSource referring to an URI.
@@ -268,7 +233,7 @@ public:
      * @return New CThumbnailObjectSource instance.
      */
     IMPORT_C static CThumbnailObjectSource* NewL( const TDesC& aUri, 
-        TThumbnailId aThumbnailId = 0, const TDesC& aMimeType = KNullDesC );
+            TThumbnailId aThumbnailId = 0, const TDesC& aMimeType = KNullDesC );
 
     /**
      * Construct a new CThumbnailObjectSource referring to an URI.
@@ -278,8 +243,9 @@ public:
      * @return New CThumbnailObjectSource instance.
      */
     IMPORT_C static CThumbnailObjectSource* NewLC( const TDesC& aUri,
-        TThumbnailId aThumbnailId = 0, const TDesC& aMimeType = KNullDesC );
-    	 
+            TThumbnailId aThumbnailId = 0, const TDesC& aMimeType = KNullDesC );
+    
+	 
     /**
      * Returns source buffer.
      *
@@ -310,8 +276,30 @@ public:
      *
      * @since S60 v5.0
      * @return ThumbnailId 
-     */     
-    IMPORT_C TThumbnailId Id(); 	    
+     */ 
+    
+    IMPORT_C TThumbnailId Id(); 
+	    
+    /**
+     * Symbian 2nd phase constructor can leave.
+     *
+     * @since S60 v5.0
+     * @param aBitmap Bitmap.
+     * @param aURI URI.
+     */   
+    void ConstructL( CFbsBitmap* aBitmap, const TDesC&
+            aUri );
+
+    /**
+     * Symbian 2nd phase constructor can leave.
+     *
+     * @since S60 v5.0
+     * @param aBuffer Buffer.
+     * @param aMimeType MIME type. Optional, but should be specified if known.
+     * @param aURI URI.
+     */
+    void ConstructL( TDesC8* aBuffer, const TDesC&
+        aMimeType, const TDesC& aUri );
     
     /**
      * Returns source bitmap.
@@ -329,36 +317,6 @@ public:
      * @return bitmap
      */
     IMPORT_C CFbsBitmap* GetBitmapOwnership();
-    
-    /**
-     * Construct a new CThumbnailObjectSource referring to an URI.
-     * @param aUri      Object URI or a full path to a file in the file system.
-     * @param aTargetUri      For linking the thumbnail to a different URI.
-     * @param aMimeType MIME type. Optional, but should be specified if known.
-     * @since Symbian^3
-     * @return New CThumbnailObjectSource instance.
-     */
-    IMPORT_C static CThumbnailObjectSource* NewL( const TDesC& aUri, 
-            const TDesC& aTargetUri, const TDesC& aMimeType );
-
-    /**
-     * Construct a new CThumbnailObjectSource referring to an URI.
-     * @param aUri      Object URI or a full path to a file in the file system.
-     * @param aTargetUri      For linking the thumbnail to a different URI.
-     * @param aMimeType MIME type. 
-     * @since Symbian^3
-     * @return New CThumbnailObjectSource instance.
-     */
-    IMPORT_C static CThumbnailObjectSource* NewLC( const TDesC& aUri, 
-            const TDesC& aTargetUri, const TDesC& aMimeType );
-    
-    /**
-     * Returns target uri.
-     *
-     * @since Symbian^3
-     * @return uri
-     */
-    IMPORT_C const TDesC& TargetUri();
 };
 
 #endif // THUMBNAILOBJECTSOURCE_H

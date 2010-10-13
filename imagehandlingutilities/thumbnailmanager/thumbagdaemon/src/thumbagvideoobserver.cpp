@@ -301,22 +301,20 @@ void CThumbAGVideoObserver::AddObserversL()
     
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-	addCondition->AddObjectConditionL( videoDef );
-	
-	addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    addCondition->AddObjectConditionL( videoDef );
+    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    CleanupStack::Pop( addCondition );  
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-	modifyCondition->AddObjectConditionL( videoDef );
-
-	modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    modifyCondition->AddObjectConditionL( videoDef );
+    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    CleanupStack::Pop( modifyCondition );
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
     // modify observer
     iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
-	
-	CleanupStack::Pop( 2, addCondition );
      
     TN_DEBUG1( "CThumbAGVideoObserver::AddObserversL() - end" );
     }

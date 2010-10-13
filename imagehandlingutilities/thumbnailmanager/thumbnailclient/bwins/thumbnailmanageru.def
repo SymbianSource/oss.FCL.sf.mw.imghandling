@@ -19,7 +19,4 @@ EXPORTS
 	?Uri@CThumbnailObjectSource@@QAEABVTDesC16@@XZ @ 18 NONAME ; class TDesC16 const & CThumbnailObjectSource::Uri(void)
 	?Bitmap@CThumbnailObjectSource@@QAEPAVCFbsBitmap@@XZ @ 19 NONAME ; class CFbsBitmap * CThumbnailObjectSource::Bitmap(void)
 	?GetBitmapOwnership@CThumbnailObjectSource@@QAEPAVCFbsBitmap@@XZ @ 20 NONAME ; class CFbsBitmap * CThumbnailObjectSource::GetBitmapOwnership(void)
-	?NewLC@CThumbnailObjectSource@@SAPAV1@ABVTDesC16@@00@Z @ 21 NONAME ; class CThumbnailObjectSource * CThumbnailObjectSource::NewLC(class TDesC16 const &, class TDesC16 const &, class TDesC16 const &)
-	?TargetUri@CThumbnailObjectSource@@QAEABVTDesC16@@XZ @ 22 NONAME ; class TDesC16 const & CThumbnailObjectSource::TargetUri(void)
-	?NewL@CThumbnailObjectSource@@SAPAV1@ABVTDesC16@@00@Z @ 23 NONAME ; class CThumbnailObjectSource * CThumbnailObjectSource::NewL(class TDesC16 const &, class TDesC16 const &, class TDesC16 const &)
 	

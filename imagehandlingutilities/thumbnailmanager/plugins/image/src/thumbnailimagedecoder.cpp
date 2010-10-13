@@ -377,12 +377,12 @@ void CThumbnailImageDecoder::CreateDecoderL( CThumbnailManager::TThumbnailQualit
         if ( aFlags == CThumbnailManager::EOptimizeForQuality )
             {
             options = ( CImageDecoder::TOptions )( CImageDecoder
-                ::EOptionNoDither );
+                ::EOptionNoDither | CImageDecoder::EOptionAlwaysThread );
             }
         else
             {
             options  = ( CImageDecoder::TOptions )( CImageDecoder
-                ::EOptionNoDither | CImageDecoder::EPreferFastDecode );
+                ::EOptionNoDither | CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
             }
 
         if ( IsSvg())
@@ -576,12 +576,12 @@ void CThumbnailImageDecoder::CreateExifDecoderL( CThumbnailManager
     CImageDecoder::TOptions options;
     if ( aFlags == CThumbnailManager::EOptimizeForQuality )
         {
-        options = ( CImageDecoder::TOptions )( CImageDecoder::EOptionNoDither );
+        options = ( CImageDecoder::TOptions )( CImageDecoder::EOptionNoDither | CImageDecoder::EOptionAlwaysThread );
         }
     else
         {
         options = ( CImageDecoder::TOptions )( CImageDecoder::EOptionNoDither |
-            CImageDecoder::EPreferFastDecode  );
+            CImageDecoder::EPreferFastDecode | CImageDecoder::EOptionAlwaysThread );
         }
 
     TRAPD( err, iDecoder = CExtJpegDecoder::DataNewL( iFs, * iExifThumbImage, options ));

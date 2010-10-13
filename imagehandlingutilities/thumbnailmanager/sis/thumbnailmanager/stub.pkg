@@ -17,7 +17,7 @@
 &EN
 
 ; Header
-#{"ThumbnailManager"},(0x102830AB), 9, 20, 9, TYPE=SA
+#{"ThumbnailManager"},(0x102830AB), 9, 20, 8, TYPE=SA
 
 ; Localised Vendor name
 %{"Nokia"}

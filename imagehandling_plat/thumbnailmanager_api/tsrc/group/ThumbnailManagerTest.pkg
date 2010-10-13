@@ -46,9 +46,4 @@
 "..\data\mmc\ThumbnailManagerTest\TestMBM.mbm" - "e:\testing\data\ThumbnailManagerTest\TestMBM.mbm"
 "..\data\mmc\ThumbnailManagerTest\mp3.mp3" - "e:\testing\data\ThumbnailManagerTest\mp3.mp3"
 "..\data\mmc\ThumbnailManagerTest\camera.jpg" - "e:\testing\data\ThumbnailManagerTest\camera.jpg"
-"..\data\mmc\ThumbnailManagerTest\mp3_png.mp3" - "e:\testing\data\ThumbnailManagerTest\mp3_png.mp3"
-"..\data\mmc\ThumbnailManagerTest\no_exif.jpg" - "e:\testing\data\ThumbnailManagerTest\no_exif.jpg"
-"..\data\mmc\ThumbnailManagerTest\wma.wma" - "e:\testing\data\ThumbnailManagerTest\wma.wma"
-"..\data\mmc\ThumbnailManagerTest\wma_empty.wma" - "e:\testing\data\ThumbnailManagerTest\wma_empty.wma"
-"..\data\mmc\ThumbnailManagerTest\wma_png.wma" - "e:\testing\data\ThumbnailManagerTest\wma_png.wma"
-"..\data\mmc\ThumbnailManagerTest\exif.jpg" - "e:\testing\data\ThumbnailManagerTest\exif.jpg"
+

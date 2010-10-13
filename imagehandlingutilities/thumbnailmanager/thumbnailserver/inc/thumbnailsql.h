@@ -210,6 +210,6 @@ _LIT8( KThumbnailTouchBlacklistedRows, "UPDATE ThumbnailInfo SET Flags = 4, Modi
 _LIT8( KThumbnailSelectAllPaths, "SELECT ThumbnailInfo.RowID,Path FROM ThumbnailInfo "
         "WHERE NOT EXISTS (SELECT Path FROM ThumbnailDeleted "
         "WHERE ThumbnailInfo.Path = ThumbnailDeleted.Path) "
-        "AND ThumbFromPath = 1 AND ThumbnailInfo.RowID > :RowID ORDER BY ThumbnailInfo.RowID ASC LIMIT :Limit;" );
+        "AND ThumbnailInfo.RowID > :RowID ORDER BY ThumbnailInfo.RowID ASC LIMIT :Limit;" );
 
 #endif // THUMBNAILSQL_H

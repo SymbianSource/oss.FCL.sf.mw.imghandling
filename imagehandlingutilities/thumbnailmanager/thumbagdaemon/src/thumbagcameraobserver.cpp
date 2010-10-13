@@ -147,10 +147,7 @@ CThumbAGCameraObserver::~CThumbAGCameraObserver()
     iShutdown = ETrue;    
     
     delete iMDSShutdownObserver;
-    iMDSShutdownObserver = NULL;
-    
     delete iShutdownObserver;
-    iShutdownObserver = NULL;
     
     if(iReconnect)
         {
@@ -304,17 +301,17 @@ void CThumbAGCameraObserver::AddObserversL()
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
     addCondition->AddPropertyConditionL( originPropDef, TMdEUintEqual(MdeConstants::Object::ECamera));
+    CleanupStack::Pop( addCondition );  
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
     modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintEqual(MdeConstants::Object::ECamera));
+    CleanupStack::Pop( modifyCondition );
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
    // modify observer
    iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
-   
-    CleanupStack::Pop( 2, addCondition );  
      
     TN_DEBUG1( "CThumbAGCameraObserver::AddObserversL() - end" );
     }

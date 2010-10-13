@@ -43,13 +43,12 @@ CThumbnailGenerateTask::CThumbnailGenerateTask( CThumbnailTaskProcessor&
     const TSize& aSize, TDisplayMode aDisplayMode, TInt aPriority,
     RArray < TThumbnailPersistentSize >* aMissingSizes, const TDesC& aTargetUri,
     TThumbnailSize aThumbnailSize, const TInt64 aModified, 
-    const CThumbnailManager::TThumbnailQualityPreference aQualityPreference,
-    TBool aVirtualUri ): 
+    const CThumbnailManager::TThumbnailQualityPreference aQualityPreference ): 
     CThumbnailTask( aProcessor, aPriority ), iServer( aServer ), 
     iFlags( aFlags ), iSize( aSize ), iDisplayMode( aDisplayMode ),
     iMissingSizes( aMissingSizes ), iTargetUri( aTargetUri ),
     iThumbnailSize( aThumbnailSize ), iModified(aModified),
-    iQualityPreference( aQualityPreference ), iVirtualUri( aVirtualUri )
+    iQualityPreference( aQualityPreference )
     {
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CThumbnailGenerateTask()", this);
     
@@ -95,7 +94,6 @@ CThumbnailGenerateTask::~CThumbnailGenerateTask()
         {
         iMissingSizes->Reset();
         delete iMissingSizes;
-        iMissingSizes = NULL;
         }
 		
     if ( iBitmapHandle )
@@ -127,11 +125,11 @@ void CThumbnailGenerateTask::StartL()
     aStart.UniversalTime();
 #endif
    
-    TBuf8< KMaxDataTypeLength > mimeType;
-
-    if ( (!iVirtualUri && iFilename.Right(KExtLength).CompareF(KNonEmbeddedArtExt) == 0) ||
-         (iVirtualUri && iTargetUri.Right(KExtLength).CompareF(KContactExt) == 0) ) // tparse panics with virtual URI
-        {         
+    TParsePtrC parse(iFilename);
+    TPtrC ext(parse.Ext());
+    TBuf8< KMaxDataTypeLength > mimeType;                
+    if  (ext.CompareF(KNonEmbeddedArtExt)== 0) 
+        {       
         mimeType.Copy( KImageMime );  		
         }
     else
@@ -140,7 +138,8 @@ void CThumbnailGenerateTask::StartL()
         }
     iProvider = iServer.ResolveProviderL(mimeType);
        	
-    TN_DEBUG3( "CThumbnailGenerateTask(0x%08x) -- provider UID 0x%08x", this, iProvider->Uid());
+    TN_DEBUG3( "CThumbnailGenerateTask(0x%08x) -- provider UID 0x%08x", this,
+        iProvider->Uid());
 
     __ASSERT_DEBUG(( iProvider ), ThumbnailPanic( EThumbnailNullPointer ));
 
@@ -198,7 +197,6 @@ void CThumbnailGenerateTask::RunL()
 void CThumbnailGenerateTask::DoCancel()
     {
     TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::DoCancel()", this );
-    
     if ( iProvider )
         {
         iProvider->CancelGetThumbnail();
@@ -330,31 +328,11 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
     // compTask is the scale task which returns the bitmap to the client
     CThumbnailScaleTask* complTask = NULL;
 	
-    TInt err1 = KErrNone;
-    TInt err2 = KErrNone;
-    TBool isPublic = ETrue;
-    TBool isPublic2 = ETrue;
-    
-    if(iFilename != KNullDesC)
-        {
-        TRAP(err1, iServer.StoreForPathL(iFilename));
-        
-        isPublic = iServer.IsPublicPath( iFilename );
-        }           
-    if(iTargetUri != KNullDesC )
-        {
-        TRAP(err2, iServer.StoreForPathL(iTargetUri));
-        
-        isPublic2 = iServer.IsPublicPath( iTargetUri );
-        }
-    
-    // check if need to create more than one scale task
     if ( iMissingSizes )
         {
         const TInt count = iMissingSizes->Count();
         
-        // scale small thumbs first, because fullscreen encoding takes longer
-        for ( TInt i( count-1 ); i >= 0; i-- )
+        for ( TInt i( 0 ); i < count; i++ )
             {
             TThumbnailSize size = (*iMissingSizes)[ i ].iType;
 #ifdef _DEBUG
@@ -366,8 +344,7 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
                 if ( size == EFullScreenThumbnailSize ||
                      size == EVideoFullScreenThumbnailSize ||
                      size == EAudioFullScreenThumbnailSize ||
-                     size == EImageFullScreenThumbnailSize || 
-                     size == EContactFullScreenThumbnailSize )
+                     size == EImageFullScreenThumbnailSize )
                     {
                     TN_DEBUG2( "*iMissingSizes)[ i ].iWidth == %d", (*iMissingSizes)[ i ].iSize.iWidth );
                     TN_DEBUG2( "*iMissingSizes)[ i ].iHeight == %d", (*iMissingSizes)[ i ].iSize.iHeight );
@@ -382,23 +359,41 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             CThumbnailScaleTask* complTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
                 aBitmap, iOriginalSize, (*iMissingSizes)[ i ].iSize, (*iMissingSizes)[ i ].iCrop, iDisplayMode,
                 KMaxPriority, iTargetUri, (*iMissingSizes)[ i ].iType, iModified, iScaledBitmapToPool, iEXIF,
-                iRequestId, iVirtualUri);
+                iRequestId);
             CleanupStack::PushL( complTask );
             
+            TInt err1 = KErrNone;
+            TInt err2 = KErrNone;
+            
+            if(iFilename != KNullDesC)
+                {
+                TRAP(err1, iServer.StoreForPathL(iFilename));
+                }
+            
+            if(iTargetUri != KNullDesC )
+                {
+                TRAP(err2, iServer.StoreForPathL(iTargetUri));
+                }
             // if trying to access Z drive, don't try to store
             // don't want to store custom sizes
-            // don't store if from private directory
-            if( !isPublic || !isPublic2 ||
-                err1 == KErrAccessDenied || err2 == KErrAccessDenied ||
-                (*iMissingSizes)[ i ].iType == ECustomThumbnailSize || 
-                (*iMissingSizes)[ i ].iType == EUnknownThumbnailSize )
+            if( err1 == KErrAccessDenied || err2 == KErrAccessDenied ||
+                    (*iMissingSizes)[ i ].iType == ECustomThumbnailSize || 
+                    (*iMissingSizes)[ i ].iType == EUnknownThumbnailSize )
                 {
                 complTask->SetDoStore( EFalse );
                 TN_DEBUG2( "CThumbnailGenerateTask(0x%08x)::CreateScaleTasksL() - do not store", this );
                 }
             else
                 {
-                complTask->SetDoStore( ETrue );
+                if(iFilename != KNullDesC)
+                    {
+                    complTask->SetDoStore(iServer.IsPublicPath( iFilename ));
+                    }
+                
+                if(iTargetUri != KNullDesC)
+                    {
+                    complTask->SetDoStore(iServer.IsPublicPath( iTargetUri ));
+                    }
                 }
             
             iProcessor.AddTaskL( complTask );
@@ -420,8 +415,7 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             if ( iThumbnailSize == EFullScreenThumbnailSize ||
                  iThumbnailSize == EVideoFullScreenThumbnailSize ||
                  iThumbnailSize == EAudioFullScreenThumbnailSize ||
-                 iThumbnailSize == EImageFullScreenThumbnailSize ||
-                 iThumbnailSize == EContactFullScreenThumbnailSize)
+                 iThumbnailSize == EImageFullScreenThumbnailSize )
                 {
                 TInt width = iSize.iWidth; 
                 iSize.iWidth = iSize.iHeight;
@@ -432,14 +426,22 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
         complTask = CThumbnailScaleTask::NewL( iProcessor, iServer, iFilename,
             aBitmap, iOriginalSize, iSize, iFlags& CThumbnailManager
             ::ECropToAspectRatio, iDisplayMode, KMaxPriority, iTargetUri,
-            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF, iRequestId,
-            iVirtualUri);
+            iThumbnailSize, iModified, iScaledBitmapToPool, iEXIF, iRequestId );
         CleanupStack::PushL( complTask );
         
+        TInt err1 = KErrNone;
+        TInt err2 = KErrNone;
+        if(iFilename != KNullDesC)
+            {
+            TRAP(err1, iServer.StoreForPathL(iFilename));
+            }
+        if(iTargetUri != KNullDesC)
+            {
+            TRAP(err2, iServer.StoreForPathL(iTargetUri));
+            }
         // if trying to access Z drive, don't try to store
         // don't want to store custom sizes
-        if( !isPublic || !isPublic2 ||
-            err1 == KErrAccessDenied || err2 == KErrAccessDenied ||
+        if( err1 == KErrAccessDenied || err2 == KErrAccessDenied ||
             iThumbnailSize == ECustomThumbnailSize || 
             iThumbnailSize == EUnknownThumbnailSize )
             {
@@ -448,7 +450,15 @@ void CThumbnailGenerateTask::CreateScaleTasksL( CFbsBitmap* aBitmap )
             }
         else
             {
-            complTask->SetDoStore( ETrue );
+            if(iFilename != KNullDesC)
+                {
+                complTask->SetDoStore(iServer.IsPublicPath( iFilename ));
+                }
+             
+             if(iTargetUri != KNullDesC)
+                {
+                complTask->SetDoStore(iServer.IsPublicPath( iTargetUri ));
+                }
             }
         
         iProcessor.AddTaskL( complTask );
@@ -496,16 +506,16 @@ void CThumbnailGenerateTask::CreateBlackListedL( const TSize& aOriginalSize )
     if(iFilename != KNullDesC)
         {
         iServer.StoreForPathL( iFilename )->StoreThumbnailL( 
-            iFilename, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, !iVirtualUri, ETrue );
+            iFilename, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, EFalse, ETrue );
 		//remove result from fetched checker
-        iServer.FetchedChecker().SetFetchResult( iFilename,  iThumbnailSize, KErrNone );
+        iServer.FetchedChecker().SetFetchResult( iFilename, KErrNone );
         }
     else if(iTargetUri != KNullDesC)
         {
         iServer.StoreForPathL( iTargetUri )->StoreThumbnailL( 
-            iTargetUri, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, !iVirtualUri, ETrue );
+            iTargetUri, tempBitmap, aOriginalSize, EFalse, iThumbnailSize, iModified, EFalse, ETrue );
 		//remove result from fetched checker
-        iServer.FetchedChecker().SetFetchResult( iTargetUri, iThumbnailSize, KErrNone );
+        iServer.FetchedChecker().SetFetchResult( iTargetUri, KErrNone );
         }
 
     CleanupStack::PopAndDestroy( tempBitmap );

@@ -45,7 +45,6 @@ CTMGetImei::~CTMGetImei()
     Cancel();
 
     delete iTelephony;
-    iTelephony = NULL;
     }
 
 TBuf<KImeiBufferSize> CTMGetImei::GetIMEI()

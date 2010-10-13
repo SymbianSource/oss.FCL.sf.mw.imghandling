@@ -47,6 +47,7 @@ const TInt KStoreUnrecoverableErr = KErrCorrupt;
 //Symbian^3 v4
 _LIT( KThumbnailDatabaseName, ":[102830AB]thumbnail_v4.db" );
 
+_LIT( KDrv, ":");
 
 // Allow access to database only for the server process
 const TSecurityPolicy KThumbnailDatabaseSecurityPolicy( TSecureId(
@@ -166,9 +167,9 @@ TInt RThumbnailTransaction::Rollback()
 // Two-phased constructor.
 // ---------------------------------------------------------------------------
 //
-CThumbnailStore* CThumbnailStore::NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer, const TBool aReadOnly )
+CThumbnailStore* CThumbnailStore::NewL( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer )
     {
-    CThumbnailStore* self = new( ELeave )CThumbnailStore( aFs, aDrive, aImei, aServer, aReadOnly );
+    CThumbnailStore* self = new( ELeave )CThumbnailStore( aFs, aDrive, aImei, aServer );
     CleanupStack::PushL( self );
     self->ConstructL();
     CleanupStack::Pop( self );
@@ -222,9 +223,9 @@ CThumbnailStore::~CThumbnailStore()
 // C++ default constructor can NOT contain any code, that might leave.
 // ---------------------------------------------------------------------------
 //
-CThumbnailStore::CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer, const TBool aReadOnly ): 
-    iFs( aFs ), iDrive( aDrive ), iDriveChar( 0 ), iBatchItemCount(0), iImei(aImei), iServer(aServer), iDiskFullNotifier(NULL), 
-    iDiskFull(EFalse), iActivityManager(NULL), iUnrecoverable(ETrue), iBatchFlushItemCount(KMInBatchItems), iReadOnly(aReadOnly)
+CThumbnailStore::CThumbnailStore( RFs& aFs, TInt aDrive, TDesC& aImei, CThumbnailServer* aServer ): 
+    iFs( aFs ), iDrive( aDrive ), iDriveChar( 0 ), iBatchItemCount(0), iImei(aImei), 
+    iServer(aServer), iDiskFull(EFalse), iUnrecoverable(ETrue), iBatchFlushItemCount(KMInBatchItems)
     {
     // no implementation required
     }
@@ -241,39 +242,31 @@ void CThumbnailStore::ConstructL()
 #ifdef _DEBUG
     iThumbCounter = 0;
 #endif
-    if(!iReadOnly)
-        {
-        HBufC* databasePath = HBufC::NewLC( KMaxFileName );
-        TPtr pathPtr = databasePath->Des();
-        User::LeaveIfError( RFs::DriveToChar( iDrive, iDriveChar ));
-        pathPtr.Append( iDriveChar );
-        pathPtr.Append( KThumbnailDatabaseName );
-        
-        //start disk space monitor
-        iDiskFullNotifier = CThumbnailStoreDiskSpaceNotifierAO::NewL( *this, 
-                                                KDiskFullThreshold,
-                                                pathPtr );
+    
+    HBufC* databasePath = HBufC::NewLC( KMaxFileName );
+    TPtr pathPtr = databasePath->Des();
+    User::LeaveIfError( RFs::DriveToChar( iDrive, iDriveChar ));
+    pathPtr.Append( iDriveChar );
+    pathPtr.Append( KThumbnailDatabaseName );
+    
+	//start disk space monitor
+    iDiskFullNotifier = CThumbnailStoreDiskSpaceNotifierAO::NewL( *this, 
+                                            KDiskFullThreshold,
+                                            pathPtr );
 
-        CleanupStack::PopAndDestroy( databasePath );
+    CleanupStack::PopAndDestroy( databasePath );
     
-        TN_DEBUG2( "CThumbnailStore::ConstructL() drive: %d", iDrive );
+    TN_DEBUG2( "CThumbnailStore::ConstructL() drive: %d", iDrive );
     
-        OpenDatabaseL();
+    OpenDatabaseL();
     
-        // to monitor device activity
-        iActivityManager = CTMActivityManager::NewL( this, KStoreMaintenanceIdle);
-        iActivityManager->Start();
+    // to monitor device activity
+    iActivityManager = CTMActivityManager::NewL( this, KStoreMaintenanceIdle);
+    iActivityManager->Start();
     
-        iDeleteThumbs = ETrue;
-        iCheckFilesExist = ETrue;
-        }
-    else
-        {
-	    TN_DEBUG1( "CThumbnailStore::ConstructL() - read only, dymmy mode..." );
-        iDeleteThumbs = EFalse;
-        iCheckFilesExist = EFalse;
-        iLastCheckedRowID = -1;
-        }
+    iDeleteThumbs = ETrue;
+    iCheckFilesExist = ETrue;
+    iLastCheckedRowID = -1;
     }
 
 // ---------------------------------------------------------------------------
@@ -332,7 +325,16 @@ TInt CThumbnailStore::OpenDatabaseL( TBool aNewDatabase )
             checkError = CheckVersion();
             if(checkError == KErrNone)
                 {
+#ifdef _DEBUG
+    TN_DEBUG1( "CThumbnailStore::OpenDatabaseL() start CheckRowIDs");
+    TTime aStart, aStop;
+    aStart.UniversalTime();
+#endif
                 checkError = CheckRowIDs();
+#ifdef _DEBUG
+    aStop.UniversalTime();
+    TN_DEBUG2( "CThumbnailStore::OpenDatabaseL() CheckRowIDs took %d ms", (TInt)aStop.MicroSecondsFrom(aStart).Int64()/1000);
+#endif
                 }
             }
 
@@ -1075,12 +1077,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, const TDes8& aData,
 	const TThumbnailSize& aThumbnailSize, const TInt64 aModified, const TBool aThumbFromPath )
     {
     TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( private ) in" );
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::StoreThumbnailL() read only, skip..." );
-        return;
-        }
 
 #ifdef _DEBUG
     TTime aStart, aStop;
@@ -1232,12 +1228,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
     {
     TSize thumbSize = aThumbnail->SizeInPixels();
     TN_DEBUG4( "CThumbnailStore::StoreThumbnailL( public ) aThumbnailSize = %d, aThumbnailSize(%d,%d) IN", aThumbnailSize, thumbSize.iWidth, thumbSize.iHeight );
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::StoreThumbnailL() read only, skip..." );
-        return;
-        }
 
     __ASSERT_DEBUG(( aThumbnail ), ThumbnailPanic( EThumbnailNullPointer ));
     
@@ -1276,10 +1266,8 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 flags |= KThumbnailDbFlagBlacklisted;
                 }
             
-            if( (aThumbnailSize == EImageFullScreenThumbnailSize || 
-                 aThumbnailSize == EVideoFullScreenThumbnailSize ||
-                 aThumbnailSize == EAudioFullScreenThumbnailSize ||
-                 aThumbnailSize == EContactFullScreenThumbnailSize) && !aBlackListed )
+            if( (aThumbnailSize == EImageFullScreenThumbnailSize || aThumbnailSize == EVideoFullScreenThumbnailSize ||
+                 aThumbnailSize == EAudioFullScreenThumbnailSize) && !aBlackListed )
                 {
                 TN_DEBUG1( "CThumbnailStore::StoreThumbnailL( public ) - encode jpg" );
             
@@ -1287,20 +1275,17 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 CleanupStack::PushL( data );
                 
                 CImageEncoder* encoder = NULL;
-				
-				CImageEncoder::TOptions options = ( CImageEncoder::TOptions )( CImageEncoder::EOptionAlwaysThread );
-				
-                TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::EHwImplementation, data, options ) );
+                TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::EHwImplementation, data, CImageEncoder::EOptionAlwaysThread ) );
                 if ( decErr != KErrNone )
                     {
                     TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - HW CExtJpegEncoder failed %d", decErr);
                 
-                    TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::ESwImplementation, data, options ) );
+                    TRAPD( decErr, encoder = CExtJpegEncoder::DataNewL( CExtJpegEncoder::ESwImplementation, data, CImageEncoder::EOptionAlwaysThread ) );
                     if ( decErr != KErrNone )
                         {
                         TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - SW CExtJpegEncoder failed %d", decErr);
                     
-                        TRAPD( decErr, encoder = CImageEncoder::DataNewL( data,  KJpegMime(), options ) );
+                        TRAPD( decErr, encoder = CImageEncoder::DataNewL( data,  KJpegMime(), CImageEncoder::EOptionAlwaysThread ) );
                         if ( decErr != KErrNone )
                             {
                             TN_DEBUG2( "CThumbnailStore::StoreThumbnailL( public ) - CImageEncoder failed %d", decErr);
@@ -1333,7 +1318,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
                 
                 // Set some format specific data
                 imageData->iSampleScheme = TJpegImageData::EColor444;
-                imageData->iQualityFactor = 80;
+                imageData->iQualityFactor = 75;
                 
                 // imageData - ownership passed to frameImageData after AppendImageData
                 User::LeaveIfError(frameImageData->AppendImageData(imageData));
@@ -1382,7 +1367,7 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
             
                 StoreThumbnailL( *path, buf->Ptr( 0 ), aThumbnail->SizeInPixels(),
                                  aOriginalSize, EThumbnailFormatFbsBitmap, flags, 
-                                 aThumbnailSize, aModified, aThumbFromPath);
+                                 aThumbnailSize, aModified);
   
                 CleanupStack::PopAndDestroy( buf );
                 }
@@ -1403,12 +1388,6 @@ void CThumbnailStore::StoreThumbnailL( const TDesC& aPath, CFbsBitmap*
 TBool CThumbnailStore::FindDuplicateL( const TDesC& aPath, const TThumbnailSize& aThumbnailSize )
     {
     TN_DEBUG1( "CThumbnailStore::FindDuplicateL()" );
-	
-	if(iReadOnly)
-		{
-		TN_DEBUG1( "CThumbnailStore::FindDuplicateL() read only, skip..." );
-		return EFalse;
-		}
     
     User::LeaveIfError( CheckDbState() );
     
@@ -1504,12 +1483,6 @@ void CThumbnailStore::GetMissingSizesL( const TDesC& aPath, TInt aSourceType, RA
     TThumbnailPersistentSize > & aMissingSizes, TBool aCheckGridSizeOnly )
     {
     TN_DEBUG2( "CThumbnailStore::GetMissingSizesL() aSourceType == %d", aSourceType );
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::GetMissingSizesL() read only, skip..." );
-		return;
-        }
     
     User::LeaveIfError( CheckDbState() );
     
@@ -1619,12 +1592,6 @@ void CThumbnailStore::FetchThumbnailL( const TDesC& aPath, CFbsBitmap* &
     aThumbnail, TDesC8* & aData, const TThumbnailSize aThumbnailSize, TSize &aThumbnailRealSize )
     {
     TN_DEBUG3( "CThumbnailStore::FetchThumbnailL(%S) aThumbnailSize==%d", &aPath, aThumbnailSize );
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::FetchThumbnailL() read only, skip..." );
-        User::Leave( KErrNotFound );
-        }
     
     User::LeaveIfError( CheckDbState() );
     
@@ -1750,12 +1717,6 @@ void CThumbnailStore::DeleteThumbnailsL( const TDesC& aPath, TBool aForce,
     {
     TN_DEBUG2( "CThumbnailStore::DeleteThumbnailsL(%S)", &aPath );
 
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::DeleteThumbnailsL() read only, skip..." );
-        return;
-        }
-    
 #ifdef _DEBUG
     TTime aStart, aStop;
     aStart.UniversalTime();
@@ -1955,12 +1916,6 @@ void CThumbnailStore::RenameThumbnailsL( const TDesC& aCurrentPath, const TDesC&
     {
     TN_DEBUG2( "CThumbnailStore::RenameThumbnailsL(%S)", &aCurrentPath );
     
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::RenameThumbnailsL() read only, skip..." );
-        return;
-        }
-    
 #ifdef _DEBUG
     TTime aStart, aStop;
     aStart.UniversalTime();
@@ -2049,12 +2004,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
     TN_DEBUG1("CThumbnailStore::FlushCacheTable() in");
     
     StopAutoFlush();
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::FlushCacheTable() read only, skip..." );
-        return;
-        }
     
     if(iBatchItemCount <= 0 || CheckDbState() != KErrNone)
         {
@@ -2196,12 +2145,6 @@ void CThumbnailStore::FlushCacheTable( TBool aForce )
 void CThumbnailStore::StartAutoFlush()
     {
     TN_DEBUG1( "CThumbnailStore::StartAutoFlush()" );
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::StartAutoFlush() read only, skip..." );
-        return;
-        }
     
     TInt err = KErrNone;
     
@@ -2384,13 +2327,6 @@ TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aM
     {
     TN_DEBUG2( "CThumbnailStore::CheckModifiedByPathL() %S", &aPath);
     
-    if(iReadOnly)
-    	{
-    	TN_DEBUG1( "CThumbnailStore::CheckModifiedByPathL() read only, skip..." );
-		modifiedChanged = EFalse;
-    	return ETrue;
-    	}
-	
     User::LeaveIfError( CheckDbState() );
     
     HBufC* path = aPath.AllocLC();
@@ -2470,16 +2406,6 @@ TBool CThumbnailStore::CheckModifiedByPathL( const TDesC& aPath, const TInt64 aM
     return ret;
 }
 	
-
-// -----------------------------------------------------------------------------
-// IsReadOnly()
-// -----------------------------------------------------------------------------
-//
-TBool CThumbnailStore::IsReadOnly()
-    {
-    return iReadOnly;
-    }
-
 // -----------------------------------------------------------------------------
 // PrepareBlacklistedItemsForRetryL()
 // -----------------------------------------------------------------------------
@@ -2510,12 +2436,6 @@ void CThumbnailStore::PrepareBlacklistedItemsForRetryL()
 TInt CThumbnailStore::DeleteMarkedL()
     {
     TN_DEBUG1( "CThumbnailStore::DeleteMarkedL()" );
-    
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::DeleteMarkedL() read only, skip..." );
-        return KErrAccessDenied;
-        }
    
 #ifdef _DEBUG
     TTime aStart, aStop;
@@ -2607,12 +2527,6 @@ TInt CThumbnailStore::DeleteMarkedL()
 TInt CThumbnailStore::FileExistenceCheckL()
     {
     TN_DEBUG1( "CThumbnailStore::FileExistenceCheckL()" );
-	
-    if(iReadOnly)
-		{
-		TN_DEBUG1( "CThumbnailStore::FileExistenceCheckL() read only, skip..." );
-		return ETrue;
-		}
     
 #ifdef _DEBUG
     TTime aStart, aStop;
@@ -2711,21 +2625,11 @@ TInt CThumbnailStore::FileExistenceCheckL()
 void CThumbnailStore::StripDriveLetterL( TDes& aPath )
     {
     TInt pos = aPath.Find(KDrv);
-    TInt pos2 = aPath.Find(KBackSlash);
     
     // if URI contains drive letter
     if ( pos == 1 )
         {
-        // normal URI
-        if ( pos2 == 2 )
-            {
-            aPath.Delete(0,pos+1);
-            }
-        // virtual URI
-        else
-            {
-            aPath.Replace(0,2,KBackSlash);
-            }
+        aPath.Delete(0,pos+1);
         }
     }
 
@@ -2735,7 +2639,7 @@ void CThumbnailStore::StripDriveLetterL( TDes& aPath )
 //
 TInt CThumbnailStore::CheckDbState()
     {
-    if (iUnrecoverable && !iReadOnly)
+    if (iUnrecoverable)
         {
         TN_DEBUG1( "CThumbnailStore::CheckDbState() - database in unrecoverable state" );
         __ASSERT_DEBUG( !iUnrecoverable, ThumbnailPanic( EThumbnailDatabaseUnrecoverable ));
@@ -2765,11 +2669,6 @@ void CThumbnailStore::HandleDiskSpaceError(TInt /*aError*/ )
 
 TBool CThumbnailStore::IsDiskFull()
     {
-    if(iReadOnly)
-        {
-        TN_DEBUG1( "CThumbnailStore::IsDiskFull() read only, skip..." );
-        return EFalse;
-        }
     return iDiskFull;
     }
 
@@ -2780,12 +2679,6 @@ TBool CThumbnailStore::IsDiskFull()
 void CThumbnailStore::ActivityChanged(const TBool aActive)
     {
     TN_DEBUG2( "CThumbnailStore::ActivityChanged() aActive == %d", aActive);
-    
-    if( iReadOnly )
-        {
-        TN_DEBUG1( "CThumbnailStore::ActivityChanged() read only, skip..." );
-        return;
-        }
     
     if( aActive )
         {

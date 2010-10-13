@@ -41,7 +41,6 @@ CThumbnailDataImpl::CThumbnailDataImpl()
 CThumbnailDataImpl::~CThumbnailDataImpl()
     {
     delete iBitmap;
-    iBitmap = NULL;
     iClientData = NULL;
     }
 

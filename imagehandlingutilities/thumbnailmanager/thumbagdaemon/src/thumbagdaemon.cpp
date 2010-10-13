@@ -194,10 +194,7 @@ CThumbAGDaemon::~CThumbAGDaemon()
     iAudioObserver = NULL;
     
     delete iMDSShutdownObserver;
-    iMDSShutdownObserver = NULL;
-    
     delete iShutdownObserver;
-    iShutdownObserver = NULL;
     
     if(iReconnect)
         {
@@ -270,7 +267,6 @@ void CThumbAGDaemon::ThreadFunctionL()
        
         // comes here if server gets shut down
         delete server;
-        server = NULL;
         
         CleanupStack::PopAndDestroy( scheduler );
         }
@@ -542,8 +538,6 @@ TBool CThumbAGDaemon::DaemonEnabledL()
     TInt ret = rep->Get( KEnableDaemon, val );
     
     delete rep;
-    rep = NULL;
-    
     TN_DEBUG3( "CThumbAGDaemon::DaemonEnabledL() - val == %d, ret == %d", val, ret );
     return val;
     }
@@ -585,7 +579,6 @@ TInt E32Main()
         {
         TRAP( result, CThumbAGDaemon::ThreadFunctionL());
         delete cleanup;
-        cleanup = NULL;
         }
     
     if ( result != KErrNone )

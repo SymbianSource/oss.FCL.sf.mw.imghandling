@@ -17,7 +17,7 @@
 &EN
 
 ; Header
-#{"Thumbnail Manager Cenrep"},(0x10202BE9), 9, 20, 9, TYPE=SP
+#{"Thumbnail Manager Cenrep"},(0x10202BE9), 9, 20, 8, TYPE=SP
 
 ; Localised Vendor name
 %{"Symbian Software Ltd."}

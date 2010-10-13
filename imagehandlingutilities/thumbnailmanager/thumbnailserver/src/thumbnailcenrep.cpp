@@ -67,11 +67,6 @@ TThumbnailPersistentSize::TThumbnailPersistentSize( TThumbnailSize aType,
         case EAudioFullScreenThumbnailSize:
             iSourceType = EAudio;
             break;
-        case EContactGridThumbnailSize:
-        case EContactListThumbnailSize:
-        case EContactFullScreenThumbnailSize:
-            iSourceType = EContact;
-            break;
         default:
             iSourceType = EUnknownSourceType;        
         }
@@ -85,8 +80,7 @@ TThumbnailPersistentSize::TThumbnailPersistentSize( TThumbnailSize aType,
 TThumbnailAutoCreate::TThumbnailAutoCreate()
     : iImageGrid(EFalse), iImageList(EFalse), iImageFullscreen(EFalse),
       iVideoGrid(EFalse), iVideoList(EFalse), iVideoFullscreen(EFalse),
-      iAudioGrid(EFalse), iAudioList(EFalse), iAudioFullscreen(EFalse),
-      iContactGrid(EFalse), iContactList(EFalse), iContactFullscreen(EFalse)
+      iAudioGrid(EFalse), iAudioList(EFalse), iAudioFullscreen(EFalse)
     {
     // No implementation required
     }
@@ -113,9 +107,7 @@ CThumbnailCenRep::~CThumbnailCenRep()
     {
     iPersistentSizes.Close();
     delete iAutoCreate;
-    iAutoCreate = NULL;
     delete iRepository;
-    iRepository = NULL;
     }
 
 // ---------------------------------------------------------------------------
@@ -211,57 +203,6 @@ void CThumbnailCenRep::ConstructL()
     
     iPersistentSizes.AppendL( TThumbnailPersistentSize( EAudioFullScreenThumbnailSize, TSize( xSize, ySize ),
                               flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));     
-
-// Contact TN, set default values if not found
-    if(iRepository->Get( KSizeContactGridWidth, xSize ) != KErrNone)
-        {
-        xSize = 54;
-        }
-    if( iRepository->Get( KSizeContactGridHeight, ySize ) != KErrNone)
-        {
-        ySize = 54;
-        }
-    
-    if( iRepository->Get( KAutoCreateContactGrid, autoCreate ) != KErrNone)
-    {
-        autoCreate = 1;
-    }
-
-    iPersistentSizes.AppendL( TThumbnailPersistentSize( EContactGridThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EGrid ));
-    
-    if(  iRepository->Get( KSizeContactListWidth, xSize ) != KErrNone)
-        {
-        xSize = 64;
-        }
-    if(  iRepository->Get( KSizeContactListHeight, ySize ) != KErrNone)
-        {
-        ySize = 64;
-        }
-    if(  iRepository->Get( KAutoCreateContactList, autoCreate ) != KErrNone)
-        {
-        autoCreate = 1;
-        }
-
-    iPersistentSizes.AppendL( TThumbnailPersistentSize( EContactListThumbnailSize, TSize( xSize, ySize ),
-            KGridAndListThumbnailCropped, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EList ));
-    
-    if( iRepository->Get( KSizeContactFullscreenWidth, xSize ) != KErrNone)
-        {
-        xSize = 250;
-        }
-    if( iRepository->Get( KSizeContactFullscreenHeight, ySize ) != KErrNone)
-        {
-        ySize = 250;
-        }
-    if( iRepository->Get( KAutoCreateContactFullscreen, autoCreate) != KErrNone)
-        {
-        autoCreate = 1;
-        }
-    
-    iPersistentSizes.AppendL( TThumbnailPersistentSize( EContactFullScreenThumbnailSize, TSize( xSize, ySize ),
-                              flags, static_cast <TDisplayMode> (raw_mode), format, autoCreate, TThumbnailPersistentSize::EFullscreen ));     
-    
     
     iAutoCreate = new (ELeave) TThumbnailAutoCreate();
     
@@ -274,19 +215,6 @@ void CThumbnailCenRep::ConstructL()
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioGrid, iAutoCreate->iAudioGrid ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioList, iAutoCreate->iAudioList ));
     User::LeaveIfError( iRepository->Get( KAutoCreateAudioFullscreen, iAutoCreate->iAudioFullscreen ));    
-    
-    if( iRepository->Get( KAutoCreateContactGrid, iAutoCreate->iContactGrid ) != KErrNone )
-        {
-        iAutoCreate->iContactGrid = 1;
-        }
-    if( iRepository->Get( KAutoCreateContactList, iAutoCreate->iContactList ) != KErrNone )
-        {
-        iAutoCreate->iContactList = 1;
-        }
-    if( iRepository->Get( KAutoCreateContactFullscreen, iAutoCreate->iContactFullscreen ) != KErrNone )
-        {
-        iAutoCreate->iContactFullscreen = 1;
-        }
     }
 
 // ---------------------------------------------------------------------------

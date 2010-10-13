@@ -49,6 +49,7 @@ CThumbnailTask::CThumbnailTask( CThumbnailTaskProcessor& aProcessor, TInt
 //
 CThumbnailTask::~CThumbnailTask()
     {
+    TN_DEBUG1( "CThumbnailTask::~CThumbnailTask()" );
     Cancel();
     CancelMessage();
     
@@ -231,6 +232,7 @@ TThumbnailServerRequestId CThumbnailTask::RequestId()const
 //
 void CThumbnailTask::CancelMessage()
     {
+    TN_DEBUG1( "CThumbnailTask::CancelMessage()");
     if ( ClientThreadAlive() )
         {
         iMessage.Complete( KErrCancel );

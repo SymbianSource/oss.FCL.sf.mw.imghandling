@@ -147,10 +147,7 @@ CThumbAGImageObserver::~CThumbAGImageObserver()
     iShutdown = ETrue;    
     
     delete iMDSShutdownObserver;
-    iMDSShutdownObserver = NULL;
-    
     delete iShutdownObserver;
-    iShutdownObserver = NULL;
     
     if(iReconnect)
         {
@@ -291,22 +288,20 @@ void CThumbAGImageObserver::AddObserversL()
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
     addCondition->AddObjectConditionL( imageDef );
-	
-	addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    CleanupStack::Pop( addCondition );  
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-	modifyCondition->AddObjectConditionL( imageDef );
-	
-	modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-	
+    modifyCondition->AddObjectConditionL( imageDef );
+    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+    CleanupStack::Pop( modifyCondition );
+   
     // add observers
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
     // modify observer
     iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
-	
-    CleanupStack::Pop( 2, addCondition );
-
+     
     TN_DEBUG1( "CThumbAGImageObserver::AddObserversL() - end" );
     }
 

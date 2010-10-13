@@ -59,7 +59,7 @@
     /**
      * Macro for defining debug-only literal strings (empty release version)
      */
-    #define IHL_DEBUG_STRING(name, s) const TIHLEmptyDebugString name = {}
+    #define IHL_DEBUG_STRING(name, s) const TIHLEmptyDebugString name
 
     /**
      * Output to debugger output (empty)
