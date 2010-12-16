@@ -370,6 +370,15 @@ public:
       */
      void RemoveRequestObserver();
      
+     /**
+      * Remove thumbnail from blacklist.
+      *
+      * @since Symbian^3
+      * @param aPath 		Path for the thumbnail.
+      * @param aPriority 	Priority for this operation.
+      */     
+     void RemoveFromBlacklistL( const TDesC& aPath, const TInt aPriority ); 
+     
 private:
 
     /**

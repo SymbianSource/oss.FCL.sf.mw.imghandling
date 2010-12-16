@@ -199,6 +199,13 @@ public:
      */
     void RenameThumbnails( TThumbnailRequestParamsPckg& aParams, TRequestStatus& aStatus );
     
+    /**
+     * Remove thumbnail from blacklist
+     * 
+     * @since Symbian^3
+     */
+    void RemoveFromBlacklist( const TDesC& aPath, TThumbnailRequestParamsPckg& aParams, TRequestStatus& aStatus );
+    
 private:
 
     /**

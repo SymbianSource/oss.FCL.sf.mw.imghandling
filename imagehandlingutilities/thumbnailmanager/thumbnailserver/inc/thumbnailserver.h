@@ -479,6 +479,14 @@ public:
      */
     TBool IsPublicPath( const TDesC& aPath );
     
+    /**
+     * Remove thumbnail from blacklist
+     *
+     * @since Symbian^3
+     * @param aPath Path to a file
+     */
+    void RemoveFromBlacklistL( const TDesC& aPath );
+    
 protected: // Functions from base classes
 
     /**

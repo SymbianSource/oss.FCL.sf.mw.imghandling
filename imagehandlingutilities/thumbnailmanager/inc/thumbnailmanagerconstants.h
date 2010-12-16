@@ -53,7 +53,7 @@ const TInt KDaemonProcessing = 0x00000040;
 //actual batch size will vary and will be between min...max batch size values below
 
 //minimum batch size
-const TUint KMInBatchItems = 6;
+const TUint KMInBatchItems = 10;
 //maximum batch size
 const TUint KMaxBatchItems = 60;
 //Max allowed flush time ms
@@ -473,6 +473,11 @@ enum TThumbnailServerRequest
      * Request to set thumbnail created from given bitmap
      */        
     ERequestSetThumbnailByBitmap,
+    
+    /**
+     * Remove thumbnail from blacklist.
+     */
+    ERemoveFromBlacklist,
  
     /**
      * Do not remove and keep as last item! Holds count of functions supported.

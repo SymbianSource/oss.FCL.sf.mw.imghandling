@@ -24,7 +24,7 @@
 #include <mdequery.h>
 #include <mdeobject.h>
 
-#include "thumbagcameraobserver.h"
+#include "thumbagdrmobserver.h"
 #include "thumbnaillog.h"
 #include "thumbnailmanagerconstants.h"
 #include "thumbnailmanagerprivatecrkeys.h"
@@ -34,11 +34,11 @@
 // NewLC
 // ---------------------------------------------------------------------------
 //
-CThumbAGCameraObserver* CThumbAGCameraObserver::NewLC(CThumbAGProcessor* aProcessor)
+CThumbAGDrmObserver* CThumbAGDrmObserver::NewLC(CThumbAGProcessor* aProcessor)
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::NewLC() - begin" );
+    TN_DEBUG1( "CThumbAGDrmObserver::NewLC() - begin" );
     
-	CThumbAGCameraObserver* self = new (ELeave) CThumbAGCameraObserver(aProcessor);
+    CThumbAGDrmObserver* self = new (ELeave) CThumbAGDrmObserver(aProcessor);
 	CleanupStack::PushL( self );
 	self->ConstructL();
 	return self;
@@ -48,20 +48,20 @@ CThumbAGCameraObserver* CThumbAGCameraObserver::NewLC(CThumbAGProcessor* aProces
 // NewL
 // ---------------------------------------------------------------------------
 //
-CThumbAGCameraObserver* CThumbAGCameraObserver::NewL(CThumbAGProcessor* aProcessor)
+CThumbAGDrmObserver* CThumbAGDrmObserver::NewL(CThumbAGProcessor* aProcessor)
 	{
-	TN_DEBUG1( "CThumbAGCameraObserver::NewL() - begin" );
+	TN_DEBUG1( "CThumbAGDrmObserver::NewL() - begin" );
     
-	CThumbAGCameraObserver* self = CThumbAGCameraObserver::NewLC(aProcessor);
+	CThumbAGDrmObserver* self = CThumbAGDrmObserver::NewLC(aProcessor);
 	CleanupStack::Pop( self );
 	return self;
 	}
 
 // ---------------------------------------------------------------------------
-// CThumbAGCameraObserver
+// CThumbAGDrmObserver
 // ---------------------------------------------------------------------------
 //
-CThumbAGCameraObserver::CThumbAGCameraObserver(CThumbAGProcessor* aProcessor)
+CThumbAGDrmObserver::CThumbAGDrmObserver(CThumbAGProcessor* aProcessor)
  	: iShutdownObserver(NULL), iMDSShutdownObserver(NULL), iMdESession(NULL), iProcessor(aProcessor)
  	{
  	// No implementation required
@@ -71,30 +71,29 @@ CThumbAGCameraObserver::CThumbAGCameraObserver(CThumbAGProcessor* aProcessor)
 // ConstructL
 // ---------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::ConstructL()
+void CThumbAGDrmObserver::ConstructL()
 	{
-	TN_DEBUG1( "CThumbAGCameraObserver::ConstructL() - begin" );
+	TN_DEBUG1( "CThumbAGDrmObserver::ConstructL() - begin" );
 	
 #ifdef _DEBUG
-    iAddCounter = 0;
     iModCounter = 0;
 #endif
     
     InitializeL();
     	
-	TN_DEBUG1( "CThumbAGCameraObserver::ConstructL() - end" );
+	TN_DEBUG1( "CThumbAGDrmObserver::ConstructL() - end" );
 	}
 
 // ---------------------------------------------------------------------------
-// ~CThumbAGCameraObserver
+// ~CThumbAGDrmObserver
 // ---------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::InitializeL()
+void CThumbAGDrmObserver::InitializeL()
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::InitializeL() - begin" );
+    TN_DEBUG1( "CThumbAGDrmObserver::InitializeL() - begin" );
     
    
-        TN_DEBUG1( "CThumbAGCameraObserver::InitializeL() - create observers" );
+        TN_DEBUG1( "CThumbAGDrmObserver::InitializeL() - create observers" );
         
         // create shutdown observer
         if(iMDSShutdownObserver)
@@ -118,11 +117,11 @@ void CThumbAGCameraObserver::InitializeL()
             iReconnect = CPeriodic::NewL(CActive::EPriorityIdle);
             }
         
-        TN_DEBUG1( "CThumbAGCameraObserver::InitializeL() - connect to MDS" );
+        TN_DEBUG1( "CThumbAGDrmObserver::InitializeL() - connect to MDS" );
         
         if(iMdESession)
             {
-            TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+            // observer
             TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
         
             // connect to MDS
@@ -133,16 +132,16 @@ void CThumbAGCameraObserver::InitializeL()
         iMdESession = CMdESession::NewL( *this );
         iSessionError = EFalse;
       
-        TN_DEBUG1( "CThumbAGCameraObserver::InitializeL() - end" );
+        TN_DEBUG1( "CThumbAGDrmObserver::InitializeL() - end" );
     }
 
 // ---------------------------------------------------------------------------
-// ~CThumbAGCameraObserver
+// ~CThumbAGDrmObserver
 // ---------------------------------------------------------------------------
 //
-CThumbAGCameraObserver::~CThumbAGCameraObserver()
+CThumbAGDrmObserver::~CThumbAGDrmObserver()
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::~CThumbAGCameraObserver() - begin" );
+    TN_DEBUG1( "CThumbAGDrmObserver::~CThumbAGDrmObserver() - begin" );
     
     iShutdown = ETrue;    
     
@@ -161,46 +160,45 @@ CThumbAGCameraObserver::~CThumbAGCameraObserver()
     
     if (iMdESession)
         {
-        // 2 observers
-        TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
+        // observer
         TRAP_IGNORE( iMdESession->RemoveObjectObserverL( *this ) );
                 
         delete iMdESession;
         iMdESession = NULL;
         }
     
-    TN_DEBUG1( "CThumbAGCameraObserver::~CThumbAGCameraObserver() - end" );
+    TN_DEBUG1( "CThumbAGDrmObserver::~CThumbAGCameraObserver() - end" );
     }
 
 // -----------------------------------------------------------------------------
-// CThumbAGCameraObserver::HandleSessionOpened
+// CThumbAGDrmObserver::HandleSessionOpened
 // -----------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::HandleSessionOpened( CMdESession& /* aSession */, TInt aError )
+void CThumbAGDrmObserver::HandleSessionOpened( CMdESession& /* aSession */, TInt aError )
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::HandleSessionOpened");
+    TN_DEBUG1( "CThumbAGDrmObserver::HandleSessionOpened");
     
     if (aError == KErrNone)
         {
         TRAPD( err, AddObserversL() );
         if (err != KErrNone)
             {
-            TN_DEBUG2( "CThumbAGCameraObserver::HandleSessionOpened, AddObserversL error == %d", err );
+            TN_DEBUG2( "CThumbAGDrmObserver::HandleSessionOpened, AddObserversL error == %d", err );
             }
         }
     else
         {
-        TN_DEBUG2( "CThumbAGCameraObserver::HandleSessionOpened error == %d", aError );
+        TN_DEBUG2( "CThumbAGDrmObserver::HandleSessionOpened error == %d", aError );
         }
     }
 
 // -----------------------------------------------------------------------------
-// CThumbAGCameraObserver::HandleSessionError
+// CThumbAGDrmObserver::HandleSessionError
 // -----------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
+void CThumbAGDrmObserver::HandleSessionError( CMdESession& /*aSession*/, TInt aError )
     {
-    TN_DEBUG2( "CThumbAGCameraObserver::HandleSessionError == %d", aError );
+    TN_DEBUG2( "CThumbAGDrmObserver::HandleSessionError == %d", aError );
     if (aError != KErrNone && !iSessionError)
         {
         iSessionError = ETrue;
@@ -212,7 +210,7 @@ void CThumbAGCameraObserver::HandleSessionError( CMdESession& /*aSession*/, TInt
                 iReconnect->Start( KMdEReconnect, KMdEReconnect, 
                                    TCallBack(ReconnectCallBack, this));
                 
-                TN_DEBUG1( "CThumbAGCameraObserver::HandleSessionError() - reconnect timer started" );
+                TN_DEBUG1( "CThumbAGDrmObserver::HandleSessionError() - reconnect timer started" );
                 }
             }
 
@@ -220,14 +218,14 @@ void CThumbAGCameraObserver::HandleSessionError( CMdESession& /*aSession*/, TInt
     }
 
 // -----------------------------------------------------------------------------
-// CThumbAGCameraObserver::HandleObjectNotification
+// CThumbAGDrmObserver::HandleObjectNotification
 // -----------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::HandleObjectNotification( CMdESession& /*aSession*/, 
+void CThumbAGDrmObserver::HandleObjectNotification( CMdESession& /*aSession*/, 
                                                TObserverNotificationType aType,
                                                const RArray<TItemId>& aObjectIdArray )
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::HandleObjectNotification() - begin" );
+    TN_DEBUG1( "CThumbAGDrmObserver::HandleObjectNotification() - begin" );
 
     // no processor or shutting down
     if ( iShutdown || !iProcessor)
@@ -236,105 +234,99 @@ void CThumbAGCameraObserver::HandleObjectNotification( CMdESession& /*aSession*/
         }
     
 #ifdef _DEBUG
-    if (aType == ENotifyAdd)
+    if (aType == ENotifyModify)
         {
-        TN_DEBUG2( "CThumbAGCameraObserver::HandleObjectNotification() - ENotifyAdd %d", aObjectIdArray.Count() );
-        iAddCounter = aObjectIdArray.Count();
-        }
-    else if (aType == ENotifyModify)
-        {
-        TN_DEBUG2( "CThumbAGCameraObserver::HandleObjectNotification() - ENotifyModify %d", aObjectIdArray.Count() );
+        TN_DEBUG2( "CThumbAGDrmObserver::HandleObjectNotification() - ENotifyModify %d", aObjectIdArray.Count() );
         iModCounter = aObjectIdArray.Count();
         }
 #endif
     
-    if ( (aType == ENotifyAdd || aType == ENotifyModify ) && (aObjectIdArray.Count() > 0) )
+    if ( (aType == ENotifyModify ) && (aObjectIdArray.Count() > 0) )
         {
-        TN_DEBUG1( "CThumbAGCameraObserver::HandleObjectNotification() - AddToQueueL" );
+        TN_DEBUG1( "CThumbAGDrmObserver::HandleObjectNotification() - AddToQueueL" );
 
-        // Add event to processing queue by type and enable force run        
-        RPointerArray<HBufC> dummyArray;
-        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeCamera, aObjectIdArray, dummyArray, EFalse, EFalse));
+        RPointerArray<HBufC> dummyArray1;
+        TRAPD(err, iProcessor->AddToQueueL(ENotifyModify, EGenerationItemTypeVideo, aObjectIdArray, dummyArray1, EFalse, ETrue));
         if (err != KErrNone)
             {
-            TN_DEBUG1( "CThumbAGCameraObserver::HandleObjectNotification() - error adding to queue" );
+            TN_DEBUG1( "CThumbAGDrmObserver::HandleObjectNotification() - error adding to queue" );
             }
         }
     else
         {
-        TN_DEBUG1( "CThumbAGCameraObserver::HandleObjectNotification() - bad notification" );
+        TN_DEBUG1( "CThumbAGDrmObserver::HandleObjectNotification() - bad notification" );
         }
     
 #ifdef _DEBUG
-    TN_DEBUG3( "CThumbAGCameraObserver::IN-COUNTERS---------- Add = %d Modify = %d", iAddCounter, iModCounter );
+    TN_DEBUG2( "CThumbAGDrmObserver::IN-COUNTERS---------- Modify = %d", iModCounter );
     iModCounter = 0;
-    iAddCounter = 0;
 #endif
 
-    TN_DEBUG1( "CThumbAGCameraObserver::HandleObjectNotification() - end" );
+    TN_DEBUG1( "CThumbAGDrmObserver::HandleObjectNotification() - end" );
     }
 
 // -----------------------------------------------------------------------------
-// CThumbAGCameraObserver::ShutdownNotification
+// CThumbAGDrmObserver::ShutdownNotification
 // -----------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::ShutdownNotification()
+void CThumbAGDrmObserver::ShutdownNotification()
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::ShutdownNotification()" );
+    TN_DEBUG1( "CThumbAGDrmObserver::ShutdownNotification()" );
     
     if (!iShutdown)
         {
-        TN_DEBUG1( "CThumbAGCameraObserver::ShutdownNotification() shutdown" );
+        TN_DEBUG1( "CThumbAGDrmObserver::ShutdownNotification() shutdown" );
         iShutdown = ETrue;
         }
     }
 
 // ---------------------------------------------------------------------------
-// CThumbAGCameraObserver::AddObserversL
+// CThumbAGDrmObserver::AddObserversL
 // ---------------------------------------------------------------------------
 //
-void CThumbAGCameraObserver::AddObserversL()
+void CThumbAGDrmObserver::AddObserversL()
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::AddObserversL() - begin" );
+    TN_DEBUG1( "CThumbAGDrmObserver::AddObserversL() - begin" );
     
     CMdENamespaceDef& defaultNamespace = iMdESession->GetDefaultNamespaceDefL();
-    CMdEObjectDef& objectDef = defaultNamespace.GetObjectDefL( MdeConstants::Object::KBaseObject );
-    CMdEPropertyDef& originPropDef = objectDef.GetPropertyDefL( MdeConstants::Object::KOriginProperty );
     
-    // set observing conditions
-    CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintEqual(MdeConstants::Object::ECamera));
-    
-    CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintEqual(MdeConstants::Object::ECamera));
-    
-    // add observer
-    iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
+    CMdEObjectDef& mediaObjDef = defaultNamespace.GetObjectDefL( 
+        MdeConstants::MediaObject::KMediaObject );
+    CMdEObjectDef& videoObjDef = defaultNamespace.GetObjectDefL( 
+        MdeConstants::Video::KVideoObject );
+    CMdEPropertyDef& rightsPropDef = mediaObjDef.GetPropertyDefL( 
+        MdeConstants::MediaObject::KRightsStatus );
 
-   // modify observer
-   iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+
+    // set observing conditions
+    CMdELogicCondition* condition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
+    condition->AddObjectConditionL( videoObjDef );
+    condition->AddPropertyConditionL( rightsPropDef, TMdEUintEqual(MdeConstants::MediaObject::ERightsReceived));
+            
+    // add observers
+    iMdESession->AddObjectObserverL( *this, condition, ENotifyModify ); 
    
-    CleanupStack::Pop( 2, addCondition );  
-     
-    TN_DEBUG1( "CThumbAGCameraObserver::AddObserversL() - end" );
+    CleanupStack::Pop( condition );    
+    
+    TN_DEBUG1( "CThumbAGDrmObserver::AddObserversL() - end" );
     }
 
 // ---------------------------------------------------------------------------
-// CThumbAGCameraObserver::ReconnectCallBack()
+// CThumbAGDrmObserver::ReconnectCallBack()
 // ---------------------------------------------------------------------------
 //
-TInt CThumbAGCameraObserver::ReconnectCallBack(TAny* aAny)
+TInt CThumbAGDrmObserver::ReconnectCallBack(TAny* aAny)
     {
-    TN_DEBUG1( "CThumbAGCameraObserver::ReconnectCallBack() - reinitialize");
+    TN_DEBUG1( "CThumbAGDrmObserver::ReconnectCallBack() - reinitialize");
     
-    CThumbAGCameraObserver* self = static_cast<CThumbAGCameraObserver*>( aAny );
+    CThumbAGDrmObserver* self = static_cast<CThumbAGDrmObserver*>( aAny );
     
     self->iReconnect->Cancel();
     
     // reconnect to MDS
     TRAP_IGNORE( self->InitializeL() );
     
-    TN_DEBUG1( "CThumbAGCameraObserver::ReconnectCallBack() - done");
+    TN_DEBUG1( "CThumbAGDrmObserver::ReconnectCallBack() - done");
     
     return KErrNone;
     }

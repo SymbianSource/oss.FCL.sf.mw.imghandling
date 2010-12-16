@@ -41,7 +41,8 @@ enum TThumbnailReqType
     EReqUpdateThumbnails = 4,
     EReqGetThumbnailHandleLater = 5,
     EReqDeleteThumbnails = 6,
-    EReqRenameThumbnails = 7
+    EReqRenameThumbnails = 7,
+	EReqRemoveFromBlacklist = 8
 };
 
 /**
@@ -288,6 +289,14 @@ public:
      * @since S60 v5.0
      */
     void AsyncCancel();
+    
+    /**
+     * Remove thumbnail from blacklist
+     *
+     * @since Symbian^3
+     * @param aPath Path of the Thumbnail
+     */    
+    void RemoveFromBlacklist( const TDesC& aPath );    
     
 private:
 

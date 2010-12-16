@@ -54,6 +54,7 @@ SOURCE 			thumbagimageobserver.cpp
 SOURCE			thumbagcameraobserver.cpp
 SOURCE			thumbagaudioobserver.cpp 
 SOURCE			thumbagvideoobserver.cpp
+SOURCE			thumbagdrmobserver.cpp
 
 // Default system include paths for middleware layer modules.
 MW_LAYER_SYSTEMINCLUDE

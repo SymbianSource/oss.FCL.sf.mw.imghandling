@@ -260,7 +260,7 @@ void CThumbAGAudioObserver::HandleObjectNotification( CMdESession& /*aSession*/,
 
         // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
-        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAudio, aObjectIdArray, dummyArray, EFalse));
+        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAudio, aObjectIdArray, dummyArray, EFalse, EFalse));
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGAudioObserver::HandleObjectNotification() - error adding to queue" );
@@ -309,17 +309,17 @@ void CThumbAGAudioObserver::AddObserversL()
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
     addCondition->AddObjectConditionL( audioDef );
-    CleanupStack::Pop( addCondition );  
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
     modifyCondition->AddObjectConditionL( audioDef );
-    CleanupStack::Pop( modifyCondition );
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
    // modify observer
    iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+   
+   CleanupStack::Pop( 2, addCondition );
      
     TN_DEBUG1( "CThumbAGAudioObserver::AddObserversL() - end" );
     }

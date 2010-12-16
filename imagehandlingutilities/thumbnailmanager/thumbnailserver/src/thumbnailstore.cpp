@@ -2713,6 +2713,76 @@ void CThumbnailStore::ActivityChanged(const TBool aActive)
 
 
 // -----------------------------------------------------------------------------
+// RemoveBlacklistedL()
+// -----------------------------------------------------------------------------
+//
+void CThumbnailStore::RemoveBlacklistedL( const TDesC& aPath )
+    {
+    TN_DEBUG2( "CThumbnailStore::RemoveBlacklistedL(%S)", &aPath );
+    
+    HBufC* path = aPath.AllocLC();
+    TPtr ptr(path->Des());
+    StripDriveLetterL( ptr );
+    
+    RSqlStatement stmt;
+    CleanupClosePushL( stmt );
+
+    TN_DEBUG1( "CThumbnailStore::RemoveBlacklistedL() -- TEMP TABLE" );
+    
+    User::LeaveIfError( stmt.Prepare( iDatabase, KThumbnailTempTouchBlacklistedRow ));
+       
+    TInt paramIndex = stmt.ParameterIndex( KThumbnailSqlParamFlag );
+    User::LeaveIfError( paramIndex );
+    User::LeaveIfError( stmt.BindInt( paramIndex, KThumbnailDbFlagBlacklisted ));
+    paramIndex = stmt.ParameterIndex( KThumbnailSqlParamPath );
+    User::LeaveIfError( paramIndex );
+    User::LeaveIfError( stmt.BindText( paramIndex, *path )); 
+    
+    TInt err = stmt.Exec();
+      
+    if(err < 0)
+        {
+#ifdef _DEBUG
+        TPtrC errorMsg = iDatabase.LastErrorMessage();
+        TN_DEBUG2( "RThumbnailTransaction::RemoveBlacklistedL() lastError %S" , &errorMsg);
+#endif
+        User::Leave(err);
+        }
+    
+    CleanupStack::PopAndDestroy( &stmt ); 
+    
+    RSqlStatement statement;
+    CleanupClosePushL( statement );
+    
+    TN_DEBUG1( "CThumbnailStore::RemoveBlacklistedL() -- MAIN TABLE" );
+    
+    User::LeaveIfError( statement.Prepare( iDatabase, KThumbnailTouchBlacklistedRow ));
+       
+    paramIndex = statement.ParameterIndex( KThumbnailSqlParamFlag );
+    User::LeaveIfError( paramIndex );
+    User::LeaveIfError( statement.BindInt( paramIndex, KThumbnailDbFlagBlacklisted ));
+    paramIndex = statement.ParameterIndex( KThumbnailSqlParamPath );
+    User::LeaveIfError( paramIndex );
+    User::LeaveIfError( statement.BindText( paramIndex, *path )); 
+    
+    err = statement.Exec();
+    
+    if(err < 0)
+        {
+#ifdef _DEBUG
+        TPtrC errorMsg = iDatabase.LastErrorMessage();
+        TN_DEBUG2( "RThumbnailTransaction::RemoveBlacklistedL() lastError %S" , &errorMsg);
+#endif
+        User::Leave(err);
+        }
+    
+    TN_DEBUG1( "CThumbnailStore::RemoveBlacklistedL() - end" );
+       
+    CleanupStack::PopAndDestroy( &statement );   
+    CleanupStack::PopAndDestroy( path );
+    }
+    
+// -----------------------------------------------------------------------------
 // CThumbnailStoreDiskSpaceNotifierAO class
 // -----------------------------------------------------------------------------
 //

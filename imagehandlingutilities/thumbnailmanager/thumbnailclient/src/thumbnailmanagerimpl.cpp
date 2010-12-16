@@ -735,4 +735,31 @@ TInt CThumbnailManagerImpl::ValidatePriority( const TInt aPriority )
         }
     }
 
+// ---------------------------------------------------------------------------
+// CThumbnailManagerImpl::RemoveFromBlacklist()
+// Removes blacklisted thumbnail
+// ---------------------------------------------------------------------------
+//
+void CThumbnailManagerImpl::RemoveFromBlacklistL( const TDesC& aPath, const TInt aPriority )
+    {
+    iRequestId++;
+    TN_DEBUG3( "CThumbnailManagerImpl::RemoveFromBlacklist() URI==%S, req %d", &aPath, iRequestId); 
+    
+    __ASSERT_DEBUG(( iRequestId > 0 ), ThumbnailPanic( EThumbnailWrongId ));
+    
+    TInt priority = ValidatePriority(aPriority);
+    
+    CThumbnailRequestActive* getThumbnailActive = CThumbnailRequestActive::NewL
+        ( iFs, iSession, iObserver, iRequestObserver, iRequestId, priority, iRequestQueue );
+    CleanupStack::PushL( getThumbnailActive );
+    
+    getThumbnailActive->RemoveFromBlacklist( aPath );
+    
+    iRequestQueue->AddRequestL( getThumbnailActive );
+    CleanupStack::Pop( getThumbnailActive );
+    
+    iRequestQueue->Process();
+
+    }
+
 // End of file

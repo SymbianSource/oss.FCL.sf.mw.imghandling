@@ -601,7 +601,7 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                                     TThumbnailGenerationItemType aItemType,
                                     const RArray<TItemId>& aIDArray, 
                                     const RPointerArray<HBufC>& aObjectUriArray,
-                                    TBool /*aPresent*/ )
+                                    TBool /*aPresent*/, TBool aRemoveBlacklisted )
     {
     TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - begin" );
     
@@ -682,6 +682,10 @@ void CThumbAGProcessor::AddToQueueL( TObserverNotificationType aType,
                         {
                         TN_DEBUG1( "CThumbAGProcessor::AddToQueueL() - real modify");
                         iGenerationQueue[itemIndex].iItemAction = EGenerationItemActionModify;
+                        if ( aRemoveBlacklisted )
+                            {
+                            iGenerationQueue[itemIndex].iRemoveFromBlacklist = ETrue;                            
+                            }
                         SetForceRun( ETrue );
                         }
                     }
@@ -777,6 +781,7 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
     
     TInt orientationVal = 0;
     TInt64 modifiedVal = 0;
+    TBool updateBlacklisted = EFalse;
     
     CMdEProperty* orientation = NULL;
        
@@ -814,6 +819,11 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             
             if(itemIndex >=0 )
                 {
+                if ( iGenerationQueue[itemIndex].iRemoveFromBlacklist )
+                    {
+                    updateBlacklisted = ETrue;
+                    iGenerationQueue[itemIndex].iRemoveFromBlacklist = EFalse;
+                    }
                 if(iGenerationQueue[itemIndex].iItemAction == EGenerationItemAction2ndAdd)
                     {
                     iGenerationQueue.Remove(itemIndex);
@@ -836,6 +846,12 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
             
             if(itemIndex >=0 )
                 {
+                if ( iGenerationQueue[itemIndex].iRemoveFromBlacklist )
+                    {
+                    TN_DEBUG1( "CThumbAGProcessor::CreateThumbnailsL() remove from blacklist");
+                    updateBlacklisted = ETrue;
+                    iGenerationQueue[itemIndex].iRemoveFromBlacklist = EFalse;
+                    }
                 if(iGenerationQueue[itemIndex].iItemAction == EGenerationItemActionModify)
                     {
                     iGenerationQueue.Remove(itemIndex);
@@ -851,6 +867,18 @@ void CThumbAGProcessor::CreateThumbnailsL( const CMdEObject* aObject )
                     iGenerationQueue.Remove(itemIndex);
                     }
                 }
+            }
+
+        if ( updateBlacklisted )
+            {
+            TRAPD(error, iTMSession->RemoveFromBlacklistL( aObject->Uri(), CActive::EPriorityIdle ));            
+            if ( error != KErrNone )
+                {
+                TN_DEBUG2( "CThumbAGProcessor::CreateThumbnailsL, iTMSession error == %d", error );
+                
+                iSessionDied = ETrue;
+                ActivateAO();
+                } 
             }
 
         // run as lower priority than getting but higher that creating thumbnails
@@ -967,39 +995,43 @@ void CThumbAGProcessor::QueryL(/*RArray<TItemId>& aIDArray*/TThumbnailGeneration
     
     CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject );
     iQuery = iMdESession->NewObjectQueryL( *iDefNamespace, objDef, this );
-    iQuery->SetResultMode( EQueryResultModeItem );
+	
+	if(iQuery)
+		{
+	    iQuery->SetResultMode( EQueryResultModeItem );
 
-    CMdELogicCondition& rootCondition = iQuery->Conditions();
-    rootCondition.SetOperator( ELogicConditionOperatorAnd );
+	    CMdELogicCondition& rootCondition = iQuery->Conditions();
+	    rootCondition.SetOperator( ELogicConditionOperatorAnd );
     
-    // add IDs
-    CleanupClosePushL( iQueryQueue );
-    rootCondition.AddObjectConditionL( iQueryQueue );
-    CleanupStack::Pop( &iQueryQueue );
+	    // add IDs
+	    CleanupClosePushL( iQueryQueue );
+	    rootCondition.AddObjectConditionL( iQueryQueue );
+	    CleanupStack::Pop( &iQueryQueue );
     
-    // add object type conditions 
-    if (!(iModify || iUnknown))
-        {
-        CMdELogicCondition& objDefCondition = rootCondition.AddLogicConditionL( ELogicConditionOperatorOr );
+	    // add object type conditions 
+	    if (!(iModify || iUnknown))
+	        {
+	        CMdELogicCondition& objDefCondition = rootCondition.AddLogicConditionL( ELogicConditionOperatorOr );
         
-        if (iAutoImage)
-            {
-            CMdEObjectDef& imageDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
-            objDefCondition.AddObjectConditionL( imageDef );
-            }
-        if (iAutoVideo)
-            {
-            CMdEObjectDef& videoDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
-            objDefCondition.AddObjectConditionL( videoDef );
-            }
-        if (iAutoAudio)
-            {
-            CMdEObjectDef& audioDef = iDefNamespace->GetObjectDefL( MdeConstants::Audio::KAudioObject );
-            objDefCondition.AddObjectConditionL( audioDef );
-            }    
-        }
+	        if (iAutoImage)
+	            {
+	            CMdEObjectDef& imageDef = iDefNamespace->GetObjectDefL( MdeConstants::Image::KImageObject );
+	            objDefCondition.AddObjectConditionL( imageDef );
+	            }
+	        if (iAutoVideo)
+	            {
+	            CMdEObjectDef& videoDef = iDefNamespace->GetObjectDefL( MdeConstants::Video::KVideoObject );
+	            objDefCondition.AddObjectConditionL( videoDef );
+	            }
+	        if (iAutoAudio)
+	            {
+	            CMdEObjectDef& audioDef = iDefNamespace->GetObjectDefL( MdeConstants::Audio::KAudioObject );
+	            objDefCondition.AddObjectConditionL( audioDef );
+	            }    
+	        }
     
-    iQuery->FindL();
+	    iQuery->FindL();
+		}
     
     TN_DEBUG1( "CThumbAGProcessor::QueryL() - end" );
     }
@@ -1045,25 +1077,28 @@ void CThumbAGProcessor::QueryPlaceholdersL(TBool aPresent)
     CMdEObjectDef& objDef = iDefNamespace->GetObjectDefL( MdeConstants::Object::KBaseObject);
     iQueryPlaceholders = iMdESession->NewObjectQueryL( *iDefNamespace, objDef, this );
         
-    iQueryPlaceholders->SetResultMode( EQueryResultModeItem );
-    
-    CMdELogicCondition& rootCondition = iQueryPlaceholders->Conditions();
-    rootCondition.SetOperator( ELogicConditionOperatorOr );
-    
-    CMdEObjectCondition& imagePHObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
-    imagePHObjectCondition.SetPlaceholderOnly( ETrue );
-    imagePHObjectCondition.SetNotPresent( aPresent );
-    
-    CMdEObjectCondition& videoPHObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
-    videoPHObjectCondition.SetPlaceholderOnly( ETrue );
-    videoPHObjectCondition.SetNotPresent( aPresent );
-    
-    CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
-    audioPHObjectCondition.SetPlaceholderOnly( ETrue );
-    audioPHObjectCondition.SetNotPresent( aPresent );
-    
-    iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryBatchSize);   
-   
+    if(iQueryPlaceholders)
+        {
+        iQueryPlaceholders->SetResultMode( EQueryResultModeItem );
+        
+        CMdELogicCondition& rootCondition = iQueryPlaceholders->Conditions();
+        rootCondition.SetOperator( ELogicConditionOperatorOr );
+        
+        CMdEObjectCondition& imagePHObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
+        imagePHObjectCondition.SetPlaceholderOnly( ETrue );
+        imagePHObjectCondition.SetNotPresent( aPresent );
+        
+        CMdEObjectCondition& videoPHObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
+        videoPHObjectCondition.SetPlaceholderOnly( ETrue );
+        videoPHObjectCondition.SetNotPresent( aPresent );
+        
+        CMdEObjectCondition& audioPHObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
+        audioPHObjectCondition.SetPlaceholderOnly( ETrue );
+        audioPHObjectCondition.SetNotPresent( aPresent );
+        
+        iQueryPlaceholders->FindL(KMaxTInt, KMaxQueryBatchSize);   
+        }
+	
     TN_DEBUG1( "CThumbAGProcessor::QueryPlaceholdersL - end" );
     }
 
@@ -1127,6 +1162,10 @@ void CThumbAGProcessor::RunL()
             TN_DEBUG1( "CThumbAGProcessor::RunL() add iHarvesterClient observer");
             err = iHarvesterClient.AddHarvesterEventObserver( *this, EHEObserverTypeOverall | EHEObserverTypeMMC | EHEObserverTypePlaceholder, 20 );
             TN_DEBUG2( "CThumbAGProcessor::RunL() iHarvesterClient observer err = %d", err);
+            
+            iHarvesting = EFalse;
+            iMMCHarvesting = EFalse;
+            iPHHarvesting = EFalse;
             
             if( err != KErrNone )
                 {
@@ -1297,6 +1336,52 @@ void CThumbAGProcessor::RunL()
 
         QueryL( EGenerationItemActionResolveType );
        }
+    else if ( iDeleteItemCount > 0 )
+       {
+       TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
+       // delete thumbs by URI
+       __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
+       if(iTMSession)
+           {
+           TInt itemIndex(KErrNotFound);
+                               
+           for(TInt i=0;i<iGenerationQueue.Count() || itemIndex == KErrNotFound;i++)
+               {
+               if(iGenerationQueue[i].iItemAction == EGenerationItemActionDelete)
+                   {
+                   itemIndex = i;
+                   }
+               }
+       
+           if(itemIndex >= 0)
+               {
+               if(!iGenerationQueue[itemIndex].iUri)
+                   {
+                   //URI is invalid
+                   TN_DEBUG1( "void CThumbAGProcessor::RunL() unable to delete URI invalid");
+                   iGenerationQueue.Remove( itemIndex );
+                   ActivateAO();
+                   return;
+                   }
+
+               TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  iGenerationQueue[itemIndex].iUri);
+               CThumbnailObjectSource* source = NULL;                
+               TRAPD(err,  source = CThumbnailObjectSource::NewL( *iGenerationQueue[itemIndex].iUri, KNullDesC));
+                  
+               if(err == KErrNone)
+                   {
+                   iTMSession->DeleteThumbnails( *source );
+                   }
+               delete source;
+               
+               delete iGenerationQueue[itemIndex].iUri;
+               iGenerationQueue[itemIndex].iUri = NULL;
+               iGenerationQueue.Remove( itemIndex );
+               
+               iActiveCount++;
+               }
+           }
+       }
     // no items in query queue, start new
     // select queue to process, priority by type
     else if ( iModifyItemCount > 0 )
@@ -1321,54 +1406,6 @@ void CThumbAGProcessor::RunL()
         iQueryActive = ETrue;
         
         QueryL( EGenerationItemActionAdd );     
-        }
-    else if ( iDeleteItemCount > 0 )
-        {
-        TN_DEBUG1( "void CThumbAGProcessor::RunL() delete thumbnails");
-        i2ndRound = EFalse;
-        iUnknown = EFalse;
-        // delete thumbs by URI
-        __ASSERT_DEBUG((iTMSession), User::Panic(_L("CThumbAGProcessor::RunL() !iTMSession "), KErrBadHandle));
-        if(iTMSession)
-            {
-            TInt itemIndex(KErrNotFound);
-                                
-            for(TInt i=0;i<iGenerationQueue.Count() || itemIndex == KErrNotFound;i++)
-                {
-                if(iGenerationQueue[i].iItemAction == EGenerationItemActionDelete)
-                    {
-                    itemIndex = i;
-                    }
-                }
-        
-            if(itemIndex >= 0)
-                {
-                if(!iGenerationQueue[itemIndex].iUri)
-                    {
-                    //URI is invalid
-                    TN_DEBUG1( "void CThumbAGProcessor::RunL() unable to delete URI inbalid");
-                    iGenerationQueue.Remove( itemIndex );
-                    ActivateAO();
-                    return;
-                    }
-
-                TN_DEBUG2( "void CThumbAGProcessor::RunL() delete %S",  iGenerationQueue[itemIndex].iUri);
-                CThumbnailObjectSource* source = NULL;                
-                TRAPD(err,  source = CThumbnailObjectSource::NewL( *iGenerationQueue[itemIndex].iUri, KNullDesC));
-                   
-                if(err == KErrNone)
-                    {
-                    iTMSession->DeleteThumbnails( *source );
-                    }
-                delete source;
-                
-                delete iGenerationQueue[itemIndex].iUri;
-                iGenerationQueue[itemIndex].iUri = NULL;
-                iGenerationQueue.Remove( itemIndex );
-                
-                iActiveCount++;
-                }
-            }
         }
     else if( i2ndAddItemCount > 0)
         {
@@ -1494,7 +1531,7 @@ void CThumbAGProcessor::HarvestingUpdated(
            
             if( iPHHarvesting )
                 {
-                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesterin started");
+                TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- MDS placeholder harvesting started");
                 }
             else
                 {
@@ -1508,17 +1545,17 @@ void CThumbAGProcessor::HarvestingUpdated(
         
         //restart mount timout if PH item count is increasing durin MMC harvesting 
         if(iMMCHarvesting && iPHHarvesting && aItemsLeft > iPHHarvestingItemsLeftTemp)
-          {
-          //if items count increasing, restart mount timeout 
+            {
+            //if items count increasing, restart mount timeout 
             TN_DEBUG1( "CThumbAGProcessor::HarvestingUpdated -- PH count increasing, restart mount timeout");
             
-           if(iMountTimer->IsActive())
-              {
-              iMountTimer->Cancel();
-              }
+            if(iMountTimer->IsActive())
+                {
+                iMountTimer->Cancel();
+                }
 
             iMountTimer->Start( KMountTimeout, KMountTimeout, TCallBack(MountTimerCallBack, this));
-          }
+            }
           
         //we are interestead of only PHs during MMC harvesting
         if( iMMCHarvesting )
@@ -1696,9 +1733,9 @@ void CThumbAGProcessor::ActivateAO()
         }
     
     //check if forced run needs to continue
-    if ( ( iModifyItemCount || iUnknownItemCount > 0 )  && !iMountTimer->IsActive())
+    if ( (iModifyItemCount > 0 || iDeleteItemCount > 0 ||  iUnknownItemCount > 0) && !iMountTimer->IsActive())
         {
-        TN_DEBUG1( "CThumbAGProcessor::ActivateAO() -  forced run");
+        TN_DEBUG1( "CThumbAGProcessor::ActivateAO() - forced run");
         SetForceRun( ETrue );
         }
     else
@@ -1889,11 +1926,9 @@ void CThumbAGProcessor::QueryAllItemsL()
     CMdELogicCondition& rootCondition = iQueryAllItems->Conditions();
     rootCondition.SetOperator( ELogicConditionOperatorOr );
     
-    CMdEObjectCondition& imageObjectCondition = rootCondition.AddObjectConditionL(imageObjDef);
-    
-    CMdEObjectCondition& videoObjectCondition = rootCondition.AddObjectConditionL(videoObjDef);
-    
-    CMdEObjectCondition& audioObjectCondition = rootCondition.AddObjectConditionL(audioObjDef);
+    rootCondition.AddObjectConditionL(imageObjDef);   
+    rootCondition.AddObjectConditionL(videoObjDef);   
+    rootCondition.AddObjectConditionL(audioObjDef);
     
     iQueryAllItems->FindL(KMaxTInt, KMaxQueryBatchSize);  
     
@@ -2063,7 +2098,17 @@ void CThumbAGProcessor::RPropertyNotification(const TInt aError, const TUid aKey
         if( aError == KErrNone && aValue != iPreviousItemsLeft)
             {
             TN_DEBUG1( "CThumbAGProcessor::RPropertyNotification() - itemsLeft changed outside Daemon" );
+            
             iPreviousItemsLeft = aValue;
+            
+            // we need to start mount timer so that processor won't set itemsLeft back to 0 instantly
+            if(iMountTimer->IsActive())
+                {
+                iMountTimer->Cancel();
+                }
+
+            iMountTimer->Start( KMountTimeout, KMountTimeout, TCallBack(MountTimerCallBack, this));
+            
             ActivateAO();
             }
         }

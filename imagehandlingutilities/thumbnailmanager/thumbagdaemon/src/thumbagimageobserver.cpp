@@ -147,7 +147,10 @@ CThumbAGImageObserver::~CThumbAGImageObserver()
     iShutdown = ETrue;    
     
     delete iMDSShutdownObserver;
+    iMDSShutdownObserver = NULL;
+    
     delete iShutdownObserver;
+    iShutdownObserver = NULL;
     
     if(iReconnect)
         {
@@ -251,7 +254,7 @@ void CThumbAGImageObserver::HandleObjectNotification( CMdESession& /*aSession*/,
 		
         // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
-        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeImage, aObjectIdArray, dummyArray, EFalse));
+        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeImage, aObjectIdArray, dummyArray, EFalse, EFalse));
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGImageObserver::HandleObjectNotification() - error adding to queue" );
@@ -288,20 +291,22 @@ void CThumbAGImageObserver::AddObserversL()
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
     addCondition->AddObjectConditionL( imageDef );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-    CleanupStack::Pop( addCondition );  
+	
+	addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    modifyCondition->AddObjectConditionL( imageDef );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-    CleanupStack::Pop( modifyCondition );
-   
+	modifyCondition->AddObjectConditionL( imageDef );
+	
+	modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
+	
     // add observers
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
     // modify observer
     iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
-     
+	
+    CleanupStack::Pop( 2, addCondition );
+
     TN_DEBUG1( "CThumbAGImageObserver::AddObserversL() - end" );
     }
 

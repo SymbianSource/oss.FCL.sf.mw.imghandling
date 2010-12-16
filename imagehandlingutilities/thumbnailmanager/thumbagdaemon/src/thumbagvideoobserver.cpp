@@ -251,7 +251,7 @@ void CThumbAGVideoObserver::HandleObjectNotification( CMdESession& /*aSession*/,
 
         // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
-        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeVideo, aObjectIdArray, dummyArray, EFalse));
+        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeVideo, aObjectIdArray, dummyArray, EFalse, EFalse));
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGVideoObserver::HandleObjectNotification() - error adding to queue" );
@@ -301,20 +301,22 @@ void CThumbAGVideoObserver::AddObserversL()
     
     // set observing conditions
     CMdELogicCondition* addCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    addCondition->AddObjectConditionL( videoDef );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-    CleanupStack::Pop( addCondition );  
+	addCondition->AddObjectConditionL( videoDef );
+	
+	addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
     
     CMdELogicCondition* modifyCondition = CMdELogicCondition::NewLC( ELogicConditionOperatorAnd );
-    modifyCondition->AddObjectConditionL( videoDef );
-    addCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
-    CleanupStack::Pop( modifyCondition );
+	modifyCondition->AddObjectConditionL( videoDef );
+
+	modifyCondition->AddPropertyConditionL( originPropDef, TMdEUintNotEqual(MdeConstants::Object::ECamera));
     
     // add observer
     iMdESession->AddObjectObserverL( *this, addCondition, ENotifyAdd ); 
 
     // modify observer
     iMdESession->AddObjectObserverL( *this, modifyCondition, ENotifyModify );
+	
+	CleanupStack::Pop( 2, addCondition );
      
     TN_DEBUG1( "CThumbAGVideoObserver::AddObserversL() - end" );
     }

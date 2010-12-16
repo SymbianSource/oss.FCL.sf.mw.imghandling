@@ -33,7 +33,7 @@ EPOCHEAPSIZE            4096 0x800000 // heap 8MB
 EPOCHEAPSIZE            4096 0x3000000 // max heap 48MB
 #endif
 
-CAPABILITY              ALL -TCB -DRM
+CAPABILITY              ALL -TCB
 VENDORID                VID_DEFAULT
 
 EPOCPROCESSPRIORITY background

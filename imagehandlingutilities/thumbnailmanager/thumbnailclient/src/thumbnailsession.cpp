@@ -371,5 +371,19 @@ void RThumbnailSession::RenameThumbnails( TThumbnailRequestParamsPckg& aParams,
     SendReceive( ERenameThumbnails, args, aStatus ); 
     }
     
+// ---------------------------------------------------------------------------
+// Remove thumbnail path from blacklist.
+// ---------------------------------------------------------------------------
+//
+void RThumbnailSession::RemoveFromBlacklist(const TDesC& aPath, TThumbnailRequestParamsPckg& aParams, 
+                                            TRequestStatus& aStatus )
+    {
+    TN_DEBUG1( "RThumbnailSession::RemoveFromBlacklist() - begin");
+    
+    TIpcArgs args( &aParams, &aPath, KCheckValue);
+            
+    SendReceive( ERemoveFromBlacklist, args, aStatus );
+    TN_DEBUG1( "RThumbnailSession::RemoveFromBlacklist() - end");
+    }
 
 // End of file

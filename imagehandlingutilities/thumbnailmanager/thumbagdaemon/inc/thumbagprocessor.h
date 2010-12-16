@@ -62,7 +62,9 @@ enum TThumbnailGenerationItemType
 
   struct TThumbnailGenerationItem
       {
-      inline TThumbnailGenerationItem(): iItemId( KErrNotFound ), iItemType(EGenerationItemTypeUnknown), iItemAction(EGenerationItemActionAdd), iPlaceholder(EFalse), iUri(NULL){}
+      inline TThumbnailGenerationItem(): iItemId( KErrNotFound ), iItemType(EGenerationItemTypeUnknown), 
+              iItemAction(EGenerationItemActionAdd), iPlaceholder(EFalse), iUri(NULL),
+              iRemoveFromBlacklist(EFalse){}
       inline ~TThumbnailGenerationItem(){delete iUri; iUri = NULL;}
       
       TItemId iItemId;
@@ -70,6 +72,7 @@ enum TThumbnailGenerationItemType
       TThumbnailGenerationItemAction iItemAction;
       TBool iPlaceholder;
       HBufC* iUri;
+      TBool iRemoveFromBlacklist;
       };
 
 /**
@@ -166,7 +169,9 @@ public:
      * @param aIDArray IDs for thumbnail creation
      * @param aForce pass ETrue if processor is forced to run without waiting harvesting complete
      */
-    void AddToQueueL( TObserverNotificationType aType, TThumbnailGenerationItemType aItemType, const RArray<TItemId>& aIDArray, const RPointerArray<HBufC>& aObjectUriArray, TBool aPresent );
+    void AddToQueueL( TObserverNotificationType aType, TThumbnailGenerationItemType aItemType, 
+            const RArray<TItemId>& aIDArray, const RPointerArray<HBufC>& aObjectUriArray, 
+            TBool aPresent, TBool aRemoveBlacklisted );
     
     /**
      * Calls Thumbnail Manager to create thumbnails

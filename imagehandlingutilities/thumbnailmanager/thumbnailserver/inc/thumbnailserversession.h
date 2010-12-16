@@ -268,6 +268,14 @@ private:
      */
     TBool ClientThreadAlive();    
     
+    /**
+     * Remove thumbnail from blacklist.
+     *
+     * @since Symbian^3
+     * @param aMessage Message.
+     */    
+    void RemoveFromBlacklistL( const RMessage2& aMessage );
+    
 private:
     // data
     /**

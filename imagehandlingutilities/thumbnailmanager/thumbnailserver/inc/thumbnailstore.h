@@ -360,6 +360,14 @@ public:
      * @contains indication whether file modified
      */
     TBool CheckModifiedByPathL( const TDesC& aPath, const TInt64 aModified, TBool& modifiedChanged);
+    
+    /**
+     * Removed thumbnail from blacklist.
+     * 
+     * @since Symbian^3
+     * @param aPath Path of the media object whose thumbnail is to be deleted from the blacklist.
+     */
+    void RemoveBlacklistedL( const TDesC& aPath );
 
 private:
     /**

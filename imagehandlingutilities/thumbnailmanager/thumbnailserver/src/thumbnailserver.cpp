@@ -55,7 +55,7 @@ const TChar KThumbnailMimeTypeSeparatorChar = ' ';
 // ----------------------------------------------------------------------------------------
 // Total number of ranges
 // ----------------------------------------------------------------------------------------
-const TUint KThumbnailServerRangeCount = 16;
+const TUint KThumbnailServerRangeCount = 17;
  
 // ----------------------------------------------------------------------------------------
 // Definition of the ranges
@@ -77,6 +77,7 @@ const TInt KThumbnailServerRanges[KThumbnailServerRangeCount] =
     ERenameThumbnails,
     EUpdateThumbnails,
     ERequestSetThumbnailByBitmap,
+    ERemoveFromBlacklist,
     EThumbnailServerRequestCount,
 };
 
@@ -100,6 +101,7 @@ const TUint8 KThumbnailServerElementsIndex[KThumbnailServerRangeCount] =
     CPolicyServer::ECustomCheck,    // ERenameThumbnails
     CPolicyServer::ECustomCheck,    // EUpdateThumbnails
     CPolicyServer::ECustomCheck,    // ERequestSetThumbnailByBitmap
+    CPolicyServer::ECustomCheck,    // ERemoveFromBlacklist
     CPolicyServer::ECustomCheck,    // EThumbnailServerRequestCount
     };
 
@@ -146,6 +148,7 @@ CPolicyServer::TCustomResult CThumbnailServer::CustomSecurityCheckL(
         case EUpdateThumbnails:
         case ERenameThumbnails:    
         case ERequestSetThumbnailByBitmap:
+        case ERemoveFromBlacklist:
             {
             if( aMsg.HasCapability( ECapabilityReadDeviceData ) && 
                 aMsg.HasCapability( ECapabilityWriteDeviceData ) )
@@ -415,6 +418,7 @@ void CThumbnailServer::ThreadFunctionL()
             "CThumbnailServer::ThreadFunctionL() -- CActiveScheduler::Start() out" );
         // Comes here if server gets shut down
         delete server;
+        server = NULL;
         CleanupStack::PopAndDestroy( scheduler );
         }
     }
@@ -679,27 +683,9 @@ void CThumbnailServer::DeleteThumbnailsL( const TDesC& aPath )
 TDataType CThumbnailServer::ResolveMimeTypeL( RFile64& aFile )
     {
     TN_DEBUG1( "CThumbnailStore::ResolveMimeTypeL()");
-    RFile64 tmp = aFile;
-    
-    // check if DRM
-    ContentAccess::CData* data = ContentAccess::CData::NewLC( 
-            tmp, ContentAccess::KDefaultContentObject, ContentAccess::EPeek );
-
-    TInt filetype( 0 );
-    TInt drm( 0 );
-    User::LeaveIfError( data->GetAttribute( ContentAccess::EIsProtected, drm ) );
-    data->GetAttribute( ContentAccess::EFileType, filetype );
-    CleanupStack::PopAndDestroy();    
 
 	//close aFile on leave	
     CleanupClosePushL( aFile );    
-    
-    if ( drm && filetype != ContentAccess::EOma1Dcf )
-        {
-        // cannot handle other than Oma DRM 1.x files
-        TN_DEBUG1( "CThumbnailStore::ResolveMimeTypeL()- only OMA DRM 1.0 supported");
-        User::Leave(KErrNotSupported);
-        }    
     
     TDataRecognitionResult res;
     if ( iRecognizer.Handle() == KNullHandle )
@@ -1059,6 +1045,7 @@ void CThumbnailServer::CloseStoreForDriveL( const TInt aDrive )
     if (store)
         {
         delete *store;
+        *store = NULL;
         iStores.Remove( aDrive );
         }
     }
@@ -1599,6 +1586,7 @@ TInt E32Main()
             "CThumbnailServer::E32Main() -- thread function out, result=%d",
             result );
         delete cleanup;
+        cleanup = NULL;
         }
     if ( result != KErrNone )
         {
@@ -1804,3 +1792,17 @@ TInt CThumbnailServer::UnmountCallBack(TAny* aAny)
     
     return KErrNone;
     }
+
+// ---------------------------------------------------------------------------
+// CThumbnailServer::RemoveFromBlacklist()
+// ---------------------------------------------------------------------------
+//
+void CThumbnailServer::RemoveFromBlacklistL( const TDesC& aPath )
+    {
+    TN_DEBUG2( "CThumbnailServer::RemoveFromBlacklist(%S)", &aPath);
+    CThumbnailStore* store = StoreForPathL( aPath );
+    store->RemoveBlacklistedL( aPath );
+        
+    TN_DEBUG1( "CThumbnailServer::RemoveFromBlacklistL() - done");
+    }
+

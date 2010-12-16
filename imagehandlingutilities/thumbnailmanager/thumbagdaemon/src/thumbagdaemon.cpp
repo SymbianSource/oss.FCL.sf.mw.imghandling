@@ -162,6 +162,10 @@ void CThumbAGDaemon::InitializeL()
         delete iVideoObserver;
         iVideoObserver = NULL;
         iVideoObserver = CThumbAGVideoObserver::NewL(iProcessor);
+        
+        delete iDrmObserver;
+        iDrmObserver = NULL;
+        iDrmObserver = CThumbAGDrmObserver::NewL(iProcessor);
         }
     else
         {
@@ -193,8 +197,14 @@ CThumbAGDaemon::~CThumbAGDaemon()
     delete iAudioObserver;
     iAudioObserver = NULL;
     
+    delete iDrmObserver;
+    iDrmObserver = NULL;
+    
     delete iMDSShutdownObserver;
+    iMDSShutdownObserver = NULL;
+    
     delete iShutdownObserver;
+    iShutdownObserver = NULL;
     
     if(iReconnect)
         {
@@ -267,6 +277,7 @@ void CThumbAGDaemon::ThreadFunctionL()
        
         // comes here if server gets shut down
         delete server;
+        server = NULL;
         
         CleanupStack::PopAndDestroy( scheduler );
         }
@@ -320,6 +331,9 @@ void CThumbAGDaemon::HandleSessionError( CMdESession& /*aSession*/, TInt aError 
     
 	    delete iAudioObserver;
 	    iAudioObserver = NULL;
+	    
+	    delete iDrmObserver;
+	    iDrmObserver = NULL;
 		
         // kill processor right away, because it also has MdESession
         if(iProcessor)
@@ -362,7 +376,7 @@ void CThumbAGDaemon::HandleUriObjectNotification(CMdESession& /*aSession*/,
         {
         TN_DEBUG1( "CThumbAGDaemon::HandleUriObjectNotification() - removed");
         TInt err(0);
-        TRAP(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAny, aObjectIdArray, aObjectUriArray, EFalse));
+        TRAP(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAny, aObjectIdArray, aObjectUriArray, EFalse, EFalse));
         __ASSERT_DEBUG((err==KErrNone), User::Panic(_L("CThumbAGDaemon::HandleUriObjectNotification()"), err));
 
         err = KErrNone;
@@ -404,7 +418,7 @@ void CThumbAGDaemon::HandleObjectNotification( CMdESession& /*aSession*/,
         
         // Add event to processing queue by type and enable force run        
         RPointerArray<HBufC> dummyArray;
-        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAny, aObjectIdArray, dummyArray, EFalse));
+        TRAPD(err, iProcessor->AddToQueueL(aType, EGenerationItemTypeAny, aObjectIdArray, dummyArray, EFalse, EFalse));
         if (err != KErrNone)
             {
             TN_DEBUG1( "CThumbAGDaemon::HandleObjectNotification() - error adding to queue" );
@@ -447,7 +461,7 @@ void CThumbAGDaemon::HandleObjectPresentNotification(CMdESession& /*aSession*/,
             {
 		    // do not force run of these items
             RPointerArray<HBufC> dummyArray;
-            TRAP(err, iProcessor->AddToQueueL(ENotifyAdd, EGenerationItemTypeUnknown, aObjectIdArray, dummyArray, ETrue));
+            TRAP(err, iProcessor->AddToQueueL(ENotifyAdd, EGenerationItemTypeUnknown, aObjectIdArray, dummyArray, ETrue, EFalse));
            
             TN_DEBUG2( "CThumbAGDaemon::HandleObjectPresentNotification() - ENotifyAdd unknown items %d", aObjectIdArray.Count() );     
            #ifdef _DEBUG
@@ -538,6 +552,8 @@ TBool CThumbAGDaemon::DaemonEnabledL()
     TInt ret = rep->Get( KEnableDaemon, val );
     
     delete rep;
+    rep = NULL;
+    
     TN_DEBUG3( "CThumbAGDaemon::DaemonEnabledL() - val == %d, ret == %d", val, ret );
     return val;
     }
@@ -579,6 +595,7 @@ TInt E32Main()
         {
         TRAP( result, CThumbAGDaemon::ThreadFunctionL());
         delete cleanup;
+        cleanup = NULL;
         }
     
     if ( result != KErrNone )

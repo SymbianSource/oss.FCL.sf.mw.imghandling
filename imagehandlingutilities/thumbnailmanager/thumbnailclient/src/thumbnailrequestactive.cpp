@@ -47,6 +47,7 @@ CThumbnailRequestActive::~CThumbnailRequestActive()
         {
         iTimer->Cancel();
         }
+    
     delete iTimer;
     iTimer = NULL;
     
@@ -220,6 +221,16 @@ void CThumbnailRequestActive::StartL()
             iSession.RenameThumbnails( iParamsPckg, iStatus );
             break;
             }  
+        case EReqRemoveFromBlacklist:
+            {
+            TN_DEBUG1( "CThumbnaiRequestActive::StartL() - RemoveFromBlacklist begin" );
+            if (iPath != KNullDesC)
+                {
+                iSession.RemoveFromBlacklist( iPath, iParamsPckg, iStatus );
+                }
+            TN_DEBUG1( "CThumbnaiRequestActive::StartL() - RemoveFromBlacklist end" );
+            break;
+            }
         default:
             {
             break;
@@ -253,13 +264,19 @@ void CThumbnailRequestActive::RunL()
     
     iTimer->Cancel();
     
-    if (iRequestType == EReqDeleteThumbnails)
+    if (iCanceled || iRequestType == EReqRenameThumbnails || iRequestType == EReqRemoveFromBlacklist)
         {
-        TN_DEBUG1( "CThumbnailRequestActive::RunL() - delete" );
-    
-        if (iRequestObserver)
+        if (iCanceled)
             {
-            iRequestObserver->ThumbnailRequestReady(iStatus.Int(), ERequestDeleteThumbnails ,iParams.iRequestId);
+            TN_DEBUG1( "CThumbnailRequestActive::RunL() - canceled" );
+            }
+        else if (iRequestType == EReqRenameThumbnails)
+            {
+            TN_DEBUG1( "CThumbnailRequestActive::RunL() - rename" );
+            }
+        else if (iRequestType == EReqRemoveFromBlacklist)
+            {
+            TN_DEBUG1( "CThumbnailRequestActive::RunL() - blacklist" );
             }
         
         iFile.Close();
@@ -275,17 +292,15 @@ void CThumbnailRequestActive::RunL()
                 iParams.iRequestId, (TInt)stop.MicroSecondsFrom(iStartExecTime).Int64()/1000 );
 #endif
         }
-    else if (iCanceled || iRequestType == EReqRenameThumbnails)
+    else if (iRequestType == EReqDeleteThumbnails)
         {
-        if (iCanceled)
-            {
-            TN_DEBUG1( "CThumbnailRequestActive::RunL() - canceled" );
-            }
-        else if (iRequestType == EReqRenameThumbnails)
-            {
-            TN_DEBUG1( "CThumbnailRequestActive::RunL() - rename" );
-            }
+        TN_DEBUG1( "CThumbnailRequestActive::RunL() - delete" );
     
+        if (iRequestObserver)
+            {
+            iRequestObserver->ThumbnailRequestReady(iStatus.Int(), ERequestDeleteThumbnails ,iParams.iRequestId);
+            }
+        
         iFile.Close();
         iMyFileHandle.Close();
     
@@ -952,7 +967,7 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     
     self->iTimer->Cancel();
     
-    self->Cancel();
+    self->AsyncCancel();
     
     if (self->iStartError != KErrNone)
         {
@@ -970,4 +985,18 @@ TInt CThumbnailRequestActive::TimerCallBack(TAny* aAny)
     return KErrNone;
     }
 
+
+// ---------------------------------------------------------------------------
+// CThumbnailRequestActive::RemoveFromBlacklist()
+// ---------------------------------------------------------------------------
+//
+void CThumbnailRequestActive::RemoveFromBlacklist( const TDesC& aPath )
+    {
+    TN_DEBUG1( "CThumbnaiRequestActive::RemoveFromBlacklist() - begin" );
+    iRequestType = EReqRemoveFromBlacklist;
+    iParams.iRequestId = iRequestId;
+    iPath = aPath;
+    TN_DEBUG1( "CThumbnaiRequestActive::RemoveFromBlacklist() - end" );
+	}
+	
 // End of file

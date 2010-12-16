@@ -143,6 +143,11 @@ TInt CThumbnailServerSession::DispatchMessageL( const RMessage2& aMessage )
                 RenameThumbnailsL( aMessage );
                 break;
                 } 
+        case ERemoveFromBlacklist:
+                {
+                RemoveFromBlacklistL( aMessage );
+				break;
+                }
         default:
                 {
                 err = KErrUnknown;
@@ -904,6 +909,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromFileHandleL( RFile64* aFile)
             // all thumbs already exist
             CleanupStack::PopAndDestroy( missingSizes );
             delete missingSizes;
+            missingSizes = NULL;
+            
             if( aFile )
                {
                aFile->Close();
@@ -1034,6 +1041,8 @@ void CThumbnailServerSession::CreateGenerateTaskFromBufferL( TDesC8* aBuffer )
             // all thumbs already exist
             CleanupStack::PopAndDestroy( missingSizes );
             delete missingSizes;
+            missingSizes = NULL;
+            
             if ( aBuffer)
                {
                delete aBuffer;
@@ -1533,6 +1542,30 @@ TBool CThumbnailServerSession::ClientThreadAlive()
         TN_DEBUG1( "CThumbnailServerSession::ClientThreadAlive() - message null");       
         return EFalse;
         }
+    }
+
+// ---------------------------------------------------------------------------
+// CThumbnailServerSession::RemoveFromBlacklistL()
+// ---------------------------------------------------------------------------
+//
+void CThumbnailServerSession::RemoveFromBlacklistL( const RMessage2& aMessage )
+    {
+    TN_DEBUG1( "CThumbnailServerSession::RemoveFromBlacklist() - begin" );
+    if(aMessage.Int2() != KCheckValue)
+       {
+       TN_DEBUG1( "CThumbnailServerSession::RemoveFromBlacklist() - error in aMessage - leaving" );
+       User::Leave(KErrArgument);
+       }
+    
+    HBufC* fileName = HBufC::NewLC( KMaxFileName );
+    TPtr ptr = fileName->Des();
+    aMessage.ReadL( 1, ptr );
+    Server()->RemoveFromBlacklistL( ptr );
+    CleanupStack::PopAndDestroy( fileName );
+    
+    aMessage.Complete( KErrNone );
+    iMessage = RMessage2();
+    TN_DEBUG1( "CThumbnailServerSession::RemoveFromBlacklist() - end" );
     }
 
 // End of file

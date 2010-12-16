@@ -582,6 +582,16 @@ public:
         * @since Symbian^3
         */
        virtual void RemoveRequestObserver() = 0;
+       
+        /**
+        * Remove thumbnail from blacklist. This is an asynchronous
+      	* operation, which always returns immediately.
+        *
+        * @since Symbian^3
+        * @param aPath 		Path for the Thumbnail
+        * @param aPriority	Priority for this operation
+        */
+       virtual void RemoveFromBlacklistL( const TDesC& aPath, const TInt aPriority ) = 0;
 };
 
 #endif // THUMBNAILMANAGER_H
